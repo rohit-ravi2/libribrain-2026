@@ -28,7 +28,7 @@ Status tags: **VERIFIED** (read from a primary source or from the data), **UNVER
 
 **Brainstorm check** ("cross-subject track including unseen subjects"): **HOLDS, with a refinement.** Broad is a *mixture* of 32 few-shot subjects and 7 zero-shot subjects, scored together in one BAcc@10 over 37,439 rows. Zero-shot rows are 7/39 ≈ 18% of Broad rows. Charter step 2 (stop if the tracks differ) is therefore not triggered.
 
-The mapping from subject ID to group (which of subj1–32 is 100/50/25%) is UNVERIFIED until the download finishes; it will be inferred from the released data volume.
+Group map (VERIFIED, arXiv 2609.03231 HTML): **subj1–12 = 100%, subj13–22 = 50%, subj23–32 = 25%, subj33–39 = zero-shot** (the paper says 33–40; the holdout contains 33–39).
 
 ## 2. Data
 
@@ -61,6 +61,20 @@ The mapping from subject ID to group (which of subj1–32 is 100/50/25%) is UNVE
 - **Gray zone, unresolved:** unlabelled **test-time adaptation** using a subject's *own* holdout MEG statistics (e.g. fitting a per-subject sensor alignment or normalisation on that subject's unlabelled holdout windows, with no row correspondence to other subjects). This is not forbidden by any text I found. It is the natural route for the 0% group, whose only data is the holdout. Per-subject channel standardisation from the holdout is *already required* by the official pipeline, which is a precedent for using the holdout's unlabelled statistics. Plan: build it as a switchable variant and always keep a non-TTA fallback submission. Confirming with the organizers (libribrain@robots.ox.ac.uk or Discord) is Rohit's call.
 
 ## 5. External data, pretrained models, compute
+
+- **VERIFIED (arXiv 2609.03231):** "Participants may use any training data for either track. This includes (i) external, publicly available datasets, (ii) self-collected or synthetically-generated data, or (iii) pre-trained models available from public repositories on Hugging Face or GitHub." The paper has no rule on test-time adaptation.
+- The paper also states that the holdout is split into **two disjoint partitions**, public and private.
+
+### Official baselines (VERIFIED, arXiv 2609.03231)
+| Track | Model | BAcc@10 | BAcc@1 |
+|---|---|---|---|
+| Deep | d'Ascoli et al. 2025 supervised word decoder, all ~80 h sub-0 | 0.7323 | 0.2560 |
+| **Broad** | **MEG-XL** (pretrained ~300 h / 800 subj; fine-tuned; per subj1–32, half of ses-11 fine-tune, half validation) | **0.4296** | 0.0620 |
+| Broad | d'Ascoli | 0.3313 | 0.0514 |
+
+The paper gives no per-group (100/50/25/0%) breakdown. MEG-XL: github.com/neural-processing-lab/MEG-XL (MIT, cloned to `ext/`); weights `pnpl/MEG-XL` (283 MB). Its libribrain100 config uses 150 s segments at 50 Hz, a 0.1–40 Hz band-pass, a −0.5 s window offset, a T5-large layer-12 contrastive word target, and subject FiLM. The README requires **≥80 GB VRAM** for fine-tuning (activation memory from the 150 s context). The config has a gradient-checkpointing flag.
+
+Earlier notes that this section supersedes:
 
 - No external-data or pretrained-model restriction found in the competition-specific rules. The Kaggle foundational rules (§6c) require open-source code under an OSI licence that allows commercial use. External data/models: **not prohibited by any text found (UNVERIFIED as permitted).**
 - Compute: no limit stated.
