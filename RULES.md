@@ -74,11 +74,7 @@ Group map (VERIFIED, arXiv 2609.03231 HTML): **subj1–12 = 100%, subj13–22 = 
 
 The paper gives no per-group (100/50/25/0%) breakdown. MEG-XL: github.com/neural-processing-lab/MEG-XL (MIT, cloned to `ext/`); weights `pnpl/MEG-XL` (283 MB). Its libribrain100 config uses 150 s segments at 50 Hz, a 0.1–40 Hz band-pass, a −0.5 s window offset, a T5-large layer-12 contrastive word target, and subject FiLM. The README requires **≥80 GB VRAM** for fine-tuning (activation memory from the 150 s context). The config has a gradient-checkpointing flag.
 
-Earlier notes that this section supersedes:
-
-- No external-data or pretrained-model restriction found in the competition-specific rules. The Kaggle foundational rules (§6c) require open-source code under an OSI licence that allows commercial use. External data/models: **not prohibited by any text found (UNVERIFIED as permitted).**
-- Compute: no limit stated.
-- Teams: one team per person; the maximum team size is not stated on the pages found.
+- Compute: no limit stated. Teams: one team per person; the maximum team size is not stated.
 
 ## 6. Consequences for the local validation design (INTERPRETATION)
 
