@@ -18,4 +18,4 @@
 3. Join the Kaggle Broad competition (identity-bound click).
 
 ## PENDING
-(none running)
+- **b0** (started 2026-10-04 ~14:30Z): `scripts/train_b0.py --tag b0 --epochs 15`, log `logs/b0.log`, ckpt `runs/b0.pt`. Projected ~30 min (1% smoke ×100 + load).
