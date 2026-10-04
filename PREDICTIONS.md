@@ -30,3 +30,7 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - s25: 0.28
   - zero-shot mean-A: 0.25
 - **Honest prior:** on these local numbers P1 (>0.43) looks unlikely with a 0.32-ceiling decoder. The subj0 decoder itself must improve first, because the alignment can only transfer what the decoder decodes. That is a decoder-capacity question, not evidence against the alignment idea.
+
+### Outcome B0 (2026-10-04, runs/b0.json; epoch 6 selected on the early-stop set, tau=0.75)
+- subj0 block B **0.498** (predicted 0.45–0.55: HIT). Unaligned eval subjects block B **0.211**, per subject 0.169 / 0.223 / 0.254 / 0.199 (predicted 0.24–0.30: MISS, lower). The prior-ranking floor is 0.263.
+- Reading: sensor-space transfer without alignment is nil, even after SSS/head-position transform. Every cross-subject point has to come from alignment or multi-subject training.

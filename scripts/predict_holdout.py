@@ -9,17 +9,18 @@ from src.data import normalize
 from src.models import WordCNN
 
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True); ap.add_argument("--out", required=True)
-ap.add_argument("--track", default="broad"); a = ap.parse_args()
-ck = torch.load(a.ckpt, map_location="cuda")
-model = WordCNN().cuda(); model.load_state_dict(ck["model"]); model.eval()
-adj = ck.get("tau", 0.0) * ck["log_prior"].cuda()
+ap.add_argument("--track", default="broad"); ap.add_argument("--device", default="cuda"); a = ap.parse_args()
+dev = a.device
+ck = torch.load(a.ckpt, map_location=dev)
+model = WordCNN().to(dev); model.load_state_dict(ck["model"]); model.eval()
+adj = ck.get("tau", 0.0) * ck["log_prior"].to(dev)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname("/mnt/ssd4tb/data/LibriBrain-Competition-2026/COMPETITION_HOLDOUT"), download=False)
 print(H, H.counts(), flush=True)
 probs = []
 with torch.no_grad():
     for meg, _ in H.iter_windows(batch_size=1024):
-        x = normalize(torch.from_numpy(downsample(meg)).cuda())
-        with torch.autocast("cuda", torch.bfloat16):
+        x = normalize(torch.from_numpy(downsample(meg)).to(dev))
+        with torch.autocast(dev, torch.bfloat16):
             l = model(x).float() - adj
         probs.append(torch.softmax(l, 1).cpu().numpy())
 probs = np.concatenate(probs)

@@ -18,4 +18,6 @@
 3. Join the Kaggle Broad competition (identity-bound click).
 
 ## PENDING
-- **b0** (started 2026-10-04 ~14:30Z): `scripts/train_b0.py --tag b0 --epochs 15`, log `logs/b0.log`, ckpt `runs/b0.pt`. Projected ~30 min (1% smoke ×100 + load).
+- **b0** DONE 10:48 EDT → runs/b0.pt (subj0-B 0.498, eval-B 0.211).
+- **predict_b0** (CPU, started 10:51 EDT): `scripts/predict_holdout.py --ckpt runs/b0.pt --out submissions/b0_broad.csv --device cpu`, log logs/predict_b0.log.
+- **p1a** QUEUED behind the neural-control GPU lock (25-job worm_p3 queue, since 10:50): `scripts/train_align.py --tag p1a`, log logs/p1a.log.
