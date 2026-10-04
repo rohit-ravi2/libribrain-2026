@@ -92,3 +92,8 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - VAL selected epoch 0 (VAL 0.319). Eval: zero-shot 0.311, s25 0.292, s50 0.325, s100 0.313, composite **0.310**. Predicted 0.32 / 0.32 / 0.33 / 0.34 / 0.33: about 0.02 under across the board.
 - VAL and eval zero-shot track each other per epoch (0.319/0.311, 0.295/0.294, 0.294/0.277, 0.278/0.259), so VAL is a valid selection proxy.
 - Few-shot ≈ zero-shot. Fitting A on 10–30 min of a subject adds nothing measurable on top of this trunk (s25 is below zero-shot). The per-subject linear alignment arm is UNINFORMATIVE at this trunk quality, not refuted.
+
+## E1 — 3-seed ensemble of 1-epoch trunks (committed 2026-10-04 ~19:20Z, before the runs)
+- **Setup:** train_b1.py --select val --broad_frac 0.5 --epochs 1, seeds 0/1/2. Zero-shot (mean A) softmax average.
+- **Expectations:** single seeds 0.30–0.31 eval zero-shot; ensemble 0.32.
+- This recipe, with `--final` (all data, own A for subjects 1–32, mean A for 33–39), becomes submission #2.
