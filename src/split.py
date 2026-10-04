@@ -16,6 +16,9 @@ import numpy as np
 from .common import CACHE
 
 EVAL_SUBJECTS = (3, 6, 9, 12)
+# Selection subjects (added 2026-10-04 after B1 showed subj0-based selection is misaligned with the Broad objective).
+# From the 100% group, disjoint from EVAL. Excluded from training when a run selects on them (train_mask(..., val=True)).
+VAL_SUBJECTS = (1, 5, 10)
 GUARD = 1.0
 SHARED = ("ses-11_task-Sherlock1", "ses-12_task-Sherlock1")
 T_MAX = {}  # filled from subj0's full ses-11/12 events at import time
@@ -53,10 +56,11 @@ def block_masks(base, timechapter):
     return m
 
 
-def train_mask(base, timechapter):
-    """Windows any model may train on (excludes eval subjects entirely and block B + guard for everyone)."""
+def train_mask(base, timechapter, val=False):
+    """Windows any model may train on (excludes eval subjects entirely and block B + guard for everyone;
+    with val=True also excludes the selection subjects)."""
     sub, _ = parse(base)
-    if sub in EVAL_SUBJECTS:
+    if sub in EVAL_SUBJECTS or (val and sub in VAL_SUBJECTS):
         return np.zeros(len(timechapter), bool)
     return block_masks(base, timechapter)["pre75"]
 

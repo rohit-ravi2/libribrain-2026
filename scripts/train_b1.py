@@ -15,23 +15,28 @@ ap.add_argument("--bs", type=int, default=256); ap.add_argument("--lr", type=flo
 ap.add_argument("--broad_frac", type=float, default=0.3, help="fraction of each batch drawn from Broad pool subjects")
 ap.add_argument("--aug", type=int, default=1); ap.add_argument("--lam", type=float, default=1e-3)
 ap.add_argument("--fs_epochs", type=int, default=30); ap.add_argument("--seed", type=int, default=0)
+ap.add_argument("--noA", action="store_true", help="keep every subject's input layer frozen at identity during trunk training")
+ap.add_argument("--select", default="es", choices=["es", "val"], help="es: subj0 ses-10 (B1); val: VAL_SUBJECTS block B zero-shot")
+ap.add_argument("--final", action="store_true", help="train on ALL windows (all subjects, block B included) for --epochs, save last epoch; no local eval")
 a = ap.parse_args(); torch.manual_seed(a.seed); np.random.seed(a.seed); dev = "cuda"
 ESVAL = "sub-0_ses-10_task-Sherlock1_run-1"
 
 sel_ev = lambda b, s, ses, t: np.ones(len(t), bool) if s in S.EVAL_SUBJECTS else None
 D = load_sets({
-    "tr": lambda b, s, ses, t: S.train_mask(b, t) if b != ESVAL else None,
+    "tr": (lambda b, s, ses, t: np.ones(len(t), bool)) if a.final else (lambda b, s, ses, t: S.train_mask(b, t, val=(a.select == "val")) if b != ESVAL else None),
     "es": lambda b, s, ses, t: np.ones(len(t), bool) if b == ESVAL else None,
     "0B": lambda b, s, ses, t: S.block_masks(b, t)["B"] if s == 0 else None,
-    "ev": sel_ev})
-Xtr, ytr, st, _ = D["tr"]; Xes, yes, _, _ = D["es"]; X0B, y0B, _, _ = D["0B"]; Xe, ye, se, be = D["ev"]; del D
+    "ev": sel_ev,
+    "va": lambda b, s, ses, t: S.block_masks(b, t)["B"] if (s in S.VAL_SUBJECTS and a.select == "val") else None})
+Xtr, ytr, st, _ = D["tr"]; Xes, yes, _, _ = D["es"]; X0B, y0B, _, _ = D["0B"]; Xe, ye, se, be = D["ev"]
+Xva, yva, sva, _ = D["va"] if a.select == "val" else (None, None, None, None); del D
 subs = sorted(set(st.tolist())); sid = {s: i for i, s in enumerate(subs)}; st_i = torch.tensor([sid[s] for s in st.tolist()])
 i0 = torch.nonzero(st == 0).squeeze(1); ib = torch.nonzero(st != 0).squeeze(1)
 print(f"train subj0 {len(i0)} broad {len(ib)} ({len(subs) - 1} subjects); es {len(Xes)}; eval {len(Xe)}", flush=True)
 log_prior = torch.log(torch.bincount(ytr, minlength=50).float().clamp_min(1) / len(ytr)).to(dev)
 
 trunk = WordCNN().to(dev)
-A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1))
+A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1), requires_grad=not a.noA)
 opt = torch.optim.AdamW([{"params": trunk.parameters(), "weight_decay": 0.05}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
 nb = len(i0) // int(a.bs * (1 - a.broad_frac)); steps = a.epochs * nb
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, a.lr, total_steps=steps, pct_start=0.1)
@@ -76,8 +81,13 @@ for ep in range(a.epochs):
         loss = loss + a.lam * ((A - I) ** 2).sum((1, 2)).mean()
         opt.zero_grad(set_to_none=True); loss.backward(); opt.step(); sched.step(); tl += loss.item()
     les = logits(Xes, A[sid[0]].detach())
-    es = {tau: bacc_at_k((les - tau * log_prior).cpu(), yes) for tau in TAUS}; tau = max(es, key=es.get)
     Abroad = A[[sid[s] for s in subs if s != 0]].detach().mean(0)
+    if a.select == "val":
+        lva = logits(Xva, Abroad)
+        es = {tau: float(np.mean([bacc_at_k((lva[sva == s] - tau * log_prior).cpu(), yva[sva == s]) for s in S.VAL_SUBJECTS])) for tau in TAUS}
+    else:
+        es = {tau: bacc_at_k((les - tau * log_prior).cpu(), yes) for tau in TAUS}
+    tau = max(es, key=es.get)
     le = (logits(Xe, Abroad) - tau * log_prior).cpu()
     Bm = torch.zeros(len(Xe), dtype=torch.bool)
     for b_ in set(be):
@@ -87,9 +97,14 @@ for ep in range(a.epochs):
     r = {"epoch": ep, "es": es[tau], "tau": tau, "subj0_B": bacc_at_k((logits(X0B, A[sid[0]].detach()) - tau * log_prior).cpu(), y0B),
          "zs_meanA_B": float(np.mean(list(zs.values()))), "zs_per": zs, "loss": tl / nb, "t": round(time.time() - t0)}
     hist.append(r); print(json.dumps(r), flush=True)
+    if a.final:
+        torch.save({"model": trunk.state_dict(), "A": A.detach().cpu(), "subs": subs, "log_prior": log_prior.cpu(), "tau": tau, "epoch": ep, "args": vars(a)}, f"runs/{a.tag}.pt")
+        continue
     if r["es"] > best:
         best = r["es"]; torch.save({"model": trunk.state_dict(), "A": A.detach().cpu(), "subs": subs, "log_prior": log_prior.cpu(), "tau": tau, "epoch": ep, "args": vars(a)}, f"runs/{a.tag}.pt")
 
+if a.final:
+    json.dump({"args": vars(a), "history": hist}, open(f"runs/{a.tag}.json", "w"), indent=1); sys.exit(0)
 # Few-shot on the selected checkpoint: fit a new subject layer per eval subject per condition (trunk frozen).
 ck = torch.load(f"runs/{a.tag}.pt", map_location=dev); trunk.load_state_dict(ck["model"]); trunk.eval()
 for p in trunk.parameters(): p.requires_grad_(False)
@@ -123,5 +138,5 @@ for s in S.EVAL_SUBJECTS:
 summ = {k: float(np.mean(list(v.values()))) for k, v in res.items()}
 summ["composite"] = S.composite({"s100": summ["s100"], "s50": summ["s50"], "s25": summ["s25"], "s0": summ["s0_meanA"]})
 sel = max(hist, key=lambda h: h["es"])
-json.dump({"args": vars(a), "selected": sel, "fewshot": summ, "fewshot_per": res, "history": hist}, open(f"runs/{a.tag}.json", "w"), indent=1)
+json.dump({"args": vars(a), "selected_by": a.select, "selected": sel, "fewshot": summ, "fewshot_per": res, "history": hist}, open(f"runs/{a.tag}.json", "w"), indent=1)
 print("SELECTED", json.dumps(sel)); print("FEWSHOT", json.dumps(summ))

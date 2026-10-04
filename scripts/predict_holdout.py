@@ -16,10 +16,19 @@ model = WordCNN().to(dev); model.load_state_dict(ck["model"]); model.eval()
 adj = ck.get("tau", 0.0) * ck["log_prior"].to(dev)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname("/mnt/ssd4tb/data/LibriBrain-Competition-2026/COMPETITION_HOLDOUT"), download=False)
 print(H, H.counts(), flush=True)
+# Per-subject input layer (B1-style ckpts): trained subjects use their own A; unseen subjects (33-39) use the mean
+# Broad A. The subject id is the row's own subject (pnpl metadata), never another subject's rows.
+Amap = None
+if "A" in ck:
+    subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].mean(0)
+    Amap = {s: (ck["A"][subs.index(s)] if s in subs else Ab).to(dev) for s in H.subjects}
+    print("subjects with own A:", [s for s in H.subjects if s in subs], "| mean A:", [s for s in H.subjects if s not in subs])
 probs = []
 with torch.no_grad():
-    for meg, _ in H.iter_windows(batch_size=1024):
+    for meg, metas in H.iter_windows(batch_size=1024):
         x = normalize(torch.from_numpy(downsample(meg)).to(dev))
+        if Amap is not None:
+            Ab_ = torch.stack([Amap[m["subject"]] for m in metas]); x = torch.einsum("bij,bjt->bit", Ab_, x)
         with torch.autocast(dev, torch.bfloat16, enabled=(dev == "cuda")):
             l = model(x).float() - adj
         probs.append(torch.softmax(l, 1).cpu().numpy())
