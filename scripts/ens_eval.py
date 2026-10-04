@@ -12,7 +12,7 @@ res = {}
 for name, (X, y, ss, _) in D.items():
     P = []
     for c in cks:
-        ck = torch.load(c, map_location=dev); m = WordCNN().to(dev); m.load_state_dict(ck["model"]); m.eval()
+        ck = torch.load(c, map_location=dev); m = WordCNN(d=ck.get("args", {}).get("d", 256), p=ck.get("args", {}).get("p", 0.2)).to(dev); m.load_state_dict(ck["model"]); m.eval()
         subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].to(dev).mean(0); adj = ck["tau"] * ck["log_prior"].to(dev)
         with torch.no_grad():
             lo = torch.cat([m(torch.einsum("ij,bjt->bit", Ab, normalize(X[i:i + 2048].to(dev)))).float() - adj for i in range(0, len(X), 2048)])
