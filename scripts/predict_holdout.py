@@ -18,7 +18,7 @@ print(H, H.counts(), flush=True)
 models = []
 for c in a.ckpt.split(","):
     ck = torch.load(c, map_location=dev)
-    m = WordCNN().to(dev); m.load_state_dict(ck["model"]); m.eval()
+    m = WordCNN(d=ck.get("args", {}).get("d", 256), p=ck.get("args", {}).get("p", 0.2)).to(dev); m.load_state_dict(ck["model"]); m.eval()
     Amap = None
     if "A" in ck:
         subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].mean(0)

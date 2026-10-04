@@ -105,3 +105,11 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 ### Outcome C1 (2026-10-04, runs/c1_within_linear.json)
 - Within-subject linear, own data only: s25 0.258, s50 0.282, s100 0.288 (pred 0.265 / 0.27 / 0.28: HIT). Per subject s100: 3 → 0.290, 6 → 0.265, 9 → 0.273, 12 → see json.
 - Positive control passes: a subject's own 30 min carries word signal above the 0.263 floor. The zero-shot multi-subject trunk (B2a 0.311) already beats a subject's own 30-min linear decoder.
+
+## B5 — capacity / regularisation / LR map against post-epoch-0 overfitting (committed 2026-10-04 ~21:15Z, before the runs)
+- **Mode: GENERATIVE (a map).** Base is B2a (VAL selection, per-subject A, broad_frac 0.5); 4 epochs each.
+  - B5a: d=128, dropout 0.5, wd 0.3 (smaller and more regularised)
+  - B5b: lr 3e-4
+  - B5c: broad_frac 0.8
+- **Expectation:** at least one arm puts the VAL peak after epoch 0 and beats B2a's VAL 0.319 by ≥ 0.01. Most likely B5a (capacity is the suspected cause).
+- The selected arm feeds the next final retrain only if it beats E1's ensemble on VAL.

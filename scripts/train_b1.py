@@ -19,6 +19,7 @@ ap.add_argument("--con", type=float, default=0.0, help="weight of cross-subject 
 ap.add_argument("--con_bs", type=int, default=128); ap.add_argument("--con_temp", type=float, default=0.1)
 ap.add_argument("--noA", action="store_true", help="keep every subject's input layer frozen at identity during trunk training")
 ap.add_argument("--select", default="es", choices=["es", "val"], help="es: subj0 ses-10 (B1); val: VAL_SUBJECTS block B zero-shot")
+ap.add_argument("--d", type=int, default=256); ap.add_argument("--p", type=float, default=0.2); ap.add_argument("--wd", type=float, default=0.05)
 ap.add_argument("--tau_fixed", type=float, default=None, help="final mode: logit-adjustment strength taken from local runs")
 ap.add_argument("--final", action="store_true", help="train on ALL windows (all subjects, block B included) for --epochs, save last epoch; no local eval")
 a = ap.parse_args(); torch.manual_seed(a.seed); np.random.seed(a.seed); dev = "cuda"
@@ -58,10 +59,10 @@ if a.con > 0:
     PS = torch.stack(PS); P0 = torch.stack(P0); Psub = torch.tensor(Psub); del Pa, zX
     print(f"contrastive pairs {len(PS)}", flush=True)
 
-trunk = WordCNN().to(dev)
-proj = nn.Linear(128 * 25, 256).to(dev)
+trunk = WordCNN(d=a.d, p=a.p).to(dev)
+proj = nn.Linear(a.d // 2 * 25, 256).to(dev)
 A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1), requires_grad=not a.noA)
-opt = torch.optim.AdamW([{"params": list(trunk.parameters()) + list(proj.parameters()), "weight_decay": 0.05}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
+opt = torch.optim.AdamW([{"params": list(trunk.parameters()) + list(proj.parameters()), "weight_decay": a.wd}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
 nb = len(i0) // int(a.bs * (1 - a.broad_frac)); steps = a.epochs * nb
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, a.lr, total_steps=steps, pct_start=0.1)
 I = torch.eye(306, device=dev)
