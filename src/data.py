@@ -48,3 +48,15 @@ def bacc_at_k(logits, y, k=10, n_classes=50):
     hit = (top == y[:, None]).any(1).float()
     rec = [hit[y == c].mean() for c in range(n_classes) if (y == c).any()]
     return float(torch.stack(rec).mean())
+
+
+def timechapters(select, sub_dir="runs"):
+    """(session, round(timechapter, 2)) per selected window, in the same order as load_sets for the same select."""
+    out = []
+    for f in sorted(glob.glob(f"{CACHE}/{sub_dir}/*.npz")):
+        base = os.path.basename(f)[:-4]; sub, ses = S.parse(base); t = np.load(f)["timechapter"]
+        m = select(base, sub, ses, t)
+        if m is None or not np.any(m):
+            continue
+        out += [(ses, round(float(x), 2)) for x in t[np.asarray(m)]]
+    return out

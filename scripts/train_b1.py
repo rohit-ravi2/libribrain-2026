@@ -6,7 +6,7 @@ import argparse, glob, json, os, sys, time
 import numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src import split as S
-from src.data import load_sets, normalize, bacc_at_k
+from src.data import load_sets, normalize, bacc_at_k, timechapters
 from src.models import WordCNN
 
 ap = argparse.ArgumentParser()
@@ -19,6 +19,8 @@ ap.add_argument("--con", type=float, default=0.0, help="weight of cross-subject 
 ap.add_argument("--con_bs", type=int, default=128); ap.add_argument("--con_temp", type=float, default=0.1)
 ap.add_argument("--noA", action="store_true", help="keep every subject's input layer frozen at identity during trunk training")
 ap.add_argument("--select", default="es", choices=["es", "val"], help="es: subj0 ses-10 (B1); val: VAL_SUBJECTS block B zero-shot")
+ap.add_argument("--init", default=None, help="initialise trunk from a checkpoint (e.g. runs/b0.pt)")
+ap.add_argument("--kd", type=float, default=0.0, help="KD weight for Broad samples toward the frozen init model on subj0's paired window")
 ap.add_argument("--d", type=int, default=256); ap.add_argument("--p", type=float, default=0.2); ap.add_argument("--wd", type=float, default=0.05)
 ap.add_argument("--tau_fixed", type=float, default=None, help="final mode: logit-adjustment strength taken from local runs")
 ap.add_argument("--final", action="store_true", help="train on ALL windows (all subjects, block B included) for --epochs, save last epoch; no local eval")
@@ -61,6 +63,17 @@ if a.con > 0:
 
 trunk = WordCNN(d=a.d, p=a.p).to(dev)
 proj = nn.Linear(a.d // 2 * 25, 256).to(dev)
+if a.init:
+    ck0 = torch.load(a.init, map_location=dev); trunk.load_state_dict(ck0["model"])
+if a.kd > 0:
+    # Teacher = frozen init model on subj0's own window for the same stimulus token (shared Sherlock1 ses-11/12).
+    teacher = WordCNN(d=a.d, p=a.p).to(dev); teacher.load_state_dict(ck0["model"]); teacher.eval()
+    sel_tr = (lambda b, s, ses, t: np.ones(len(t), bool)) if a.final else (lambda b, s, ses, t: S.train_mask(b, t, val=(a.select == "val")) if b != ESVAL else None)
+    tc_tr = timechapters(sel_tr)
+    i0s = {k: i for i, k in enumerate(tc_tr) if st[i] == 0 and k[0] in S.SHARED}
+    pair = torch.tensor([i0s.get(k, -1) if st[i] != 0 else -1 for i, k in enumerate(tc_tr)])
+    tadj = ck0["tau"] * ck0["log_prior"].to(dev)
+    print(f"KD pairs for Broad samples: {(pair >= 0).sum().item()} / {(st != 0).sum().item()}", flush=True)
 A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1), requires_grad=not a.noA)
 opt = torch.optim.AdamW([{"params": list(trunk.parameters()) + list(proj.parameters()), "weight_decay": a.wd}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
 nb = len(i0) // int(a.bs * (1 - a.broad_frac)); steps = a.epochs * nb
@@ -102,7 +115,14 @@ for ep in range(a.epochs):
         x = apply_A(A[si], x)
         if a.aug: x = augment(x)
         with torch.autocast("cuda", torch.bfloat16):
-            loss = F.cross_entropy(trunk(x), y, label_smoothing=0.1)
+            out = trunk(x)
+            loss = F.cross_entropy(out, y, label_smoothing=0.1)
+        if a.kd > 0:
+            pj = pair[b]; ok = pj >= 0
+            if ok.any():
+                with torch.no_grad(), torch.autocast("cuda", torch.bfloat16):
+                    tp = torch.softmax(teacher(normalize(Xtr[pj[ok]].to(dev))).float() - tadj, 1)
+                loss = loss + a.kd * F.kl_div(F.log_softmax(out[ok.to(dev)].float() - tadj, 1), tp, reduction="batchmean")
         loss = loss + a.lam * ((A - I) ** 2).sum((1, 2)).mean()
         if a.con > 0:
             j = torch.randint(len(PS), (a.con_bs,))
