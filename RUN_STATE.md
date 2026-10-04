@@ -19,5 +19,6 @@
 
 ## PENDING
 - **b0** DONE 10:48 EDT → runs/b0.pt (subj0-B 0.498, eval-B 0.211).
-- **predict_b0** (CPU, started 10:51 EDT): `scripts/predict_holdout.py --ckpt runs/b0.pt --out submissions/b0_broad.csv --device cpu`, log logs/predict_b0.log.
-- **p1a** QUEUED behind the neural-control GPU lock (25-job worm_p3 queue, since 10:50): `scripts/train_align.py --tag p1a`, log logs/p1a.log.
+- **predict_b0** DONE 11:31 → submissions/b0_broad.csv (37,439 rows, valid).
+- **day1 GPU queue** QUEUED behind the neural-control lock (25-job worm_p3 queue since 10:50; est. 3–4 h): `scripts/queue_day1.sh` = p1a → b1 smoke → b1 full. Logs logs/p1a.log, logs/b1*.log.
+- **submit_b0** watcher (PID 2013402): polls every 10 min; submits submissions/b0_broad.csv once Rohit joins the Broad comp; log logs/submit_b0.log

@@ -20,7 +20,7 @@ probs = []
 with torch.no_grad():
     for meg, _ in H.iter_windows(batch_size=1024):
         x = normalize(torch.from_numpy(downsample(meg)).to(dev))
-        with torch.autocast(dev, torch.bfloat16):
+        with torch.autocast(dev, torch.bfloat16, enabled=(dev == "cuda")):
             l = model(x).float() - adj
         probs.append(torch.softmax(l, 1).cpu().numpy())
 probs = np.concatenate(probs)
