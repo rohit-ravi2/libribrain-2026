@@ -82,3 +82,8 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - Selected epoch 11 by subj0 es: zero-shot 0.220, s25 0.225, s50 0.234, s100 0.261, composite **0.237** (pred 0.335: MISS). subj0-B 0.487 (pred 0.48: HIT).
 - Per-epoch zero-shot on eval (logged, not used for selection): 0.308, 0.329, 0.300, 0.282, 0.259, 0.269, 0.255, 0.241, 0.224, … The multi-subject trunk generalises early and then specialises.
 - Instrument lesson: selecting on subj0 is the wrong instrument for a Broad objective. B2 tests VAL-subject selection. This is not evidence against multi-subject training, since the 1-epoch smoke reached 0.316.
+
+## B4 — cross-subject contrastive invariance (charter "subject-invariance pressure") (committed 2026-10-04 ~18:55Z, before the run)
+- **Setup:** B2a (VAL selection, per-subject A, broad_frac 0.5) plus β=0.5 · symmetric InfoNCE (temp 0.1, batch 128). The positive pair is the trunk embedding of a pool subject's window and subj0's window for the **same stimulus token**, over all words (vocab and non-vocab), using only pre75 tokens. 6 epochs.
+- **Expectation:** VAL-selected zero-shot 0.34, few-shot s100 0.35, composite 0.345, with the zero-shot decay over epochs flatter than in B2a.
+- **Prediction if wrong:** a decay as steep as B2a would mean the invariance term doesn't prevent the trunk from memorising the pool subjects.

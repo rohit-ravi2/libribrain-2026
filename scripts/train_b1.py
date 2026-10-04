@@ -15,6 +15,8 @@ ap.add_argument("--bs", type=int, default=256); ap.add_argument("--lr", type=flo
 ap.add_argument("--broad_frac", type=float, default=0.3, help="fraction of each batch drawn from Broad pool subjects")
 ap.add_argument("--aug", type=int, default=1); ap.add_argument("--lam", type=float, default=1e-3)
 ap.add_argument("--fs_epochs", type=int, default=30); ap.add_argument("--seed", type=int, default=0)
+ap.add_argument("--con", type=float, default=0.0, help="weight of cross-subject InfoNCE on exact token pairs (all words)")
+ap.add_argument("--con_bs", type=int, default=128); ap.add_argument("--con_temp", type=float, default=0.1)
 ap.add_argument("--noA", action="store_true", help="keep every subject's input layer frozen at identity during trunk training")
 ap.add_argument("--select", default="es", choices=["es", "val"], help="es: subj0 ses-10 (B1); val: VAL_SUBJECTS block B zero-shot")
 ap.add_argument("--final", action="store_true", help="train on ALL windows (all subjects, block B included) for --epochs, save last epoch; no local eval")
@@ -35,9 +37,30 @@ i0 = torch.nonzero(st == 0).squeeze(1); ib = torch.nonzero(st != 0).squeeze(1)
 print(f"train subj0 {len(i0)} broad {len(ib)} ({len(subs) - 1} subjects); es {len(Xes)}; eval {len(Xe)}", flush=True)
 log_prior = torch.log(torch.bincount(ytr, minlength=50).float().clamp_min(1) / len(ytr)).to(dev)
 
+if a.con > 0:
+    # All-word windows on the shared stimulus: pool Broad subjects (train mask) paired to subj0 (same token, pre75).
+    Pa = {}
+    for f in sorted(glob.glob(f"{S.CACHE}/runs_all/*.npz")):
+        b_ = os.path.basename(f)[:-4]; s_, ses_ = S.parse(b_); d_ = np.load(f); tcc = d_["timechapter"]
+        if a.final: m_ = np.ones(len(tcc), bool)
+        elif s_ > 0: m_ = S.train_mask(b_, tcc, val=(a.select == "val"))
+        else: m_ = S.block_masks(b_, tcc)["pre75"]
+        Pa[b_] = (s_, ses_, torch.from_numpy(d_["X"][m_]), np.round(tcc[m_], 2))
+    z = {(ses_, tc_): (b_, i) for b_, (s_, ses_, X_, tcs_) in Pa.items() if s_ == 0 for i, tc_ in enumerate(tcs_)}
+    zX = {b_: v[2] for b_, v in Pa.items() if v[0] == 0}
+    PS, P0, Psub = [], [], []
+    for b_, (s_, ses_, X_, tcs_) in Pa.items():
+        if s_ == 0 or s_ not in sid: continue
+        for i, tc_ in enumerate(tcs_):
+            k = z.get((ses_, tc_))
+            if k is not None: PS.append(X_[i]); P0.append(zX[k[0]][k[1]]); Psub.append(sid[s_])
+    PS = torch.stack(PS); P0 = torch.stack(P0); Psub = torch.tensor(Psub); del Pa, zX
+    print(f"contrastive pairs {len(PS)}", flush=True)
+
 trunk = WordCNN().to(dev)
+proj = nn.Linear(128 * 25, 256).to(dev)
 A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1), requires_grad=not a.noA)
-opt = torch.optim.AdamW([{"params": trunk.parameters(), "weight_decay": 0.05}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
+opt = torch.optim.AdamW([{"params": list(trunk.parameters()) + list(proj.parameters()), "weight_decay": 0.05}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
 nb = len(i0) // int(a.bs * (1 - a.broad_frac)); steps = a.epochs * nb
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, a.lr, total_steps=steps, pct_start=0.1)
 I = torch.eye(306, device=dev)
@@ -79,6 +102,14 @@ for ep in range(a.epochs):
         with torch.autocast("cuda", torch.bfloat16):
             loss = F.cross_entropy(trunk(x), y, label_smoothing=0.1)
         loss = loss + a.lam * ((A - I) ** 2).sum((1, 2)).mean()
+        if a.con > 0:
+            j = torch.randint(len(PS), (a.con_bs,))
+            xs = apply_A(A[Psub[j].to(dev)], normalize(PS[j].to(dev))); x0 = apply_A(A[sid[0]], normalize(P0[j].to(dev)))
+            if a.aug: xs, x0 = augment(xs), augment(x0)
+            with torch.autocast("cuda", torch.bfloat16):
+                e = F.normalize(proj(trunk.features(torch.cat([xs, x0])).flatten(1)).float(), dim=1)
+            sim = e[:a.con_bs] @ e[a.con_bs:].T / a.con_temp; lab = torch.arange(a.con_bs, device=dev)
+            loss = loss + a.con * 0.5 * (F.cross_entropy(sim, lab) + F.cross_entropy(sim.T, lab))
         opt.zero_grad(set_to_none=True); loss.backward(); opt.step(); sched.step(); tl += loss.item()
     les = logits(Xes, A[sid[0]].detach())
     Abroad = A[[sid[s] for s in subs if s != 0]].detach().mean(0)
