@@ -101,3 +101,7 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 ### Outcome B2b (2026-10-04 ~16:30 EDT, runs/b2b.json)
 - VAL selected epoch 0 (VAL 0.302). Eval: zero-shot 0.282 (pred 0.31: MISS), s25 0.298, s50 0.311, s100 0.306, composite **0.301** (pred 0.33: MISS).
 - Compared with B2a (0.310): per-subject input layers during trunk training help the zero-shot trunk (+0.03). On the subject-agnostic trunk, post-hoc few-shot A fitting adds +0.02–0.03, unlike on B2a.
+
+### Outcome C1 (2026-10-04, runs/c1_within_linear.json)
+- Within-subject linear, own data only: s25 0.258, s50 0.282, s100 0.288 (pred 0.265 / 0.27 / 0.28: HIT). Per subject s100: 3 → 0.290, 6 → 0.265, 9 → 0.273, 12 → see json.
+- Positive control passes: a subject's own 30 min carries word signal above the 0.263 floor. The zero-shot multi-subject trunk (B2a 0.311) already beats a subject's own 30-min linear decoder.
