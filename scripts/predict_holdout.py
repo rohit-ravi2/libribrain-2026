@@ -1,5 +1,7 @@
-"""Write a Broad-track submission CSV from a checkpoint. Row-local inference only: each holdout window is
-predicted from that subject's own window alone (pnpl canonical windowing; no timing/shuffle metadata is read here)."""
+"""Write a Broad-track submission CSV from one or more checkpoints (comma-separated; softmaxes averaged).
+Row-local inference only: each holdout window is predicted from that subject's own window alone (pnpl canonical
+windowing; no timing/shuffle metadata is read here). Per-subject input layer (B1-style ckpts): trained subjects use
+their own A; unseen subjects (33-39) use the mean Broad A. The subject id is the row's own subject."""
 import argparse, os, sys
 import numpy as np, torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,27 +13,28 @@ from src.models import WordCNN
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True); ap.add_argument("--out", required=True)
 ap.add_argument("--track", default="broad"); ap.add_argument("--device", default="cuda"); a = ap.parse_args()
 dev = a.device
-ck = torch.load(a.ckpt, map_location=dev)
-model = WordCNN().to(dev); model.load_state_dict(ck["model"]); model.eval()
-adj = ck.get("tau", 0.0) * ck["log_prior"].to(dev)
-H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname("/mnt/ssd4tb/data/LibriBrain-Competition-2026/COMPETITION_HOLDOUT"), download=False)
+H = LibriBrainCompetitionHoldout(track=a.track, data_path="/mnt/ssd4tb/data/LibriBrain-Competition-2026", download=False)
 print(H, H.counts(), flush=True)
-# Per-subject input layer (B1-style ckpts): trained subjects use their own A; unseen subjects (33-39) use the mean
-# Broad A. The subject id is the row's own subject (pnpl metadata), never another subject's rows.
-Amap = None
-if "A" in ck:
-    subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].mean(0)
-    Amap = {s: (ck["A"][subs.index(s)] if s in subs else Ab).to(dev) for s in H.subjects}
-    print("subjects with own A:", [s for s in H.subjects if s in subs], "| mean A:", [s for s in H.subjects if s not in subs])
+models = []
+for c in a.ckpt.split(","):
+    ck = torch.load(c, map_location=dev)
+    m = WordCNN().to(dev); m.load_state_dict(ck["model"]); m.eval()
+    Amap = None
+    if "A" in ck:
+        subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].mean(0)
+        Amap = {s: (ck["A"][subs.index(s)] if s in subs else Ab).to(dev) for s in H.subjects}
+        print(c, "own A:", [s for s in H.subjects if s in subs], "| mean A:", [s for s in H.subjects if s not in subs], flush=True)
+    models.append((m, Amap, ck.get("tau", 0.0) * ck["log_prior"].to(dev)))
 probs = []
 with torch.no_grad():
     for meg, metas in H.iter_windows(batch_size=1024):
-        x = normalize(torch.from_numpy(downsample(meg)).to(dev))
-        if Amap is not None:
-            Ab_ = torch.stack([Amap[m["subject"]] for m in metas]); x = torch.einsum("bij,bjt->bit", Ab_, x)
-        with torch.autocast(dev, torch.bfloat16, enabled=(dev == "cuda")):
-            l = model(x).float() - adj
-        probs.append(torch.softmax(l, 1).cpu().numpy())
+        x0 = normalize(torch.from_numpy(downsample(meg)).to(dev)); p = 0
+        for m, Amap, adj in models:
+            x = x0 if Amap is None else torch.einsum("bij,bjt->bit", torch.stack([Amap[mt["subject"]] for mt in metas]), x0)
+            with torch.autocast(dev, torch.bfloat16, enabled=(dev == "cuda")):
+                l = m(x).float() - adj
+            p = p + torch.softmax(l, 1) / len(models)
+        probs.append(p.cpu().numpy())
 probs = np.concatenate(probs)
 assert probs.shape == (len(H), 50) and np.isfinite(probs).all()
 os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
