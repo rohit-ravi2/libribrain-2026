@@ -113,3 +113,7 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - B5c: broad_frac 0.8
 - **Expectation:** at least one arm puts the VAL peak after epoch 0 and beats B2a's VAL 0.319 by ≥ 0.01. Most likely B5a (capacity is the suspected cause).
 - The selected arm feeds the next final retrain only if it beats E1's ensemble on VAL.
+
+### Outcome B4 (2026-10-04 ~17:30 EDT, runs/b4.json)
+- VAL selected epoch 0 (VAL 0.304; per epoch 0.304, 0.301, 0.302, 0.290, 0.283, …). Eval: zero-shot 0.295, s25 0.287, s50 0.305, s100 0.306, composite **0.299** (pred 0.345: MISS). VAL decay was flatter for 3 epochs, as predicted, but the absolute level did not rise.
+- **Label: NOT DETECTED with instrument "β=0.5 InfoNCE on trunk features of all-word token pairs, 6 ep".** OPEN; untested: β map, contrastive-only pretraining followed by CE, a projection from intermediate layers, longer windows.
