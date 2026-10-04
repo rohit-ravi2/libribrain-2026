@@ -20,5 +20,7 @@
 ## PENDING
 - **b0** DONE 10:48 EDT → runs/b0.pt (subj0-B 0.498, eval-B 0.211).
 - **predict_b0** DONE 11:31 → submissions/b0_broad.csv (37,439 rows, valid).
-- **day1 GPU queue** QUEUED behind the neural-control lock (25-job worm_p3 queue since 10:50; est. 3–4 h): `scripts/queue_day1.sh` = p1a → b1 smoke → b1 full. Logs logs/p1a.log, logs/b1*.log.
+- **day1 GPU queue** RUNNING since 13:24 EDT (lock held): p1a DONE (composite 0.289); b1 smoke DONE; b1 full running → logs/b1.log.
+- **b2 queue** QUEUED behind day1: `scripts/queue_b2.sh` = b2a (val-selected, per-subject A) → b2b (subject-agnostic trunk). ~30 min each.
+- **c1** (CPU) running: scripts/control_within_linear.py → runs/c1_within_linear.json.
 - **submit_b0** watcher (PID 2013402): polls every 10 min; submits submissions/b0_broad.csv once Rohit joins the Broad comp; log logs/submit_b0.log

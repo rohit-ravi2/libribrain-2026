@@ -77,3 +77,8 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **B2a:** per-subject A, broad_frac 0.5. Expect zero-shot 0.32, s25 0.32, s50 0.33, s100 0.34, composite 0.33.
 - **B2b:** A frozen at identity during training (subject-agnostic trunk), broad_frac 0.5; few-shot still fits A afterwards. Expect zero-shot 0.31, composite 0.33.
 - Both arms are reported as a map. The final choice is made on the VAL composite, never on the eval subjects.
+
+### Outcome B1 (2026-10-04 ~14:20 EDT, runs/b1.json)
+- Selected epoch 11 by subj0 es: zero-shot 0.220, s25 0.225, s50 0.234, s100 0.261, composite **0.237** (pred 0.335: MISS). subj0-B 0.487 (pred 0.48: HIT).
+- Per-epoch zero-shot on eval (logged, not used for selection): 0.308, 0.329, 0.300, 0.282, 0.259, 0.269, 0.255, 0.241, 0.224, … The multi-subject trunk generalises early and then specialises.
+- Instrument lesson: selecting on subj0 is the wrong instrument for a Broad objective. B2 tests VAL-subject selection. This is not evidence against multi-subject training, since the 1-epoch smoke reached 0.316.
