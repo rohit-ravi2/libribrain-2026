@@ -34,3 +34,9 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 ### Outcome B0 (2026-10-04, runs/b0.json; epoch 6 selected on the early-stop set, tau=0.75)
 - subj0 block B **0.498** (predicted 0.45–0.55: HIT). Unaligned eval subjects block B **0.211**, per subject 0.169 / 0.223 / 0.254 / 0.199 (predicted 0.24–0.30: MISS, lower). The prior-ranking floor is 0.263.
 - Reading: sensor-space transfer without alignment is nil, even after SSS/head-position transform. Every cross-subject point has to come from alignment or multi-subject training.
+
+## P1b — closed-form ridge sensor alignment (committed 2026-10-04 ~16:00Z, before the run; second operationalisation of P1)
+- **Map:** A_s = argmin ‖A·X_s − X_0‖² + α‖A − I‖² over all time samples of paired windows (same stimulus token). Inputs are normalised per window. The output is re-normalised and fed to the frozen B0 decoder. No labels are used to fit A.
+- **α:** primary α = 1 × mean eigenvalue of X_s X_sᵀ, fixed a priori; α ∈ {0.1, 10} reported as a map.
+- **Zero-shot:** mean of A_s over the 28 training-pool subjects.
+- **Expectations (block B, floor 0.263):** s100 0.27, s50 0.27, s25 0.26, s0 0.24. Low because the single-trial target X_0 is mostly noise; the shared stimulus-locked part is small.
