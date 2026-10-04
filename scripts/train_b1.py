@@ -19,6 +19,7 @@ ap.add_argument("--con", type=float, default=0.0, help="weight of cross-subject 
 ap.add_argument("--con_bs", type=int, default=128); ap.add_argument("--con_temp", type=float, default=0.1)
 ap.add_argument("--noA", action="store_true", help="keep every subject's input layer frozen at identity during trunk training")
 ap.add_argument("--select", default="es", choices=["es", "val"], help="es: subj0 ses-10 (B1); val: VAL_SUBJECTS block B zero-shot")
+ap.add_argument("--tau_fixed", type=float, default=None, help="final mode: logit-adjustment strength taken from local runs")
 ap.add_argument("--final", action="store_true", help="train on ALL windows (all subjects, block B included) for --epochs, save last epoch; no local eval")
 a = ap.parse_args(); torch.manual_seed(a.seed); np.random.seed(a.seed); dev = "cuda"
 ESVAL = "sub-0_ses-10_task-Sherlock1_run-1"
@@ -118,7 +119,7 @@ for ep in range(a.epochs):
         es = {tau: float(np.mean([bacc_at_k((lva[sva == s] - tau * log_prior).cpu(), yva[sva == s]) for s in S.VAL_SUBJECTS])) for tau in TAUS}
     else:
         es = {tau: bacc_at_k((les - tau * log_prior).cpu(), yes) for tau in TAUS}
-    tau = max(es, key=es.get)
+    tau = max(es, key=es.get) if a.tau_fixed is None else a.tau_fixed
     le = (logits(Xe, Abroad) - tau * log_prior).cpu()
     Bm = torch.zeros(len(Xe), dtype=torch.bool)
     for b_ in set(be):
