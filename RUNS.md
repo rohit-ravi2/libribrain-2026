@@ -12,3 +12,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-04 | b1_smoke | as b1, 1 epoch | 0 | 0.378 | 0.305 | 0.313 / 0.320 / 0.322 | 0.316 | — | best composite so far; seen before B1 pre-registration |
 | 10-04 | b2a | b1 + select VAL(1,5,10) zero-shot, broad_frac 0.5, 12 ep | 0 | 0.376 | **0.311** | 0.292 / 0.325 / 0.313 | **0.310** | — | VAL picks ep0; few-shot ≈ zero-shot |
 | 10-04 | b2b | b2a with A frozen at identity during training (subject-agnostic trunk) | 0 | 0.312 | 0.282 | 0.298 / 0.311 / 0.306 | 0.301 | — | few-shot A helps here (+0.02–0.03) |
+| 10-04 | c1 | within-subject logistic (C=1e-3, 10 Hz), own fs data only | — | — | — | 0.258 / 0.282 / 0.288 | — | — | positive control |
