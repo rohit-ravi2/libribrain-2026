@@ -53,7 +53,9 @@ for b in set(be):
     for k in masks: masks[k][idx] = m[k]
 results = {}
 t0 = time.time()
-for rel in (1.0, 0.1, 10.0):
+RELS = [float(r) for r in sys.argv[2].split(",")] if len(sys.argv) > 2 else [1.0, 0.1, 10.0]
+OUT = sys.argv[3] if len(sys.argv) > 3 else "runs/p1b_ridge.json"
+for rel in RELS:
     As = []
     for s in sorted(set(sp.tolist())):
         m = (sp == s).numpy() & (pp >= 0); As.append(ridge(Xp[m], X0[pp[m]], rel))
@@ -69,4 +71,4 @@ for rel in (1.0, 0.1, 10.0):
     summ["composite"] = S.composite({"s100": summ["s100"], "s50": summ["s50"], "s25": summ["s25"], "s0": summ["s0_meanA"]})
     results[rel] = {"summary": summ, "per_subject": res}
     print(rel, json.dumps(summ), f"{time.time() - t0:.0f}s", flush=True)
-    json.dump(results, open("runs/p1b_ridge.json", "w"), indent=1)
+    json.dump(results, open(OUT, "w"), indent=1)

@@ -40,3 +40,16 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **α:** primary α = 1 × mean eigenvalue of X_s X_sᵀ, fixed a priori; α ∈ {0.1, 10} reported as a map.
 - **Zero-shot:** mean of A_s over the 28 training-pool subjects.
 - **Expectations (block B, floor 0.263):** s100 0.27, s50 0.27, s25 0.26, s0 0.24. Low because the single-trial target X_0 is mostly noise; the shared stimulus-locked part is small.
+
+### Outcome P1b (2026-10-04, runs/p1b_ridge.json + runs/p1b_ridge_low.json)
+| α (rel.) | s0 meanA | s25 | s50 | s100 | composite |
+|---|---|---|---|---|---|
+| 10 | 0.191 | 0.207 | 0.201 | 0.201 | 0.201 |
+| 1 (primary) | 0.220 | 0.216 | 0.220 | 0.217 | 0.218 |
+| 0.1 | 0.232 | 0.258 | 0.282 | 0.256 | 0.259 |
+| 0.01 | 0.233 | 0.265 | 0.274 | 0.266 | 0.262 |
+| 0.001 | 0.232 | 0.261 | 0.252 | 0.258 | 0.252 |
+- Primary α=1: MISS (predicted s100 0.27, got 0.217). The best point on the map (α=0.01) reaches the 0.263 prior floor and no further. SE ≈ ±0.01–0.02 (4 subjects × ~630 windows).
+- **Instrument label: NOT DETECTED with instrument "unsupervised linear sensor map onto subj0's single-trial window + frozen B0".** The question stays OPEN.
+  - Untested: label-supervised and distillation fits (P1a, queued); a multi-subject trunk (B1, queued); feature-space rather than sensor-space alignment; per-subject latency.
+  - What the map shows: weaker regularisation helps up to a plateau. The subject-to-subj0 relationship is not near-identity in sensor space even after SSS/headpos.
