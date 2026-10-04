@@ -53,3 +53,12 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Instrument label: NOT DETECTED with instrument "unsupervised linear sensor map onto subj0's single-trial window + frozen B0".** The question stays OPEN.
   - Untested: label-supervised and distillation fits (P1a, queued); a multi-subject trunk (B1, queued); feature-space rather than sensor-space alignment; per-subject latency.
   - What the map shows: weaker regularisation helps up to a plateau. The subject-to-subj0 relationship is not near-identity in sensor space even after SSS/headpos.
+
+## C1 — within-subject linear positive control (committed 2026-10-04 ~17:20Z, before the run)
+- **Model:** multinomial logistic regression (L2, C=1e-3 fixed a priori, balanced class weights). Features: per-window-normalised windows pooled to 10 Hz (306×10). Trained on each eval subject's own fs_q data only; scored on that subject's block B, with tau=0 and balanced weights instead of logit adjustment.
+- **Expectations:** s100 0.28, s50 0.27, s25 0.265 (floor 0.263). A pure-noise result is also possible at these data sizes.
+
+### Outcome P1a (2026-10-04 13:30 EDT, runs/p1a.json)
+- s100 **0.307** (pred 0.30, HIT); s50 0.297 (pred 0.29, HIT); s25 0.274 (pred 0.28, ≈); zero-shot mean-A 0.266 (pred 0.25, slightly above); identity 0.211. Composite 0.289. Floor 0.263.
+- The score rises monotonically with fit data (s25 < s50 < s100), and the zero-shot mean-A lifts 0.211 → 0.266. That is the first cross-subject signal above the floor on this split.
+- Against P1's >0.43: on the local metric, P1 is not reached. But the local metric is a sentence-only proxy with a 0.263 floor, so it is not on the holdout scale. P1 itself is tested only on the LB/private LB, with an LB-vs-local calibration from B0.
