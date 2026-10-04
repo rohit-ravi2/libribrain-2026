@@ -97,3 +97,7 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Setup:** train_b1.py --select val --broad_frac 0.5 --epochs 1, seeds 0/1/2. Zero-shot (mean A) softmax average.
 - **Expectations:** single seeds 0.30–0.31 eval zero-shot; ensemble 0.32.
 - This recipe, with `--final` (all data, own A for subjects 1–32, mean A for 33–39), becomes submission #2.
+
+### Outcome B2b (2026-10-04 ~16:30 EDT, runs/b2b.json)
+- VAL selected epoch 0 (VAL 0.302). Eval: zero-shot 0.282 (pred 0.31: MISS), s25 0.298, s50 0.311, s100 0.306, composite **0.301** (pred 0.33: MISS).
+- Compared with B2a (0.310): per-subject input layers during trunk training help the zero-shot trunk (+0.03). On the subject-agnostic trunk, post-hoc few-shot A fitting adds +0.02–0.03, unlike on B2a.
