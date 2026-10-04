@@ -87,3 +87,8 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Setup:** B2a (VAL selection, per-subject A, broad_frac 0.5) plus β=0.5 · symmetric InfoNCE (temp 0.1, batch 128). The positive pair is the trunk embedding of a pool subject's window and subj0's window for the **same stimulus token**, over all words (vocab and non-vocab), using only pre75 tokens. 6 epochs.
 - **Expectation:** VAL-selected zero-shot 0.34, few-shot s100 0.35, composite 0.345, with the zero-shot decay over epochs flatter than in B2a.
 - **Prediction if wrong:** a decay as steep as B2a would mean the invariance term doesn't prevent the trunk from memorising the pool subjects.
+
+### Outcome B2a (2026-10-04 ~15:10 EDT, runs/b2a.json)
+- VAL selected epoch 0 (VAL 0.319). Eval: zero-shot 0.311, s25 0.292, s50 0.325, s100 0.313, composite **0.310**. Predicted 0.32 / 0.32 / 0.33 / 0.34 / 0.33: about 0.02 under across the board.
+- VAL and eval zero-shot track each other per epoch (0.319/0.311, 0.295/0.294, 0.294/0.277, 0.278/0.259), so VAL is a valid selection proxy.
+- Few-shot ≈ zero-shot. Fitting A on 10–30 min of a subject adds nothing measurable on top of this trunk (s25 is below zero-shot). The per-subject linear alignment arm is UNINFORMATIVE at this trunk quality, not refuted.
