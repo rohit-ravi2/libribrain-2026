@@ -62,3 +62,12 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - s100 **0.307** (pred 0.30, HIT); s50 0.297 (pred 0.29, HIT); s25 0.274 (pred 0.28, ≈); zero-shot mean-A 0.266 (pred 0.25, slightly above); identity 0.211. Composite 0.289. Floor 0.263.
 - The score rises monotonically with fit data (s25 < s50 < s100), and the zero-shot mean-A lifts 0.211 → 0.266. That is the first cross-subject signal above the floor on this split.
 - Against P1's >0.43: on the local metric, P1 is not reached. But the local metric is a sentence-only proxy with a 0.263 floor, so it is not on the holdout scale. P1 itself is tested only on the LB/private LB, with an LB-vs-local calibration from B0.
+
+## B1 — multi-subject trunk (committed 2026-10-04 ~17:35Z, before reading the full run; the 1-epoch smoke HAD been seen: zero-shot 0.305, composite 0.316)
+- **Setup:** scripts/train_b1.py defaults. The trunk trains on subj0 plus 28 pool Broad subjects (30% of each batch from Broad). Per-subject A (identity init, λ=1e-3); augmentation on; 12 epochs. Zero-shot uses the mean Broad A; few-shot fits A with the trunk frozen.
+- **Expectations, full run:**
+  - zero-shot 0.32
+  - s25 0.33, s50 0.34, s100 0.35
+  - composite 0.335
+  - subj0-B 0.48 (slightly below B0, since capacity is shared)
+- **Why it matters:** if zero-shot ≈ few-shot, per-subject alignment adds little over a subject-robust trunk. The zero-shot 18% is then handled without TTA.
