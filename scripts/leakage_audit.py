@@ -22,6 +22,10 @@ for f in runs:
         if sub in S.EVAL_SUBJECTS: n_B += B.sum()
         if tm.any():  # gap between latest train window end and earliest block-B stimulus time
             min_gap = min(min_gap, 0.75 * S.T_MAX[ses] + S.GUARD - (t[tm].max() + 1.0))
+val_in_train = sum(S.train_mask(os.path.basename(f)[:-4], np.load(f)["timechapter"], val=True).sum()
+                   for f in runs if S.parse(os.path.basename(f)[:-4])[0] in S.VAL_SUBJECTS)
+rep(val_in_train == 0, f"subject axis (val=True runs): {val_in_train} training windows from selection subjects {S.VAL_SUBJECTS}")
+rep(not set(S.VAL_SUBJECTS) & set(S.EVAL_SUBJECTS), "selection and eval subjects are disjoint")
 rep(eval_in_train == 0, f"subject axis: {eval_in_train} training windows from eval subjects {S.EVAL_SUBJECTS}")
 rep(min_gap >= 0.99, f"stimulus axis (shared Sherlock1 ses-11/12): min gap between any training window end and block B start = {min_gap:.2f} s (>= 1 s required)")
 out.append(f"- INFO: training windows {n_train}; block-B eval windows {n_B} over {len(S.EVAL_SUBJECTS)} subjects")

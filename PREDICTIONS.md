@@ -71,3 +71,9 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - composite 0.335
   - subj0-B 0.48 (slightly below B0, since capacity is shared)
 - **Why it matters:** if zero-shot ≈ few-shot, per-subject alignment adds little over a subject-robust trunk. The zero-shot 18% is then handled without TTA.
+
+## B2 — selection on held-out selection subjects (committed 2026-10-04 ~18:20Z, before the runs)
+- **Motivation:** in B1, zero-shot peaked at epoch 1 (0.329) and decayed to ~0.22 while subj0 improved. Selecting on subj0 is misaligned with the Broad objective. Fix: VAL_SUBJECTS (1, 5, 10) are excluded from training, and epoch + τ are selected on their block-B zero-shot score. Eval subjects are untouched.
+- **B2a:** per-subject A, broad_frac 0.5. Expect zero-shot 0.32, s25 0.32, s50 0.33, s100 0.34, composite 0.33.
+- **B2b:** A frozen at identity during training (subject-agnostic trunk), broad_frac 0.5; few-shot still fits A afterwards. Expect zero-shot 0.31, composite 0.33.
+- Both arms are reported as a map. The final choice is made on the VAL composite, never on the eval subjects.
