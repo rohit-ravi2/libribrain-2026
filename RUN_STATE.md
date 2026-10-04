@@ -17,10 +17,11 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING
-- **b0** DONE 10:48 EDT → runs/b0.pt (subj0-B 0.498, eval-B 0.211).
-- **predict_b0** DONE 11:31 → submissions/b0_broad.csv (37,439 rows, valid).
-- **day1 GPU queue** RUNNING since 13:24 EDT (lock held): p1a DONE (composite 0.289); b1 smoke DONE; b1 full running → logs/b1.log.
-- **b2 queue** QUEUED behind day1: `scripts/queue_b2.sh` = b2a (val-selected, per-subject A) → b2b (subject-agnostic trunk). ~30 min each.
-- **c1** (CPU) running: scripts/control_within_linear.py → runs/c1_within_linear.json.
-- **submit_b0** watcher (PID 2013402): polls every 10 min; submits submissions/b0_broad.csv once Rohit joins the Broad comp; log logs/submit_b0.log
+## PENDING (updated 2026-10-04 ~18:20 EDT)
+- **queue_next** QUEUED behind the meta-emg GPU lock (pid 2104347, since 16:07): `scripts/queue_next.sh` =
+  1. final_e1 ×3 seeds (all data, 1 ep, τ from local E1) → `submissions/final_e1_ens3.csv` (submission #2)
+  2. b6 (B0-init trunk + subj0-teacher KD)
+  3. b5a/b5c/b5b regularisation map
+  Logs logs/final_e1_s*.log, logs/b6.log, logs/b5*.log.
+- **submit_b0** watcher: auto-submits submissions/b0_broad.csv once Rohit joins (log logs/submit_b0.log).
+- DONE today: b0, p1a, p1b (CPU), c1 (CPU), b1, b2a, b2b, b4, e1 ×3 + ens. See RUNS.md.
