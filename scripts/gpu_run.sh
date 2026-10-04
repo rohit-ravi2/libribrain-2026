@@ -8,5 +8,5 @@ while true; do
   echo "{\"pid\": $$, \"job\": \"libribrain:$NAME\", \"session\": \"libribrain-resume-2026-10-04\", \"since\": \"$(date -Is)\"}" > $L
   break
 done
-trap 'rm -f $L' EXIT
+trap 'grep -q "\"pid\": $$," $L 2>/dev/null && rm -f $L' EXIT
 "$@"

@@ -35,8 +35,9 @@ def load_sets(selects):
             Xs, ys, ss, bs = acc[k]
             Xs.append(X[m]); ys.append(d["label"][m].astype(np.int64))
             ss.append(np.full(int(np.sum(m)), sub)); bs += [base] * int(np.sum(m))
+    empty = (torch.zeros(0, 306, 50, dtype=torch.float16), torch.zeros(0, dtype=torch.long), torch.zeros(0, dtype=torch.long), [])
     return {k: (torch.from_numpy(np.concatenate(v[0])), torch.from_numpy(np.concatenate(v[1])),
-                torch.from_numpy(np.concatenate(v[2])), v[3]) for k, v in acc.items()}
+                torch.from_numpy(np.concatenate(v[2])), v[3]) if v[0] else empty for k, v in acc.items()}
 
 
 def load(select):
