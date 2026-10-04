@@ -117,3 +117,15 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 ### Outcome B4 (2026-10-04 ~17:30 EDT, runs/b4.json)
 - VAL selected epoch 0 (VAL 0.304; per epoch 0.304, 0.301, 0.302, 0.290, 0.283, …). Eval: zero-shot 0.295, s25 0.287, s50 0.305, s100 0.306, composite **0.299** (pred 0.345: MISS). VAL decay was flatter for 3 epochs, as predicted, but the absolute level did not rise.
 - **Label: NOT DETECTED with instrument "β=0.5 InfoNCE on trunk features of all-word token pairs, 6 ep".** OPEN; untested: β map, contrastive-only pretraining followed by CE, a projection from intermediate layers, longer windows.
+
+### Outcome E1 (2026-10-04 ~18:00 EDT, runs/e1_ens.json)
+- Eval zero-shot singles 0.277 / 0.292 / 0.264 (pred 0.30–0.31: MISS), ensemble **0.293** (pred 0.32: MISS). VAL singles 0.333 / 0.302 / 0.298, ensemble 0.309.
+- Seed spread ±0.015 on eval and ±0.02 on VAL, so differences <0.03 between B2a/B2b/B4/E1 are not resolvable. Ensembling: +0.015.
+
+## B6 — multi-subject trunk distilled from the subj0 teacher (committed 2026-10-04 ~22:05Z, before the run)
+- **Setup:** B2a (VAL selection, per-subject A, broad_frac 0.5), with three changes:
+  - the trunk is initialised from B0;
+  - lr 3e-4;
+  - Broad samples add kd=1.0 · KL(teacher ‖ student), where the teacher is a frozen B0 applied to **subj0's window for the same token** (in-vocab pairs, as in P1a).
+  - 4 epochs.
+- **Expectation:** VAL peak no longer at epoch 0. Eval zero-shot 0.33, s100 0.35, composite 0.34. subj0-B stays ≥ 0.45, since starting from B0 keeps subj0 power.
