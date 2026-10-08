@@ -1,0 +1,399 @@
+{
+  "training_distribution": {
+    "n_subj0": 311727,
+    "n_broad": 30284,
+    "broad_fraction_in_stored_prior": 0.08854685960393087,
+    "broad_fraction_in_sampler": 0.5,
+    "audio_coverage_rows": 0.5556078605658882,
+    "audio_coverage_sampler": 0.7562177803013534,
+    "broad_draws_per_row_per_epoch": 10.291903315281997,
+    "prior_total_variation": 0.0788581300183246,
+    "largest_prior_ratio_changes": [
+      {
+        "word": "really",
+        "effective_over_stored": 0.548574554016816
+      },
+      {
+        "word": "new",
+        "effective_over_stored": 0.548574554016816
+      },
+      {
+        "word": "it\u2019s",
+        "effective_over_stored": 0.5848861857186978
+      },
+      {
+        "word": "i",
+        "effective_over_stored": 0.6105637906480517
+      },
+      {
+        "word": "they",
+        "effective_over_stored": 1.6158113472607838
+      },
+      {
+        "word": "people",
+        "effective_over_stored": 0.6226756163851913
+      },
+      {
+        "word": "she",
+        "effective_over_stored": 0.6518081835842222
+      },
+      {
+        "word": "my",
+        "effective_over_stored": 0.682864985052224
+      },
+      {
+        "word": "very",
+        "effective_over_stored": 0.6888906941345468
+      },
+      {
+        "word": "think",
+        "effective_over_stored": 0.6986673829945653
+      }
+    ]
+  },
+  "speech_batch_collision": {
+    "mean_audio_batch_size": 193.55666666666667,
+    "fraction_with_duplicate_audio_token": 0.053299034181412665,
+    "mean_duplicate_token_negatives": 0.056351198967600415,
+    "mean_same_word_negatives": 11.69151266756765
+  },
+  "local_metric": {
+    "12": {
+      "n": 633,
+      "present_classes": 38,
+      "missing_words": [
+        "will",
+        "my",
+        "she",
+        "really",
+        "our",
+        "am",
+        "it\u2019s",
+        "has",
+        "can",
+        "think",
+        "good",
+        "new"
+      ],
+      "classes_with_at_most_5_examples": 15,
+      "constant_prior_ranking": 0.2631579041481018,
+      "uniform_random_expected": 0.2
+    },
+    "3": {
+      "n": 633,
+      "present_classes": 38,
+      "missing_words": [
+        "will",
+        "my",
+        "she",
+        "really",
+        "our",
+        "am",
+        "it\u2019s",
+        "has",
+        "can",
+        "think",
+        "good",
+        "new"
+      ],
+      "classes_with_at_most_5_examples": 15,
+      "constant_prior_ranking": 0.2631579041481018,
+      "uniform_random_expected": 0.2
+    },
+    "6": {
+      "n": 633,
+      "present_classes": 38,
+      "missing_words": [
+        "will",
+        "my",
+        "she",
+        "really",
+        "our",
+        "am",
+        "it\u2019s",
+        "has",
+        "can",
+        "think",
+        "good",
+        "new"
+      ],
+      "classes_with_at_most_5_examples": 15,
+      "constant_prior_ranking": 0.2631579041481018,
+      "uniform_random_expected": 0.2
+    },
+    "9": {
+      "n": 633,
+      "present_classes": 38,
+      "missing_words": [
+        "will",
+        "my",
+        "she",
+        "really",
+        "our",
+        "am",
+        "it\u2019s",
+        "has",
+        "can",
+        "think",
+        "good",
+        "new"
+      ],
+      "classes_with_at_most_5_examples": 15,
+      "constant_prior_ranking": 0.2631579041481018,
+      "uniform_random_expected": 0.2
+    }
+  },
+  "sentence_selection": {
+    "total_fragments": 1178,
+    "arms": {
+      "X": {
+        "0": {
+          "available": 561,
+          "selected": 300,
+          "first": [
+            "all and so he was",
+            "all but as i am a",
+            "all good for i do not"
+          ],
+          "last": [
+            "it all and i am very",
+            "it all out to the",
+            "it and had we not"
+          ],
+          "first_word_counts": {
+            "all": 17,
+            "and": 81,
+            "are": 3,
+            "as": 15,
+            "at": 20,
+            "be": 5,
+            "but": 36,
+            "can": 1,
+            "do": 5,
+            "for": 24,
+            "had": 1,
+            "have": 5,
+            "he": 11,
+            "him": 9,
+            "i": 50,
+            "in": 8,
+            "is": 6,
+            "it": 3
+          },
+          "present_classes": 47
+        },
+        "1": {
+          "available": 569,
+          "selected": 300,
+          "first": [
+            "a time but there was",
+            "all i can think of is is am i",
+            "all it is for the"
+          ],
+          "last": [
+            "it and for a time",
+            "it and it was my",
+            "it as i am but he is out at"
+          ],
+          "first_word_counts": {
+            "a": 1,
+            "all": 12,
+            "and": 82,
+            "as": 20,
+            "at": 15,
+            "be": 5,
+            "but": 37,
+            "can": 4,
+            "do": 3,
+            "for": 18,
+            "have": 8,
+            "he": 18,
+            "him": 13,
+            "i": 48,
+            "in": 6,
+            "is": 4,
+            "it": 6
+          },
+          "present_classes": 47
+        }
+      },
+      "S": {
+        "0": {
+          "available": 565,
+          "selected": 300,
+          "first": [
+            "all and so he was",
+            "all but as i am a",
+            "all good for i do not"
+          ],
+          "last": [
+            "it all and i am very",
+            "it all out to the",
+            "it and had we not"
+          ],
+          "first_word_counts": {
+            "all": 17,
+            "and": 81,
+            "are": 3,
+            "as": 15,
+            "at": 20,
+            "be": 5,
+            "but": 36,
+            "can": 1,
+            "do": 5,
+            "for": 24,
+            "had": 1,
+            "have": 5,
+            "he": 11,
+            "him": 9,
+            "i": 50,
+            "in": 8,
+            "is": 6,
+            "it": 3
+          },
+          "present_classes": 47
+        },
+        "1": {
+          "available": 577,
+          "selected": 300,
+          "first": [
+            "a time but there was",
+            "all i can think of is is am i",
+            "all it is for the"
+          ],
+          "last": [
+            "is it not the very",
+            "it all in at a",
+            "it all so i i"
+          ],
+          "first_word_counts": {
+            "a": 1,
+            "all": 12,
+            "and": 83,
+            "are": 2,
+            "as": 20,
+            "at": 15,
+            "be": 5,
+            "but": 37,
+            "can": 4,
+            "do": 3,
+            "for": 19,
+            "have": 8,
+            "he": 18,
+            "him": 13,
+            "i": 48,
+            "in": 6,
+            "is": 4,
+            "it": 2
+          },
+          "present_classes": 49
+        }
+      }
+    }
+  },
+  "forward_backward_max_error": 1.6653345369377348e-16,
+  "seed0_batch_rng": {
+    "legacy_control": [
+      19,
+      14,
+      2,
+      6,
+      18,
+      11,
+      5,
+      9,
+      15,
+      7,
+      4,
+      1,
+      3,
+      16,
+      17,
+      8,
+      10,
+      13,
+      0,
+      12
+    ],
+    "speech_code": [
+      6,
+      4,
+      3,
+      8,
+      18,
+      16,
+      17,
+      14,
+      19,
+      11,
+      10,
+      9,
+      5,
+      15,
+      0,
+      2,
+      13,
+      1,
+      12,
+      7
+    ]
+  },
+  "preprocessing": {
+    "file": "/mnt/ssd4tb/data/LibriBrain100/Sherlock1/derivatives/serialised/sub-1_ses-11_task-Sherlock1_run-1_proc-bads+headpos+sss+notch+bp+ds_meg.h5",
+    "mag_channel_order_matches": true,
+    "sample_frequency": 250.0,
+    "source_lowpass_hz": 125.0,
+    "cache_samples_bitwise_equal": true,
+    "median_raw_power_fraction_above_25hz": 0.20250797271728516,
+    "boxcar_amplitude_at_30hz": 0.5167036587802901,
+    "boxcar_amplitude_at_40hz": 0.2440190013655696,
+    "note": "Spectral fraction is descriptive for one minute of one recording, not measured score impact."
+  },
+  "submissions": {
+    "b0_broad.csv": {
+      "shape": [
+        37439,
+        51
+      ],
+      "unique_indices": true,
+      "vocab_order_matches": true,
+      "finite_nonnegative": true
+    },
+    "b0_deep.csv": {
+      "shape": [
+        960,
+        51
+      ],
+      "unique_indices": true,
+      "vocab_order_matches": true,
+      "finite_nonnegative": true
+    },
+    "final_e1_ens3.csv": {
+      "shape": [
+        37439,
+        51
+      ],
+      "unique_indices": true,
+      "vocab_order_matches": true,
+      "finite_nonnegative": true
+    },
+    "final_e1_ens3_tau1.0.csv": {
+      "shape": [
+        37439,
+        51
+      ],
+      "unique_indices": true,
+      "vocab_order_matches": true,
+      "finite_nonnegative": true
+    },
+    "final_e1_ens3_tau1.5.csv": {
+      "shape": [
+        37439,
+        51
+      ],
+      "unique_indices": true,
+      "vocab_order_matches": true,
+      "finite_nonnegative": true
+    }
+  }
+}
