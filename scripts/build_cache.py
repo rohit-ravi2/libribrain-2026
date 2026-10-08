@@ -20,11 +20,12 @@ def run_files():
 
 
 ALL = os.environ.get("ALLWORDS") == "1"   # all word events (label -1 for non-vocab), shared Sherlock1 ses-11/12 runs only
+ALLW = os.environ.get("ALLWORDS") == "2"  # all word events, ALL runs, + event row id (for text targets) -> runs_allw/
 
 
 def process(args):
     base, h5, ev = args
-    dst = f"{CACHE}/{'runs_all' if ALL else 'runs'}/{base}.npz"
+    dst = f"{CACHE}/{'runs_allw' if ALLW else 'runs_all' if ALL else 'runs'}/{base}.npz"
     if os.path.exists(dst):
         return base, "cached"
     if not os.path.exists(ev):
@@ -35,7 +36,7 @@ def process(args):
     e = pd.read_csv(ev, sep="\t")
     w = e[e.kind == "word"].copy()
     w["label"] = w.segment.map(lambda s: VOCAB_ID.get(norm_word(s), -1))
-    w = w if ALL else w[w.label >= 0]
+    w = w if (ALL or ALLW) else w[w.label >= 0]
     start = np.round(w.timemeg.values * SFREQ).astype(np.int64)
     ok = (start >= 0) & (start + WIN <= n_times)
     w, start = w[ok], start[ok]
@@ -43,12 +44,14 @@ def process(args):
     scaled = data * SCALE
     np.savez(dst, X=X.astype(np.float16), label=w.label.values.astype(np.int16), onset=w.timemeg.values,
              timechapter=w.timechapter.values if "timechapter" in w else np.full(len(w), np.nan),
-             sentenceidx=w.sentenceidx.values, ch_mean=scaled.mean(1), ch_std=scaled.std(1), n_times=n_times)
+             sentenceidx=w.sentenceidx.values, evidx=w.idx.values, ch_mean=scaled.mean(1), ch_std=scaled.std(1), n_times=n_times)
     return base, f"{len(w)} windows"
 
 
 if __name__ == "__main__":
     files = run_files()
+    if ALLW:
+        os.makedirs(f"{CACHE}/runs_allw", exist_ok=True)
     if ALL:
         files = [f for f in files if "task-Sherlock1" in f[0] and ("_ses-11_" in f[0] or "_ses-12_" in f[0])]
         os.makedirs(f"{CACHE}/runs_all", exist_ok=True)

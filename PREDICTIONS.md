@@ -229,3 +229,22 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 | S subj0 | 0.445 | 0.466 (+0.021) | 0.472 (+0.028) | **+0.007** | −0.011 |
 - The X context gain survives the sampling fix (+0.036). For S it stays ≈0.
 - Still synthetic: neural evidence is resampled per word, so it is not a leaderboard forecast (audit §4).
+
+## T5-1 — text-target decoder, d'Ascoli-style adaptation (committed 2026-10-08, before any run)
+- **Recipe (reference: neural-processing-lab/dascoli-word-decoding defaults):**
+  - targets: t5-large, raw encoder block-12 output at each word's first subword, sentence context;
+  - SigLIP with duplicate-aware positives (target cosine > 0.999);
+  - all words as training data (~880k windows);
+  - readout = cosine to vocab prototypes.
+- **Departures, so this is an adaptation, not a reproduction:**
+  - 1 s windows, not 3 s;
+  - no cross-word Transformer (that is the sentence-context gray zone);
+  - WordCNN with subject input layers instead of SimpleConvTimeAgg;
+  - per-window normalisation, not RobustScaler;
+  - boxcar 50 Hz, not a 0.1–40 Hz filter.
+- **Run:** scripts/train_t5.py defaults (d256, p0.3, lr 5e-4, 6 ep, broad_frac 0.5), seed 0, split v2.
+- **Expectations (split v2, fold-averaged, vs V2-REF on the same split):**
+  - deployment score V2-REF + 0.03; lift over its own null ≈ 1.6× V2-REF's lift
+  - seen subjects ≥ +0.03 over V2-REF
+  - zero-shot +0.02
+- **LB translation (stated now, tested later):** a T5 submission scores ~0.25–0.27 on LB without sentence context, vs the current 0.227.
