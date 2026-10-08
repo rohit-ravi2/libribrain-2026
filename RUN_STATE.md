@@ -26,4 +26,4 @@
   Logs logs/final_e1_s*.log, logs/b6.log, logs/b5*.log.
 - **submit_b0** watcher: auto-submits submissions/b0_broad.csv once Rohit joins (log logs/submit_b0.log).
 - DONE today: b0, p1a, p1b (CPU), c1 (CPU), b1, b2a, b2b, b4, e1 ×3 + ens. See RUNS.md.
-- **predict_sampler_tau1** (CPU, 12:40 10-08): final_e1 ens3, sampler prior, τ=1 → submissions/final_e1_ens3_sampler_tau1.csv (LB calibration of the prior question)
+- **queue_v2** QUEUED behind meta-emg lock (12:42 10-08): v2smoke → v2ref_s0 → v2ref_s1; logs logs/v2*.log
