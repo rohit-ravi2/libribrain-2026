@@ -26,5 +26,3 @@
   Logs logs/final_e1_s*.log, logs/b6.log, logs/b5*.log.
 - **submit_b0** watcher: auto-submits submissions/b0_broad.csv once Rohit joins (log logs/submit_b0.log).
 - DONE today: b0, p1a, p1b (CPU), c1 (CPU), b1, b2a, b2b, b4, e1 ×3 + ens. See RUNS.md.
-- **download_audio** (started 08:02 10-08): ~11 GB wav → /mnt/ssd4tb/data/LibriBrain100_audio, log logs/download_audio.log
-- **b7 queue** (10-08): speech-target B7 s0/s1 + matched b5a_s1; logs logs/b7_s*.log, logs/b5a_s1.log
