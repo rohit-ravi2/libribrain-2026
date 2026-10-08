@@ -129,3 +129,18 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - Broad samples add kd=1.0 · KL(teacher ‖ student), where the teacher is a frozen B0 applied to **subj0's window for the same token** (in-vocab pairs, as in P1a).
   - 4 epochs.
 - **Expectation:** VAL peak no longer at epoch 0. Eval zero-shot 0.33, s100 0.35, composite 0.34. subj0-B stays ≥ 0.45, since starting from B0 keeps subj0 power.
+
+## LM1 — noisy-channel sentence decoding, simulation (committed 2026-10-08, before the run)
+- **Why:** every holdout sentence word is a scored row (word_mask counts 5–9 per 2–3 s sentence), so sentences appear built from the 50-word vocab, and a sentence-level LM sees no unknown neighbours.
+- **Test sentences:** natural vocab-only word runs of length 5–9 from LibriBrain transcripts (deduplicated). Not LM-generated. Split into dev/test folds by hash.
+- **Brain evidence:** each word's score vector is sampled from REAL out-of-sample decoder outputs for a window of that word, ℓ(c) = log-softmax − log prior (τ=1).
+  - **X:** b5a zero-shot (mean A) on eval subjects 3/6/9/12, all windows; those subjects are fully excluded from b5a training.
+  - **S:** B0 on subj0 windows it never trained on (ses-10 early-stop set + block B).
+- **Decoder:** coordinate ascent ("backfill"), 2 sweeps. Each slot's candidate score = β·ℓ_i(c) + log P_GPT-2(sentence with w_i=c) − δ·log prior(c). β and δ are chosen on dev; results reported on test.
+- **Oracle:** the same, but the context is the true neighbouring words (a perfect-backfill upper bound).
+- **Metric:** BAcc@10 over the 50 classes, rows pooled over sentences.
+- **Expectations, gain over no-LM on test:**
+  - X (weak evidence): +0.03 to +0.10
+  - S (subj0-level evidence): +0.15 to +0.25
+  - Oracle: ≥ +0.3 for both
+- **Known biases:** GPT-2 may have seen Sherlock text (memorisation is optimistic). Natural fragments are less grammatical than constructed sentences (pessimistic).
