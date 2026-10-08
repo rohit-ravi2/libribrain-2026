@@ -14,3 +14,9 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-04 | b2b | b2a with A frozen at identity during training (subject-agnostic trunk) | 0 | 0.312 | 0.282 | 0.298 / 0.311 / 0.306 | 0.301 | — | few-shot A helps here (+0.02–0.03) |
 | 10-04 | c1 | within-subject logistic (C=1e-3, 10 Hz), own fs data only | — | — | — | 0.258 / 0.282 / 0.288 | — | — | positive control |
 | 10-04 | b4 | b2a + InfoNCE β=0.5 on 79.5k all-word token pairs, 6 ep | 0 | 0.310 | 0.295 | 0.287 / 0.305 / 0.306 | 0.299 | — | contrastive not detected at β=0.5 |
+| 10-04 | b6 | b2a + init from b0 + KD to subj0 teacher, lr 3e-4, 4 ep | 0 | — | 0.291 | — | 0.303 | — | ran overnight 10-04; not yet reviewed in detail |
+| 10-04 | b5a | b2a, d128 p0.5 wd0.3, 4 ep | 0 | — | 0.315 | — | 0.315 | — | best local composite so far (within seed noise of b2a) |
+| 10-04 | b5b | b2a, lr 3e-4, 4 ep | 0 | — | 0.294 | — | 0.296 | — | |
+| 10-04 | b5c | b2a, broad_frac 0.8, 4 ep | 0 | — | 0.227 | — | 0.260 | — | |
+| 10-08 | LB b0 | submissions/b0_broad.csv | — | — | local 0.211 | — | — | **0.203** | first submission |
+| 10-08 | LB final_e1_ens3 | 3× final 1-ep trunk, own A 1–32, mean A 33–39 | 0–2 | — | local ens 0.293 | — | — | **0.225** | top-1 collapse: 61% of rows share one word; local-vs-LB gap ≈ −0.07, under investigation |

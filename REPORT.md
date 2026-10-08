@@ -36,4 +36,4 @@ All numbers trace to `runs/*.json`, produced by committed scripts. Predictions a
 - Contrastive subject-invariance at β=0.5: no gain.
 
 ## Local-vs-leaderboard gap
-- PENDING: no submission yet. The Kaggle account has not joined the Broad competition (Rohit). submissions/b0_broad.csv is ready, and a watcher auto-submits it once he joins.
+- 2026-10-08: b0 LB 0.203 (local 0.211); final_e1_ens3 LB 0.225 (local ensemble 0.293). Gap ≈ −0.07; the holdout predictions show top-1 collapse (61% one word), so a holdout distribution shift or a pipeline bug is suspected.
