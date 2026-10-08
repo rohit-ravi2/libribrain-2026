@@ -61,3 +61,15 @@ def timechapters(select, sub_dir="runs"):
             continue
         out += [(ses, round(float(x), 2)) for x in t[np.asarray(m)]]
     return out
+
+
+def load_emb(select):
+    """Speech-embedding targets (N,768) fp16, NaN where no audio, in the same order as load_sets for the same select."""
+    out = []
+    for f in sorted(glob.glob(f"{CACHE}/runs/*.npz")):
+        base = os.path.basename(f)[:-4]; sub, ses = S.parse(base); t = np.load(f)["timechapter"]
+        m = select(base, sub, ses, t)
+        if m is None or not np.any(m):
+            continue
+        out.append(np.load(f"{CACHE}/runs_emb/{base}.npy")[np.asarray(m)])
+    return torch.from_numpy(np.concatenate(out))

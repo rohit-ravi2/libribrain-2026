@@ -159,4 +159,5 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Targets:** facebook/wav2vec2-base, layer 8, contextual frames (chapter audio in 30 s chunks), mean-pooled over [onset, onset+0.4 s] on the stimulus clock. Session N ↔ chapter N, verified by duration. No audio for Sherlock8/TIMIT/TheMoth, so those words get CE only.
 - **Model:** B5a config (d128, dropout 0.5, wd 0.3, VAL selection, per-subject A, broad_frac 0.5, 4 ep) + β=1.0 · symmetric InfoNCE between proj(trunk features) and a learned projection of the word's speech embedding (temp 0.1).
 - **Expectations vs B5a (composite 0.315, zero-shot 0.315):** zero-shot +0.02, composite 0.335, subj0-B +0.03.
+- **Comparison:** paired seeds 0 and 1 (b5a seed 1 is run as the matched control); the effect is the mean paired difference.
 - **Why:** the shared audio supervises token-level acoustics identically across subjects, which should be a subject-invariant target.

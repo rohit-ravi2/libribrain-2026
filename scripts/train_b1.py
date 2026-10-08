@@ -6,7 +6,7 @@ import argparse, glob, json, os, sys, time
 import numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src import split as S
-from src.data import load_sets, normalize, bacc_at_k, timechapters
+from src.data import load_sets, normalize, bacc_at_k, timechapters, load_emb
 from src.models import WordCNN
 
 ap = argparse.ArgumentParser()
@@ -19,6 +19,7 @@ ap.add_argument("--con", type=float, default=0.0, help="weight of cross-subject 
 ap.add_argument("--con_bs", type=int, default=128); ap.add_argument("--con_temp", type=float, default=0.1)
 ap.add_argument("--noA", action="store_true", help="keep every subject's input layer frozen at identity during trunk training")
 ap.add_argument("--select", default="es", choices=["es", "val"], help="es: subj0 ses-10 (B1); val: VAL_SUBJECTS block B zero-shot")
+ap.add_argument("--speech", type=float, default=0.0, help="weight of InfoNCE between trunk features and the word's wav2vec2 speech embedding")
 ap.add_argument("--init", default=None, help="initialise trunk from a checkpoint (e.g. runs/b0.pt)")
 ap.add_argument("--kd", type=float, default=0.0, help="KD weight for Broad samples toward the frozen init model on subj0's paired window")
 ap.add_argument("--d", type=int, default=256); ap.add_argument("--p", type=float, default=0.2); ap.add_argument("--wd", type=float, default=0.05)
@@ -63,6 +64,12 @@ if a.con > 0:
 
 trunk = WordCNN(d=a.d, p=a.p).to(dev)
 proj = nn.Linear(a.d // 2 * 25, 256).to(dev)
+aproj = nn.Linear(768, 256).to(dev)
+if a.speech > 0:
+    sel_tr = (lambda b, s, ses, t: np.ones(len(t), bool)) if a.final else (lambda b, s, ses, t: S.train_mask(b, t, val=(a.select == "val")) if b != ESVAL else None)
+    Etr = load_emb(sel_tr); assert len(Etr) == len(Xtr)
+    Eok = ~torch.isnan(Etr.float()).any(1); Etr = torch.nan_to_num(Etr)
+    print(f"speech targets for {Eok.float().mean():.2%} of training windows", flush=True)
 if a.init:
     ck0 = torch.load(a.init, map_location=dev); trunk.load_state_dict(ck0["model"])
 if a.kd > 0:
@@ -75,7 +82,7 @@ if a.kd > 0:
     tadj = ck0["tau"] * ck0["log_prior"].to(dev)
     print(f"KD pairs for Broad samples: {(pair >= 0).sum().item()} / {(st != 0).sum().item()}", flush=True)
 A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1), requires_grad=not a.noA)
-opt = torch.optim.AdamW([{"params": list(trunk.parameters()) + list(proj.parameters()), "weight_decay": a.wd}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
+opt = torch.optim.AdamW([{"params": list(trunk.parameters()) + list(proj.parameters()) + list(aproj.parameters()), "weight_decay": a.wd}, {"params": [A], "weight_decay": 0.0}], lr=a.lr)
 nb = len(i0) // int(a.bs * (1 - a.broad_frac)); steps = a.epochs * nb
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, a.lr, total_steps=steps, pct_start=0.1)
 I = torch.eye(306, device=dev)
@@ -115,8 +122,15 @@ for ep in range(a.epochs):
         x = apply_A(A[si], x)
         if a.aug: x = augment(x)
         with torch.autocast("cuda", torch.bfloat16):
-            out = trunk(x)
+            feats = trunk.features(x); out = trunk.head(feats)
             loss = F.cross_entropy(out, y, label_smoothing=0.1)
+        if a.speech > 0:
+            ok = Eok[b].to(dev)
+            if ok.sum() > 8:
+                eb = F.normalize(proj(feats[ok].flatten(1).float()), dim=1)
+                ea = F.normalize(aproj(Etr[b].to(dev).float()[ok]), dim=1)
+                sim = eb @ ea.T / 0.1; lab = torch.arange(len(eb), device=dev)
+                loss = loss + a.speech * 0.5 * (F.cross_entropy(sim, lab) + F.cross_entropy(sim.T, lab))
         if a.kd > 0:
             pj = pair[b]; ok = pj >= 0
             if ok.any():
