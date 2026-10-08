@@ -154,3 +154,9 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Label: NOT DETECTED with instrument "greedy coordinate ascent conditioned on the argmax context".** At top-1 ≈ 10% the conditioning context is mostly wrong. The oracle shows the ceiling, provided context uncertainty is integrated.
 - **Next instrument (LM2):** exact forward–backward marginals under a trigram LM over the 50-word vocab, trained on external text (not the test fragments), plus β map extended beyond 4.
 - **Caveat:** natural text fragments, not holdout-style constructed sentences.
+
+## B7 — staged sound→word: speech-embedding contrastive targets (committed 2026-10-08, before the run)
+- **Targets:** facebook/wav2vec2-base, layer 8, contextual frames (chapter audio in 30 s chunks), mean-pooled over [onset, onset+0.4 s] on the stimulus clock. Session N ↔ chapter N, verified by duration. No audio for Sherlock8/TIMIT/TheMoth, so those words get CE only.
+- **Model:** B5a config (d128, dropout 0.5, wd 0.3, VAL selection, per-subject A, broad_frac 0.5, 4 ep) + β=1.0 · symmetric InfoNCE between proj(trunk features) and a learned projection of the word's speech embedding (temp 0.1).
+- **Expectations vs B5a (composite 0.315, zero-shot 0.315):** zero-shot +0.02, composite 0.335, subj0-B +0.03.
+- **Why:** the shared audio supervises token-level acoustics identically across subjects, which should be a subject-invariant target.
