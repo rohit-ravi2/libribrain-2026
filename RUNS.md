@@ -21,3 +21,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-08 | LB b0 | submissions/b0_broad.csv | — | — | local 0.211 | — | — | **0.203** | first submission |
 | 10-08 | LB final_e1_ens3 | 3× final 1-ep trunk, own A 1–32, mean A 33–39 | 0–2 | — | local ens 0.293 | — | — | **0.225** | top-1 collapse: 61% of rows share one word; local-vs-LB gap ≈ −0.07, under investigation |
 | 10-08 | LB final_e1_ens3_tau1.0 | as final_e1_ens3, τ=1.0 at inference (collapse removed: top-1 share 0.61 → 0.15) | 0–2 | — | — | — | — | **0.2266** | collapse hypothesis REFUTED (+0.001) |
+| 10-08 | lm1_sim | GPT-2 coordinate-ascent sentence decoding, simulation | 0 | 0.450→0.448 | 0.230→0.258 | — | — | — | oracle 0.92/0.91 |

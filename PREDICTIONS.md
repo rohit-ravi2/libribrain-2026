@@ -144,3 +144,13 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - S (subj0-level evidence): +0.15 to +0.25
   - Oracle: ≥ +0.3 for both
 - **Known biases:** GPT-2 may have seen Sherlock text (memorisation is optimistic). Natural fragments are less grammatical than constructed sentences (pessimistic).
+
+### Outcome LM1 (2026-10-08, runs/lm1_sim.json; 300 dev + 300 test sentences per arm)
+| arm | no-LM (test) | GPT-2 coordinate ascent (test) | gain | oracle (true context) |
+|---|---|---|---|---|
+| X: cross-subject b5a | 0.230 | 0.258 | **+0.028** (pred +0.03–0.10: low edge) | 0.923 |
+| S: subj0 B0 | 0.450 | 0.448 | **−0.002** (pred +0.15–0.25: MISS) | 0.905 |
+- The dev grid chose β=4 for S, the largest brain weight tried, so the LM prior was best nearly off.
+- **Label: NOT DETECTED with instrument "greedy coordinate ascent conditioned on the argmax context".** At top-1 ≈ 10% the conditioning context is mostly wrong. The oracle shows the ceiling, provided context uncertainty is integrated.
+- **Next instrument (LM2):** exact forward–backward marginals under a trigram LM over the 50-word vocab, trained on external text (not the test fragments), plus β map extended beyond 4.
+- **Caveat:** natural text fragments, not holdout-style constructed sentences.
