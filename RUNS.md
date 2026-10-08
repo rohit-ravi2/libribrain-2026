@@ -24,3 +24,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-08 | lm1_sim | GPT-2 coordinate-ascent sentence decoding, simulation | 0 | 0.450→0.448 | 0.230→0.258 | — | — | — | oracle 0.92/0.91 |
 | 10-08 | lm2_sim | exact F–B trigram (Gutenberg), simulation | — | 0.450→0.497 (uni 0.508) | 0.230→0.301 (uni 0.259) | — | — | — | context gain X +0.041, S −0.011 |
 | 10-08 | b7_s0/s1 (+b5a_s1 ctrl) | b5a + wav2vec2 speech InfoNCE β=1 | 0,1 | 0.383/0.351 | 0.296/0.293 | — | 0.304/0.313 | — | paired diff −0.001 vs b5a; not detected |
+| 10-08 | LB CAL1 | final_e1 ens3, sampler prior, τ=1 | 0–2 | — | — | — | — | **0.2155** | sampler prior over-corrects (−0.011 vs stored τ=1) |
+| 10-08 | lm2_sim_v2 | LM2 with random sentence sample (fix) | — | 0.445→0.472 (uni 0.466) | 0.231→0.276 (uni 0.240) | — | — | — | context gain X +0.036, S +0.007 |

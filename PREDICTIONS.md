@@ -214,3 +214,18 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - deployment score 0.30; model-specific null 0.25; lift +0.05
   - seen subjects ≥ zero-shot by +0.01 to +0.03
   - folds may differ by up to 0.03 because block class support differs (Q3 has 47 words, Q4 38)
+
+### Outcome CAL1 (2026-10-08, LB)
+- Sampler prior, τ=1: LB **0.2155**, vs stored prior τ=1 at 0.2266 → **−0.011** (pred +0.005 to +0.02: MISS).
+- **Reading:**
+  - Removing the 50%-Broad sampler prior over-corrects on the holdout.
+  - Either the holdout's word distribution is closer to training frequencies than to uniform, or the model's outputs are not calibrated likelihoods (label smoothing, early stopping). The two cannot be separated with one submission.
+- **Action:** keep stored-prior τ=1 for submissions. No further LB tuning of τ (that would be LB-driven selection).
+
+### Outcome LM2-v2 (2026-10-08, random sentence sample, runs/lm2_sim_v2.json + _unigram_v2.json)
+| arm | no-LM | unigram | trigram | context gain (tri − uni) | v1 (alphabetical) context gain |
+|---|---|---|---|---|---|
+| X cross-subject | 0.231 | 0.240 (+0.009) | 0.276 (+0.045) | **+0.036** | +0.041 |
+| S subj0 | 0.445 | 0.466 (+0.021) | 0.472 (+0.028) | **+0.007** | −0.011 |
+- The X context gain survives the sampling fix (+0.036). For S it stays ≈0.
+- Still synthetic: neural evidence is resampled per word, so it is not a leaderboard forecast (audit §4).
