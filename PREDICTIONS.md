@@ -206,3 +206,11 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 ## Correction 2026-10-08 — LM1/LM2 sentence sampling
 - scripts/sim_lm.py:91 and scripts/sim_lm2.py:93 took the first 300 fragments of an alphabetically sorted list in each fold, not a random sample (audit §4). The LM1/LM2 numbers above come from that biased sample.
 - LM2 (trigram + unigram control) is re-run with a seeded random sample; LM1 is superseded, not re-run. Independent per-word resampling of neural evidence remains a limitation of both.
+
+## V2-REF — reference run on split v2 (committed 2026-10-08, before the run)
+- **Setup:** scripts/train_v2.py, B5a recipe (d128, p0.5, wd0.3, broad_frac 0.5, aug, per-subject A, 4 ep), sampler prior, seed 0. Folds A (select Q3 → test Q4) and B (select Q4 → test Q3) come from one training run.
+- **Purpose:** first reference under the corrected evaluation, and the first validation of the deployed path (seen subjects with their own jointly trained layer).
+- **Expectations (fold-averaged):**
+  - deployment score 0.30; model-specific null 0.25; lift +0.05
+  - seen subjects ≥ zero-shot by +0.01 to +0.03
+  - folds may differ by up to 0.03 because block class support differs (Q3 has 47 words, Q4 38)
