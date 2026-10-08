@@ -11,7 +11,9 @@ from src.data import normalize
 from src.models import WordCNN
 
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True); ap.add_argument("--out", required=True)
-ap.add_argument("--track", default="broad"); ap.add_argument("--device", default="cuda"); a = ap.parse_args()
+ap.add_argument("--track", default="broad"); ap.add_argument("--device", default="cuda")
+ap.add_argument("--tau", type=float, default=None, help="override logit-adjustment strength (1.0 = full prior removal)")
+a = ap.parse_args()
 dev = a.device
 H = LibriBrainCompetitionHoldout(track=a.track, data_path="/mnt/ssd4tb/data/LibriBrain-Competition-2026", download=False)
 print(H, H.counts(), flush=True)
@@ -24,7 +26,7 @@ for c in a.ckpt.split(","):
         subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].mean(0)
         Amap = {s: (ck["A"][subs.index(s)] if s in subs else Ab).to(dev) for s in H.subjects}
         print(c, "own A:", [s for s in H.subjects if s in subs], "| mean A:", [s for s in H.subjects if s not in subs], flush=True)
-    models.append((m, Amap, ck.get("tau", 0.0) * ck["log_prior"].to(dev)))
+    models.append((m, Amap, (ck.get("tau", 0.0) if a.tau is None else a.tau) * ck["log_prior"].to(dev)))
 probs = []
 with torch.no_grad():
     for meg, metas in H.iter_windows(batch_size=1024):

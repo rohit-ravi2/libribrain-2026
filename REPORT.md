@@ -37,3 +37,8 @@ All numbers trace to `runs/*.json`, produced by committed scripts. Predictions a
 
 ## Local-vs-leaderboard gap
 - 2026-10-08: b0 LB 0.203 (local 0.211); final_e1_ens3 LB 0.225 (local ensemble 0.293). Gap ≈ −0.07; the holdout predictions show top-1 collapse (61% one word), so a holdout distribution shift or a pipeline bug is suspected.
+
+### Local-vs-LB calibration (2026-10-08)
+- The top-1 collapse onto "the" in the multi-subject holdout predictions came from weak evidence plus τ=0.25. Removing it (τ=1) changed LB by +0.001, so it was not the cause of the gap.
+- **The gap is the floor.** Local floor 0.263 (12/50 words absent from block B); holdout floor 0.20 (all 50 words present). Lift above floor agrees: ensemble +0.030 local vs +0.026 LB; B0 −0.05 local vs +0.003 LB.
+- **Rule of thumb:** LB ≈ 0.20 + (local − 0.263). The cross-subject decoder is ~+0.03 above chance on both.
