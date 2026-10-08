@@ -169,3 +169,17 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Expectations, test gain over no-LM:**
   - X: +0.04
   - S: +0.08 (the context uncertainty LM1 could not handle is now integrated)
+
+### Outcome LM2 (2026-10-08, runs/lm2_sim.json + runs/lm2_sim_unigram.json; forward–backward verified against brute force, max diff 6e-15)
+| arm | no-LM | unigram control (prior only) | trigram exact F–B | context gain (tri − uni) |
+|---|---|---|---|---|
+| X cross-subject | 0.230 | 0.259 (+0.029) | 0.301 (**+0.070**, pred +0.04) | **+0.041** |
+| S subj0 | 0.450 | 0.508 (+0.057) | 0.497 (+0.046, pred +0.08) | **−0.011** |
+- Exact inference fixes LM1's failure mode on X: +0.070 vs +0.028.
+- The unigram control is essential. For subj0, all of the gain is frequency-prior re-injection (dev picked δ=0), which matches the natural-frequency test fragments. It will not transfer if holdout sentences cover the 50 words more evenly. The context part is about +0.04 on weak evidence and ≈0 on subj0-level evidence, with SE ≈ ±0.01–0.015.
+- **Status:** sentence context is a real but modest lever (≈+0.04 at our cross-subject level). That is not the "massive boost" the 0.9 oracle suggested. The oracle stays unreachable because neighbours are never known.
+- **OPEN, untested:**
+  - LM trained on holdout-style constructed sentences (unknown grammar);
+  - joint decoding with the subj0-to-Broad mapping;
+  - a GPT-2 marginal via sampling;
+  - the prior question, which is decided by the holdout's word distribution and can be tested cheaply with one LB submission at δ=0 vs δ=1.
