@@ -161,3 +161,11 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 - **Expectations vs B5a (composite 0.315, zero-shot 0.315):** zero-shot +0.02, composite 0.335, subj0-B +0.03.
 - **Comparison:** paired seeds 0 and 1 (b5a seed 1 is run as the matched control); the effect is the mean paired difference.
 - **Why:** the shared audio supervises token-level acoustics identically across subjects, which should be a subject-invariant target.
+
+## LM2 — exact forward–backward with an external trigram LM (committed 2026-10-08, before the run)
+- **LM:** interpolated trigram over the 50 vocab words (0.6 tri / 0.3 bi / 0.1 uni, add-0.1). Counts come from vocab-only word runs in 15 Project Gutenberg novels (no Doyle), so there is no overlap with the test fragments' source.
+- **Inference:** exact forward–backward over (w_{i-1}, w_i) states. Emission exp(β·ℓ_i). Ranking = log marginal − δ·log prior; β, δ chosen on dev.
+- Same sentences, folds, brain-evidence pools and sampling seed as LM1.
+- **Expectations, test gain over no-LM:**
+  - X: +0.04
+  - S: +0.08 (the context uncertainty LM1 could not handle is now integrated)
