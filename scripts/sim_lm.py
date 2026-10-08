@@ -88,7 +88,8 @@ results = {}
 for name in ["X", "S"]:
     P, lp = pools[name]
     sents = [r.split() for r in runs if all(VOCAB_ID[w] in P for w in r.split())]
-    by = {0: [s for s in sents if fold[" ".join(s)] == 0][:NMAX], 1: [s for s in sents if fold[" ".join(s)] == 1][:NMAX]}
+    by = {f_: [s for s in sents if fold[" ".join(s)] == f_] for f_ in (0, 1)}
+    by = {f_: [ss[j] for j in np.random.default_rng(10 + f_).permutation(len(ss))[:NMAX]] for f_, ss in by.items()}   # random, not alphabetical (2026-10-08 fix)
     samp = {}
     for f_, ss in by.items():   # fixed brain samples per sentence
         samp[f_] = [(torch.stack([P[VOCAB_ID[w]][rng.integers(len(P[VOCAB_ID[w]]))] for w in s]), [VOCAB_ID[w] for w in s]) for s in ss]

@@ -90,7 +90,8 @@ results = {}
 for name, ck, meanA in [("X", "runs/b5a.pt", True), ("S", "runs/b0.pt", False)]:
     X, y, _, _ = D[name]; L, lp = pool(ck, X, meanA); Pp = {c: L[y == c] for c in range(50) if (y == c).any()}
     sents = [r.split() for r in runs if all(VOCAB_ID[w] in Pp for w in r.split())]
-    by = {f_: [s for s in sents if fold[" ".join(s)] == f_][:NMAX] for f_ in (0, 1)}
+    by = {f_: [s for s in sents if fold[" ".join(s)] == f_] for f_ in (0, 1)}
+    by = {f_: [ss[j] for j in np.random.default_rng(10 + f_).permutation(len(ss))[:NMAX]] for f_, ss in by.items()}   # random, not alphabetical (2026-10-08 fix)
     samp = {f_: [(torch.stack([Pp[VOCAB_ID[w]][rng.integers(len(Pp[VOCAB_ID[w]]))] for w in s]).numpy(), [VOCAB_ID[w] for w in s]) for s in ss] for f_, ss in by.items()}
     lpn = lp.numpy()
     def score(f_, cfg):
@@ -103,4 +104,4 @@ for name, ck, meanA in [("X", "runs/b5a.pt", True), ("S", "runs/b0.pt", False)]:
     devg = {f"{b},{d}": score(0, (b, d)) for b, d in grid}; best = max(devg, key=devg.get); b, d = map(float, best.split(","))
     r.update(dev_grid=devg, best=best, LM_test=score(1, (b, d)), t=round(time.time() - t0)); r["gain_test"] = r["LM_test"] - r["noLM"][1]
     results[name] = r; print(name, json.dumps({k: v for k, v in r.items() if k != "dev_grid"}), flush=True)
-json.dump(results, open("runs/lm2_sim%s.json" % ("_unigram" if os.environ.get("LM_ORDER") == "1" else ""), "w"), indent=1)
+json.dump(results, open("runs/lm2_sim%s_v2.json" % ("_unigram" if os.environ.get("LM_ORDER") == "1" else ""), "w"), indent=1)

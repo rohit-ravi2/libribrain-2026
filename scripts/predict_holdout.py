@@ -12,11 +12,24 @@ from src.models import WordCNN
 
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True); ap.add_argument("--out", required=True)
 ap.add_argument("--track", default="broad"); ap.add_argument("--device", default="cuda")
+ap.add_argument("--prior", default="stored", choices=["stored", "sampler"],
+                help="stored: ckpt log_prior (row-weighted); sampler: (1-bf)*p(subj0)+bf*p(Broad) as actually drawn in training (final ckpts: all windows)")
 ap.add_argument("--tau", type=float, default=None, help="override logit-adjustment strength (1.0 = full prior removal)")
 a = ap.parse_args()
 dev = a.device
 H = LibriBrainCompetitionHoldout(track=a.track, data_path="/mnt/ssd4tb/data/LibriBrain-Competition-2026", download=False)
 print(H, H.counts(), flush=True)
+def sampler_log_prior(bf):
+    import glob
+    from src.common import CACHE
+    c = np.zeros((2, 50))
+    for f in sorted(glob.glob(f"{CACHE}/runs/*.npz")):
+        s = int(os.path.basename(f).split("_")[0].split("-")[1])
+        c[int(s != 0)] += np.bincount(np.load(f)["label"], minlength=50)
+    p = (1 - bf) * c[0] / c[0].sum() + bf * c[1] / c[1].sum()
+    return torch.log(torch.tensor(p, dtype=torch.float32).clamp_min(1e-8))
+
+
 models = []
 for c in a.ckpt.split(","):
     ck = torch.load(c, map_location=dev)
@@ -26,7 +39,9 @@ for c in a.ckpt.split(","):
         subs = ck["subs"]; Ab = ck["A"][[subs.index(s) for s in subs if s != 0]].mean(0)
         Amap = {s: (ck["A"][subs.index(s)] if s in subs else Ab).to(dev) for s in H.subjects}
         print(c, "own A:", [s for s in H.subjects if s in subs], "| mean A:", [s for s in H.subjects if s not in subs], flush=True)
-    models.append((m, Amap, (ck.get("tau", 0.0) if a.tau is None else a.tau) * ck["log_prior"].to(dev)))
+    lp = ck["log_prior"] if a.prior == "stored" else sampler_log_prior(ck["args"].get("broad_frac", 0.3))
+    assert a.prior == "stored" or ck["args"].get("final"), "sampler prior from all windows is only correct for --final ckpts"
+    models.append((m, Amap, (ck.get("tau", 0.0) if a.tau is None else a.tau) * lp.to(dev)))
 probs = []
 with torch.no_grad():
     for meg, metas in H.iter_windows(batch_size=1024):
