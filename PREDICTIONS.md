@@ -183,3 +183,16 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - joint decoding with the subj0-to-Broad mapping;
   - a GPT-2 marginal via sampling;
   - the prior question, which is decided by the holdout's word distribution and can be tested cheaply with one LB submission at δ=0 vs δ=1.
+
+### Outcome B7 (2026-10-08, runs/b7_s{0,1}.json vs b5a / b5a_s1)
+| seed | composite B7 / B5a | zero-shot B7 / B5a | subj0-B B7 / B5a | VAL B7 / B5a |
+|---|---|---|---|---|
+| 0 | 0.304 / 0.315 | 0.296 / 0.315 | 0.383 / 0.365 | 0.324 / 0.324 |
+| 1 | 0.313 / 0.304 | 0.293 / 0.288 | 0.351 / 0.387 | 0.311 / 0.318 |
+- Mean paired difference: composite −0.001, zero-shot −0.007, subj0 −0.009 (pred +0.02 / +0.02 / +0.03: MISS).
+- The targets are valid (a linear probe on them decodes word identity at 0.881).
+- **Label: NOT DETECTED with instrument:**
+  - β=1 InfoNCE on in-vocab windows only;
+  - 55% target coverage;
+  - the selected epoch is 0–1, so the auxiliary loss gets about one epoch to act.
+- **OPEN; strongest next test:** speech targets on ALL words (2.5× data), the setting where contrastive speech targets are known to matter, and speech pretraining before CE rather than joint training.
