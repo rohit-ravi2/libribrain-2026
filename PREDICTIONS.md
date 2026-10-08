@@ -196,3 +196,13 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - 55% target coverage;
   - the selected epoch is 0–1, so the auxiliary loss gets about one epoch to act.
 - **OPEN; strongest next test:** speech targets on ALL words (2.5× data), the setting where contrastive speech targets are known to matter, and speech pretraining before CE rather than joint training.
+
+## CAL1 — LB calibration of the prior correction (committed 2026-10-08 ~16:45Z, before the submission)
+- **Context:** the audit (AUDIT_AND_RECOVERY_2026-10-08.md §3) found the stored log_prior is row-weighted (8.9% Broad) while training draws 50% Broad. The local block lacks 12/50 words, so it structurally favours frequency-shaped rankings and cannot adjudicate. The LB holdout covers all 50 words.
+- **Submission:** final_e1 ens3, τ=1 with the sampler prior (0.5·p_subj0 + 0.5·p_Broad), vs the existing τ=1 stored-prior submission (LB 0.2266).
+- **Prediction:** +0.005 to +0.02 (≈0.23–0.245). A drop would mean the holdout's word distribution is closer to training frequencies than to uniform.
+- This is a declared one-parameter calibration measurement on the only all-50-class test available, not leaderboard-driven model selection.
+
+## Correction 2026-10-08 — LM1/LM2 sentence sampling
+- scripts/sim_lm.py:91 and scripts/sim_lm2.py:93 took the first 300 fragments of an alphabetically sorted list in each fold, not a random sample (audit §4). The LM1/LM2 numbers above come from that biased sample.
+- LM2 (trigram + unigram control) is re-run with a seeded random sample; LM1 is superseded, not re-run. Independent per-word resampling of neural evidence remains a limitation of both.
