@@ -1,0 +1,79 @@
+{
+  "b5a": {
+    "saved_tau": 0.5,
+    "saved_prior_and_tau": {
+      "score": 0.31501104324096607,
+      "label_permutation_expected": 0.26021659599235053,
+      "lift": 0.05479444724861554
+    },
+    "full_stored_prior_removal": {
+      "score": 0.21347643930447924,
+      "label_permutation_expected": 0.17489814583852994,
+      "lift": 0.03857829346594929
+    },
+    "full_sampler_prior_removal": {
+      "score": 0.15737346326615836,
+      "label_permutation_expected": 0.12752556747318533,
+      "lift": 0.029847895792973034
+    }
+  },
+  "e1_s0": {
+    "saved_tau": 0.25,
+    "saved_prior_and_tau": {
+      "score": 0.2774027107851972,
+      "label_permutation_expected": 0.2538351209777999,
+      "lift": 0.02356758980739726
+    },
+    "full_stored_prior_removal": {
+      "score": 0.22211803221898505,
+      "label_permutation_expected": 0.19045688866716554,
+      "lift": 0.03166114355181951
+    },
+    "full_sampler_prior_removal": {
+      "score": 0.18689631545234991,
+      "label_permutation_expected": 0.1611166541947285,
+      "lift": 0.025779661257621406
+    }
+  },
+  "e1_s1": {
+    "saved_tau": 0.25,
+    "saved_prior_and_tau": {
+      "score": 0.2894557607891319,
+      "label_permutation_expected": 0.2552070341731105,
+      "lift": 0.03424872661602135
+    },
+    "full_stored_prior_removal": {
+      "score": 0.22147200900036654,
+      "label_permutation_expected": 0.1914234638729525,
+      "lift": 0.030048545127414034
+    },
+    "full_sampler_prior_removal": {
+      "score": 0.1780376755648988,
+      "label_permutation_expected": 0.16054502369668247,
+      "lift": 0.01749265186821633
+    }
+  },
+  "e1_s2": {
+    "saved_tau": 0.5,
+    "saved_prior_and_tau": {
+      "score": 0.2650038850243024,
+      "label_permutation_expected": 0.23481541531554,
+      "lift": 0.030188469708762378
+    },
+    "full_stored_prior_removal": {
+      "score": 0.20369800456574502,
+      "label_permutation_expected": 0.17111499126964327,
+      "lift": 0.03258301329610175
+    },
+    "full_sampler_prior_removal": {
+      "score": 0.16897263977572508,
+      "label_permutation_expected": 0.14391577284443335,
+      "lift": 0.02505686693129172
+    }
+  },
+  "e1_ensemble": {
+    "score": 0.29261644669425974,
+    "label_permutation_expected": 0.25219298245614036,
+    "lift": 0.04042346423811938
+  }
+}
