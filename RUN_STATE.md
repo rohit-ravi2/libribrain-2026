@@ -27,3 +27,4 @@
 - **submit_b0** watcher: auto-submits submissions/b0_broad.csv once Rohit joins (log logs/submit_b0.log).
 - DONE today: b0, p1a, p1b (CPU), c1 (CPU), b1, b2a, b2b, b4, e1 ×3 + ens. See RUNS.md.
 - **queue_v2** QUEUED behind meta-emg lock (12:42 10-08): v2smoke → v2ref_s0 → v2ref_s1; logs logs/v2*.log
+- **pipeline_t5** (started 16:02 10-08): all-words cache → T5-large targets (CPU) → memmap → [GPU lock] t5smoke → t5_s0. Logs logs/build_cache_allw.log, text_targets.log, make_memmap.log, t5*.log
