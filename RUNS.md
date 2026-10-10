@@ -35,3 +35,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | v3c, v3d | (timing ON) 0.328 / 0.506 | 0 | — | — | — | TAINTED | — | ablation: timing zeroed → 0.26 / 0.30; superseded by v3c0/v3d0 |
 | 10-10 | v3d0 | v3c0 + T5-large L12 targets, duplicate-aware SigLIP, all words, 4 ep | 0 | — | eval_zs 0.339 | seen 0.371 | **deploy 0.365** (null 0.221, lift +0.144) | — | clean; pred 0.33 beaten |
 | 10-10 | v3d1_s0 | v3d0 config, 8 ep × 1500 steps, seed 0 | 0 | — | eval_zs 0.456 | seen 0.464 | **deploy 0.463** (null 0.218, lift +0.244) | — | clean; ≥ 0.40 target |
+| 10-10 | v3d1_s1 | as v3d1_s0, seed 1 | 1 | — | eval_zs 0.439 | seen 0.459 | **deploy 0.455** (null 0.220, lift +0.235) | — | clean |
