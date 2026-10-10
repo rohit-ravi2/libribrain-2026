@@ -27,3 +27,35 @@ class WordCNN(nn.Module):
 
     def forward(self, x):
         return self.head(self.features(x))
+
+
+class CtxEncoder(nn.Module):
+    """v3 word encoder: (B, 307, T) [306 MEG channels + 1 valid-mask channel] -> (B, D) embedding.
+    Spatial 1x1 mixing, residual temporal blocks at 50 Hz, strided down-sampling, flatten (keeps onset position)."""
+    def __init__(self, n_ch=307, d=128, T=150, D=256, n_blocks=3, p=0.3):
+        super().__init__()
+        self.spatial = nn.Sequential(nn.Conv1d(n_ch, d, 1), nn.BatchNorm1d(d), nn.GELU())
+        self.blocks = nn.Sequential(*[Block(d) for _ in range(n_blocks)])
+        self.down = nn.Sequential(nn.Conv1d(d, d // 2, 5, stride=2, padding=2), nn.BatchNorm1d(d // 2), nn.GELU(),
+                                  nn.Conv1d(d // 2, d // 2, 5, stride=2, padding=2), nn.BatchNorm1d(d // 2), nn.GELU())
+        self.out = nn.Sequential(nn.Flatten(), nn.Dropout(p), nn.Linear(d // 2 * ((T + 3) // 4), D), nn.GELU())
+
+    def forward(self, x):
+        return self.out(self.down(self.blocks(self.spatial(x))))
+
+
+class SentCtx(nn.Module):
+    """Cross-word context over the words of one sentence segment (brain-side context, no text).
+    emb (S, L, D), t (S, L) onset seconds relative to the segment start, pad (S, L) True = padding."""
+    def __init__(self, D=256, layers=2, heads=4, p=0.1, maxw=16):
+        super().__init__()
+        self.time = nn.Sequential(nn.Linear(1, D), nn.GELU(), nn.Linear(D, D))
+        self.pos = nn.Embedding(maxw, D)
+        layer = nn.TransformerEncoderLayer(D, heads, 2 * D, dropout=p, batch_first=True, norm_first=True, activation="gelu")
+        self.enc = nn.TransformerEncoder(layer, layers)
+        self.norm = nn.LayerNorm(D)
+
+    def forward(self, emb, t, pad):
+        L = emb.shape[1]
+        h = emb + self.time(t[..., None] / 5.0) + self.pos(torch.arange(L, device=emb.device))[None]
+        return emb + self.norm(self.enc(h, src_key_padding_mask=pad))
