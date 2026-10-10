@@ -319,3 +319,6 @@ Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the bra
 - **Model:** v3d1 config (3 s masked sentence-epoch windows, sentence transformer without timing, T5 SigLIP + CE, 8 ep × 1500 steps), trained on ALL subjects 0–32 and ALL stimulus (`--final 1`), seeds 0 and 1, last epoch; readout ce+cos, tau 0 (both local folds chose it). Subjects 1–32 use their own trained input layer, 33–39 the mean Broad layer. No TTA in this first file (TTA goes in FINAL-2 once adapt_v3 reports).
 - **Holdout inference:** each subject's sentence epochs resampled with the same FIR; each sentence = one context segment; isolated words = 1 s only. Within-subject only.
 - **LB prediction:** 0.35–0.42 (local deploy 0.46 is a prose proxy with 38–47/50 word coverage; holdout sentences are shorter and vocab-only, and 10% of rows are isolated words scoring ≈ the 1 s number). Anything ≥ 0.33 beats the d'Ascoli reference; ≥ 0.43 beats MEG-XL. A score < 0.30 would mean the local proxy is not transferring and the next step is diagnosing sentence-vs-isolated rows on the Deep track (subj0 file as calibration, if Rohit okays Deep).
+
+### Outcome v3d1_s1 (2026-10-10, runs/v3d1_s1.json)
+- deploy **0.455** (pred 0.385: beat), null 0.220, lift +0.235; seen 0.459, eval zero-shot 0.439, 1 s-only 0.427. Seed spread vs s0: 0.008. **Target 0.40 local reached on both seeds.**
