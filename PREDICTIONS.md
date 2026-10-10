@@ -309,3 +309,7 @@ Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the bra
 | neighbours replaced by random same-subject windows (structure kept) | 0.307 / 0.292 | 0.317 / 0.266 |
 | single words (no context) | 0.288 / 0.266 | 0.293 / 0.249 |
 - The context gain (+0.08–0.10) comes from neighbouring MEG, not from segment structure (structure alone adds ≤ +0.02). Clean.
+
+### Outcome v3d1_s0 (2026-10-10, runs/v3d1_s0.json; timing input OFF, verified in the checkpoint args)
+- deploy **0.463** (pred 0.385: beat by +0.08), null 0.218, lift **+0.244**. seen 0.464, eval zero-shot 0.456, 1 s-only 0.454, deploy_mix 0.462. Longer OneCycle horizon (8 epochs) lifted the whole curve: epoch-1 select was already 0.43/0.46 vs v3d0's 0.34/0.37.
+- **Target 0.40 local: reached on a single seed**, pending the ablations below and seed 1.
