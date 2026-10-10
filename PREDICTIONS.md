@@ -343,3 +343,4 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 
 ### Outcome v3e1 (2026-10-10): deploy 0.454 (pred 0.475: MISS; −0.009 vs v3d1_s0). Longer training NOT DETECTED.
 ### Outcome v3e2 (2026-10-10): deploy 0.427 (pred 0.475: MISS; −0.036 vs v3d1_s0). More capacity hurts cross-subject generalisation.
+### Outcome v3e3 (2026-10-10): deploy 0.468 (pred 0.468: HIT; +0.005 vs v3d1_s0, within noise). Not a detected lever.
