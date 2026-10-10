@@ -349,3 +349,4 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 - Map verdict: no single lever in V3-E is detected (12 ep −0.009, capacity −0.036, T5 weight 2 +0.005, wider window tracking below). The v3d1 configuration stands.
 - **FINAL-2 file:** softmax average of five all-data models: final_v3d1 seeds 0, 1 (existing), seeds 2, 3 (new), and one T5-weight-2 model (seed 0; equal local quality, different loss balance for diversity). Readout ce+cos, tau 0, no TTA.
 - **LB prediction:** 0.42–0.44 (FINAL-1 0.4108; local ensembling gives +0.01 per 2 seeds). ≥ 0.43 beats the MEG-XL reference.
+### Outcome v3e4 (2026-10-10): deploy 0.441 (pred 0.473: MISS; −0.022). Wider context window hurts; [−1, +2] s stands.
