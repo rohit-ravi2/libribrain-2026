@@ -28,3 +28,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-08 | lm2_sim_v2 | LM2 with random sentence sample (fix) | — | 0.445→0.472 (uni 0.466) | 0.231→0.276 (uni 0.240) | — | — | — | context gain X +0.036, S +0.007 |
 | 10-08 | v2ref_s0 | split v2, B5a recipe, 4 ep | 0 | — | eval_zs 0.275 | seen 0.286 | **deploy 0.284** (null 0.234, lift +0.050) | — | V2-REF; pred deploy 0.30 / lift +0.05: lift HIT, level −0.015 |
 | 10-08 | v2ref_s1 | same, seed 1 | 1 | — | eval_zs 0.266 | seen 0.293 | **deploy 0.288** (null 0.234, lift +0.054) | — | |
+| 10-10 | v3a | continuous FIR cache, CtxEncoder, 1 s window, no ctx, 4 ep × 1500 steps | 0 | — | eval_zs 0.267 | seen 0.274 | deploy 0.272 (null 0.232, lift +0.041); 1s 0.284 | — | parity with V2-REF |
+| 10-10 | v3b | as v3a, 3 s masked sentence-epoch window | 0 | — | eval_zs 0.292 | seen 0.292 | **deploy 0.292** (null 0.220, lift +0.073) | — | +0.03 lift from context window |

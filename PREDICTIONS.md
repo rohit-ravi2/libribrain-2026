@@ -267,3 +267,10 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 
 ### Outcome V2-REF (runs finished 2026-10-08 16:45–16:50 EDT after the session OOM; runs/v2ref_s{0,1}.json)
 - deploy 0.284 / 0.288 (pred 0.30: ≈, −0.015), null 0.234 (pred 0.25), lift +0.050 / +0.054 (pred +0.05: HIT). seen 0.286 / 0.293 vs zero-shot 0.275 / 0.266 (pred seen ≥ zs by +0.01–0.03: HIT, +0.01–0.03).
+
+### Outcome v3a, v3b (2026-10-10, runs/v3a.json, runs/v3b.json)
+| rung | deploy | null | lift | 1 s-only deploy | seen | eval zs | pred |
+|---|---|---|---|---|---|---|---|
+| v3a (1 s, no ctx, FIR cache) | 0.272 | 0.232 | +0.041 | 0.284 | 0.274 | 0.267 | 0.285: parity on the 1 s score (V2-REF 0.284/0.288) HIT |
+| v3b (3 s masked window) | **0.292** | 0.220 | **+0.073** | 0.271 | 0.292 | 0.292 | 0.31: level MISS (−0.02); lift +0.03 over v3a |
+- The level under-shoots because the null fell (a less frequency-shaped top-10). Lift is the honest comparison: the 3 s sentence-epoch window adds +0.03 lift. Both runs peak at epochs 0–1 and decay (sel_Q3 0.313 → 0.282 for v3b), so capacity/regularisation is still binding.
