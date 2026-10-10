@@ -7,6 +7,9 @@ import argparse, os, sys, json
 import numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 from scipy.signal import resample_poly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# the context window must match the checkpoints: read it from the first checkpoint's args before importing src.cont
+_ck = torch.load(sys.argv[sys.argv.index("--ckpt") + 1].split(",")[0], map_location="cpu", weights_only=False)
+os.environ["LB_WIN"] = _ck["args"].get("lb_win", "1.0,2.0"); print("LB_WIN", os.environ["LB_WIN"], flush=True)
 from pnpl.competition import LibriBrainCompetitionHoldout, write_submission
 from src.common import SCALE, HOLDOUT
 from src.cont import FS, PRE, POST, WIN, ON, normalize
