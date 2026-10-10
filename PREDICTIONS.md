@@ -342,3 +342,4 @@ All vs v3d1_s0 (seed 0, deploy 0.463); seed noise ≈ ±0.01, so a lever counts 
 Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB prediction will be stated when that config is chosen.
 
 ### Outcome v3e1 (2026-10-10): deploy 0.454 (pred 0.475: MISS; −0.009 vs v3d1_s0). Longer training NOT DETECTED.
+### Outcome v3e2 (2026-10-10): deploy 0.427 (pred 0.475: MISS; −0.036 vs v3d1_s0). More capacity hurts cross-subject generalisation.
