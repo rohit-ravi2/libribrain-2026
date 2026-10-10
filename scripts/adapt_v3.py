@@ -39,7 +39,7 @@ def score(M, blk, Amap, heads=None, ro="ce", tau=0.0):
         if heads and s in heads:
             e = []
             for i in range(0, len(segs), 40):
-                idx, gi, pad, rel = pack(W, segs[i:i + 40]); x, v = W.windows(idx)
+                idx, gi, pad, rel = pack(W, segs[i:i + 40], rel_on=bool(M.a.get('rel', 1))); x, v = W.windows(idx)
                 with torch.no_grad(): e.append(M.forward(x, v, Amap[s], gi, pad, rel)[0])
             ce = heads[s](torch.cat(e)).float().cpu()
         lo = M.readout(ce.to(dev), P["zt"].to(dev), ro, tau).cpu()
@@ -59,7 +59,7 @@ def finetune_seen(M, s, steps, ro, tau):
     opt = torch.optim.Adam([A_s] + list(head.parameters()), lr=a.ft_lr); segs = FT[s]
     for k in range(steps):
         b = [segs[j] for j in rng.integers(0, len(segs), 24)]
-        idx, gi, pad, rel = pack(W, b); x, v = W.windows(idx)
+        idx, gi, pad, rel = pack(W, b, rel_on=bool(M.a.get('rel', 1))); x, v = W.windows(idx)
         e, _, _ = M.forward(x, v, A_s, gi, pad, rel); y = torch.from_numpy(W.label[idx]).to(dev); has = y >= 0
         loss = F.cross_entropy(head(e)[has], y[has], label_smoothing=0.1) + 1e-3 * ((A_s - A0) ** 2).sum()
         opt.zero_grad(); loss.backward(); opt.step()
@@ -94,7 +94,7 @@ def entropy_tta(M, segs, A_init, steps, tau):
     A_s = nn.Parameter(A_init.clone()); opt = torch.optim.Adam([A_s], lr=a.ent_lr)
     for k in range(steps):
         b = [segs[j] for j in rng.integers(0, len(segs), 24)]
-        idx, gi, pad, rel = pack(W, b); x, v = W.windows(idx)
+        idx, gi, pad, rel = pack(W, b, rel_on=bool(M.a.get('rel', 1))); x, v = W.windows(idx)
         _, ce, _ = M.forward(x, v, A_s, gi, pad, rel); p = F.softmax(ce - tau * M.log_prior, 1)
         ent = -(p * p.clamp_min(1e-8).log()).sum(1).mean()
         pm = p.mean(0); div = (pm * pm.clamp_min(1e-8).log()).sum()           # keep the marginal spread (avoid collapse)

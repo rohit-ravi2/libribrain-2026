@@ -20,6 +20,8 @@ ap.add_argument("--d", type=int, default=128); ap.add_argument("--D", type=int, 
 ap.add_argument("--broad_frac", type=float, default=0.5); ap.add_argument("--aug", type=int, default=1)
 ap.add_argument("--p_iso", type=float, default=0.15); ap.add_argument("--p_short", type=float, default=0.3)
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--init", default=None)
+ap.add_argument("--rel", type=int, default=0, help="1 = feed relative word-onset timing to the sentence transformer (stimulus metadata; OFF by default since 2026-10-10)")
+ap.add_argument("--final", type=int, default=0, help="1 = train on ALL subjects and ALL stimulus (no local eval blocks); saves per-epoch ckpts only")
 a = ap.parse_args(); torch.manual_seed(a.seed); rng = np.random.default_rng(a.seed); dev = "cuda"
 TAUS = (0.0, 0.25, 0.5, 0.75, 1.0); READOUTS = ("ce", "cos", "ce+cos") if a.t5 > 0 else ("ce",)
 os.makedirs("runs", exist_ok=True); t0 = time.time()
@@ -27,6 +29,7 @@ os.makedirs("runs", exist_ok=True); t0 = time.time()
 W = Words(load_meg=True, load_t5=a.t5 > 0); q = W.quarters()
 scored = set(S2.EVAL + S2.VAL + S2.SEEN)
 trainable = ~np.isin(W.sub, S2.EVAL + S2.VAL) & np.isin(q, ["other", "Q1", "Q2"])
+if a.final: trainable = q != ""                      # everything (guard-dropped boundary words excluded only)
 if a.t5 > 0:
     has_t5 = np.zeros(W.n, bool)
     for r in range(len(W.bases)):
@@ -89,7 +92,8 @@ def pack(segs):
     gi = np.zeros((S, L), np.int64); pad = np.ones((S, L), bool); rel = np.zeros((S, L), np.float32); o = 0
     for k, s in enumerate(segs):
         gi[k, :len(s)] = np.arange(o, o + len(s)); pad[k, :len(s)] = False
-        rel[k, :len(s)] = W.onset[s] - W.onset[s[0]]; o += len(s)
+        if a.rel: rel[k, :len(s)] = W.onset[s] - W.onset[s[0]]
+        o += len(s)
     return idx, gi, pad, rel
 
 
@@ -198,6 +202,13 @@ for ep in range(a.epochs):
             l_t5 = siglip(zt, idx); loss = loss + a.t5 * l_t5; tt5 += l_t5.item()
         opt.zero_grad(set_to_none=True); loss.backward(); torch.nn.utils.clip_grad_norm_(params, 5.0); opt.step(); sched.step(); tl += loss.item()
         if k % 200 == 0: print(f"  ep{ep} step {k} loss {tl / (k + 1):.3f} ce {tce / (k + 1):.3f} t5 {tt5 / (k + 1):.3f} t {round(time.time() - t0)}s", flush=True)
+    if a.final:
+        torch.save({"enc": enc.state_dict(), "ctx": ctx.state_dict() if ctx else None, "head_ce": head_ce.state_dict(), "head_t5": head_t5.state_dict(),
+                    "logit_s": logit_s.detach().cpu(), "logit_b": logit_b.detach().cpu(), "A": A.detach().cpu(), "subs": subs,
+                    "proto": proto.cpu() if a.t5 > 0 else None, "t_mean": t_mean.cpu() if a.t5 > 0 else None,
+                    "log_prior": log_prior.cpu(), "args": vars(a), "epoch": ep}, f"runs/{a.tag}_ep{ep}.pt")
+        print(json.dumps({"epoch": ep, "loss": round(tl / a.steps, 3), "ce": round(tce / a.steps, 3), "t5": round(tt5 / a.steps, 3), "t": round(time.time() - t0)}), flush=True)
+        continue
     ev = evaluate()
     hist.append({"epoch": ep, "loss": tl / a.steps, "ce": tce / a.steps, "t5": tt5 / a.steps, "t": round(time.time() - t0),
                  "eval": {blk: {f"{k[0]}|{k[1]}|{k[2]}": v for k, v in o.items()} for blk, o in ev.items()}})
@@ -210,6 +221,7 @@ for ep in range(a.epochs):
                       "sel_Q3": [round(best["Q3"][0], 4), best["Q3"][1]], "sel_Q4": [round(best["Q4"][0], 4), best["Q4"][1]],
                       "eval_zs_Q3_ctx": round(ev["Q3"][("ctx", "ce", 0.5)]["eval_zs"][0], 4), "t": round(time.time() - t0)}), flush=True)
 
+if a.final: sys.exit(0)
 folds = {}
 for f, (sel, test) in S2.FOLDS.items():
     best = max(((dep(h["eval"][sel][key]), h["epoch"], key) for h in hist for key in h["eval"][sel] if key.startswith("ctx|")))
