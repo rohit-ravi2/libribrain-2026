@@ -248,3 +248,22 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
   - seen subjects ≥ +0.03 over V2-REF
   - zero-shot +0.02
 - **LB translation (stated now, tested later):** a T5 submission scores ~0.25–0.27 on LB without sentence context, vs the current 0.227.
+
+## V3 ladder — build arc toward 0.40 local (committed 2026-10-10 ~12:10Z, before any v3 run)
+- **Target metric:** split-v2 fold-averaged deployment score (`deploy` = (32·seen + 7·zero-shot)/39, Fold A select Q3→test Q4, Fold B reverse), with each test word given the context the holdout gives it: a [-1.0, +2.0] s window around onset at 50 Hz, masked outside [sentence start, sentence end + 1.0 s]. Isolated holdout words get only [0, 1] s, so a `deploy_mix` = 0.9·context + 0.1·one-second is also reported. Reference: V2-REF 0.284 / 0.288 (null 0.234) with 1 s windows.
+- **Rules basis (Rohit, 2026-10-10):** within-subject TTA, within-subject sentence grouping, and the full sentence epoch are allowed. Cross-subject correspondence of holdout rows stays forbidden and is never used.
+- **Data changes:** continuous 50 Hz cache with a proper anti-alias FIR (scipy resample_poly), replacing the 5-tap boxcar (audit §5); all words, with sentence boundaries, for every run.
+- **Ladder (one trainer, flags; each rung is a separate run on split v2, seed 0):**
+  | rung | change | expected deploy |
+  |---|---|---|
+  | v3a | 1 s window, no context, new cache (parity check) | 0.285 |
+  | v3b | 3 s masked window | 0.31 |
+  | v3c | + sentence transformer across words (brain-side context) | 0.33 |
+  | v3d | + T5-large L12 targets, SigLIP (duplicate-aware), all words | 0.35 |
+  | v3e | + per-subject fine-tuning (seen) and TTA (unseen) | 0.37 |
+  | v3f | + sentence LM decoding | 0.40 |
+- **Known bias, stated now:** local sentences are natural prose (mean 17 words, 5.4 s); holdout sentences are 5–9 vocab-only words, 2–3 s. Local context windows are therefore on average slightly longer than holdout ones; `deploy_mix` is an estimate, not a forecast.
+- **Falsifier per rung:** a rung that does not beat the previous one by ≥ 0.01 (above the ~0.01 seed noise) is recorded as NOT DETECTED and the next rung is still run; the ladder is a map.
+
+### Outcome V2-REF (runs finished 2026-10-08 16:45–16:50 EDT after the session OOM; runs/v2ref_s{0,1}.json)
+- deploy 0.284 / 0.288 (pred 0.30: ≈, −0.015), null 0.234 (pred 0.25), lift +0.050 / +0.054 (pred +0.05: HIT). seen 0.286 / 0.293 vs zero-shot 0.275 / 0.266 (pred seen ≥ zs by +0.01–0.03: HIT, +0.01–0.03).

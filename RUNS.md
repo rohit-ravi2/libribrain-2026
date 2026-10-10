@@ -26,3 +26,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-08 | b7_s0/s1 (+b5a_s1 ctrl) | b5a + wav2vec2 speech InfoNCE β=1 | 0,1 | 0.383/0.351 | 0.296/0.293 | — | 0.304/0.313 | — | paired diff −0.001 vs b5a; not detected |
 | 10-08 | LB CAL1 | final_e1 ens3, sampler prior, τ=1 | 0–2 | — | — | — | — | **0.2155** | sampler prior over-corrects (−0.011 vs stored τ=1) |
 | 10-08 | lm2_sim_v2 | LM2 with random sentence sample (fix) | — | 0.445→0.472 (uni 0.466) | 0.231→0.276 (uni 0.240) | — | — | — | context gain X +0.036, S +0.007 |
+| 10-08 | v2ref_s0 | split v2, B5a recipe, 4 ep | 0 | — | eval_zs 0.275 | seen 0.286 | **deploy 0.284** (null 0.234, lift +0.050) | — | V2-REF; pred deploy 0.30 / lift +0.05: lift HIT, level −0.015 |
+| 10-08 | v2ref_s1 | same, seed 1 | 1 | — | eval_zs 0.266 | seen 0.293 | **deploy 0.288** (null 0.234, lift +0.054) | — | |
