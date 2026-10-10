@@ -42,3 +42,18 @@ All numbers trace to `runs/*.json`, produced by committed scripts. Predictions a
 - The top-1 collapse onto "the" in the multi-subject holdout predictions came from weak evidence plus τ=0.25. Removing it (τ=1) changed LB by +0.001, so it was not the cause of the gap.
 - **The gap is the floor.** Local floor 0.263 (12/50 words absent from block B); holdout floor 0.20 (all 50 words present). Lift above floor agrees: ensemble +0.030 local vs +0.026 LB; B0 −0.05 local vs +0.003 LB.
 - **Rule of thumb:** LB ≈ 0.20 + (local − 0.263). The cross-subject decoder is ~+0.03 above chance on both.
+
+## v3 build arc (2026-10-10) — what moved the metric, under the corrected evaluation
+Evaluation = split v2 (`src/split2.py`, `src/cont.py`): training on Q1–Q2 of the shared stimulus plus all other subj0 sessions; selection on one of Q3/Q4 and test on the other, both folds from one training run; "deploy" = (32·seen-with-own-layer + 7·zero-shot)/39; every score next to its label-permutation null. Context windows at test are clipped to the word's own sentence epoch, as in the holdout.
+
+| step | change | deploy | null | lift |
+|---|---|---|---|---|
+| V2-REF | 1 s windows, WordCNN, per-subject input layers | 0.284 | 0.234 | +0.050 |
+| v3b | continuous FIR cache; 3 s window [−1, +2] s masked to the sentence epoch | 0.292 | 0.220 | +0.073 |
+| v3c0 | + 2-layer transformer across the words of a sentence segment (no timing) | 0.293 | 0.220 | +0.073 (not detected) |
+| v3d0 | + T5-large layer-12 contextual word targets for all 1.0M words, duplicate-aware SigLIP, cosine-to-prototype readout | 0.365 | 0.221 | +0.144 |
+| v3d1_s0 | same, 8 epochs | **0.463** | 0.218 | **+0.244** |
+
+- **The text-embedding target is the lever** (d'Ascoli recipe). Alone, the brain-side transformer adds nothing; with T5 targets it adds +0.08–0.10, and ablations show that gain is neighbouring MEG, not segment structure (random-neighbour windows: 0.27–0.30; single words: 0.25–0.28; full: 0.45–0.49).
+- **A confound caught and removed.** The first transformer runs (v3c 0.328, v3d 0.506) fed relative word-onset timing into the transformer. Zeroing timing at inference dropped them to 0.26 / 0.30: the model had learned word identity from inter-word intervals, which are stimulus metadata (`word_onsets_s`), not brain signal. Timing input is now off by default (`--rel 0`); all banked numbers are timing-free. We do not use word timing as a feature, and the code review can verify this in `scripts/train_v3.py` and `scripts/predict_holdout_v3.py`.
+- **Rules basis.** Within-subject use of the sentence epoch and sentence grouping; no cross-subject correspondence of holdout rows anywhere.
