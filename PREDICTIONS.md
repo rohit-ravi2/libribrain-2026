@@ -294,3 +294,10 @@ Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the bra
 
 ### Outcome v3c0 (2026-10-10, runs/v3c0.json)
 - deploy 0.293 (pred 0.30), null 0.220, lift +0.073 — equal to v3b (0.292 / +0.073). **Brain-side sentence context: NOT DETECTED** with instrument "2-layer transformer over ≤12-word segments, no timing input, 4 × 1500 steps". The whole v3c gain (0.328) was inter-word timing.
+
+### Outcome v3d0 (2026-10-10, runs/v3d0.json)
+- deploy **0.365** (pred 0.33: beat by +0.035), null 0.221, lift **+0.144** (v3c0 +0.073). seen 0.371, eval zero-shot 0.339, 1 s-only 0.356, deploy_mix 0.364. Readouts chosen: ce+cos / ce. Select scores still rising at epoch 3 (Q3 0.366→0.399, Q4 0.353→0.397), so training is under-run.
+
+## V3-D1 — longer training + seeds (committed 2026-10-10 ~15:05Z, before the runs)
+- v3d1_s0 / v3d1_s1: v3d0 with 8 epochs × 1500 steps (OneCycle over the longer horizon), seeds 0 and 1. Expect deploy 0.385 each (±0.01 seed), and a 2-seed softmax ensemble +0.01 → 0.395.
+- Then v3e adaptation (adapt_v3.py) on the best single run: expect +0.01 to +0.03.
