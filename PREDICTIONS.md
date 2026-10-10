@@ -301,3 +301,11 @@ Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the bra
 ## V3-D1 — longer training + seeds (committed 2026-10-10 ~15:05Z, before the runs)
 - v3d1_s0 / v3d1_s1: v3d0 with 8 epochs × 1500 steps (OneCycle over the longer horizon), seeds 0 and 1. Expect deploy 0.385 each (±0.01 seed), and a 2-seed softmax ensemble +0.01 → 0.395.
 - Then v3e adaptation (adapt_v3.py) on the best single run: expect +0.01 to +0.03.
+
+### Ablations on clean v3d0 (epoch-3 ckpt, 2026-10-10)
+| condition | Q3 (ce+cos) seen / eval_zs | Q4 (ce+cos) seen / eval_zs |
+|---|---|---|
+| full segments | 0.398 / 0.383 | 0.379 / 0.341 |
+| neighbours replaced by random same-subject windows (structure kept) | 0.307 / 0.292 | 0.317 / 0.266 |
+| single words (no context) | 0.288 / 0.266 | 0.293 / 0.249 |
+- The context gain (+0.08–0.10) comes from neighbouring MEG, not from segment structure (structure alone adds ≤ +0.02). Clean.
