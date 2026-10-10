@@ -18,13 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-04 ~18:20 EDT)
-- **queue_next** QUEUED behind the meta-emg GPU lock (pid 2104347, since 16:07): `scripts/queue_next.sh` =
-  1. final_e1 ×3 seeds (all data, 1 ep, τ from local E1) → `submissions/final_e1_ens3.csv` (submission #2)
-  2. b6 (B0-init trunk + subj0-teacher KD)
-  3. b5a/b5c/b5b regularisation map
-  Logs logs/final_e1_s*.log, logs/b6.log, logs/b5*.log.
-- **submit_b0** watcher: auto-submits submissions/b0_broad.csv once Rohit joins (log logs/submit_b0.log).
-- DONE today: b0, p1a, p1b (CPU), c1 (CPU), b1, b2a, b2b, b4, e1 ×3 + ens. See RUNS.md.
-- **queue_v2** QUEUED behind meta-emg lock (12:42 10-08): v2smoke → v2ref_s0 → v2ref_s1; logs logs/v2*.log
-- **pipeline_t5** (started 16:02 10-08): all-words cache → T5-large targets (CPU) → memmap → [GPU lock] t5smoke → t5_s0. Logs logs/build_cache_allw.log, text_targets.log, make_memmap.log, t5*.log
+## PENDING (updated 2026-10-10 08:10 EDT — BUILD arc, target 0.40 local)
+- **build_cont** (CPU, 6 proc): scripts/build_cont.py → /mnt/ssd4tb/data/libribrain_cache/cont/<base>.npy (306×T, 50 Hz fp16, FIR anti-alias) + <base>_ev.npz (all words). Log logs/build_cont.log
+- **text_targets** (GPU): fixed tokenizer crash; scripts/text_targets.py cuda → runs_t5/<base>.npy. Log logs/text_targets.log
+- v3 trainer (scripts/train_v3.py) being written; ladder v3a→v3f in PREDICTIONS.md.
+- DONE 10-08 after session OOM: v2smoke 0.298, v2ref_s0 0.284, v2ref_s1 0.288 (deploy; null 0.234). Not yet in RUNS.md → recorded below.
