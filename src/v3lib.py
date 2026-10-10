@@ -58,11 +58,13 @@ def segments(W, mask, maxw):
     return [s[i:i + maxw] for s in sentences(W, mask) for i in range(0, len(s), maxw)]
 
 
-def pack(W, segs):
+def pack(W, segs, rel_on=False):
     idx = np.concatenate(segs); L = max(map(len, segs)); S = len(segs)
     gi = np.zeros((S, L), np.int64); pad = np.ones((S, L), bool); rel = np.zeros((S, L), np.float32); o = 0
     for k, s in enumerate(segs):
-        gi[k, :len(s)] = np.arange(o, o + len(s)); pad[k, :len(s)] = False; rel[k, :len(s)] = W.onset[s] - W.onset[s[0]]; o += len(s)
+        gi[k, :len(s)] = np.arange(o, o + len(s)); pad[k, :len(s)] = False
+        if rel_on: rel[k, :len(s)] = W.onset[s] - W.onset[s[0]]
+        o += len(s)
     return idx, gi, pad, rel
 
 
@@ -84,7 +86,7 @@ def predict(M, W, segs, Amap, iso=False, bs=40):
     (ce, zt, label, sub, idx) in pack order."""
     CE, ZT, IDX = [], [], []
     for i in range(0, len(segs), bs):
-        idx, gi, pad, rel = pack(W, segs[i:i + bs])
+        idx, gi, pad, rel = pack(W, segs[i:i + bs], rel_on=bool(M.a.get("rel", 1)))
         Am = torch.stack([Amap.get(int(s), M.Amean) if Amap.get(int(s), None) is not None else M.Amean for s in W.sub[idx]])
         x, v = W.windows(idx, iso=np.ones(len(idx), bool) if iso else None)
         _, ce, zt = M.forward(x, v, Am, gi, pad, rel); CE.append(ce.cpu()); ZT.append(zt.cpu()); IDX.append(idx)

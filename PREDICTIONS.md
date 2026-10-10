@@ -278,3 +278,16 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 ### Outcome v3c (2026-10-10, runs/v3c.json)
 - deploy **0.328** (pred 0.33: HIT), null 0.217, lift **+0.111** (v3b +0.073). seen 0.330, eval zero-shot 0.319, 1 s-only deploy 0.335 (context across words works even with 1 s windows), deploy_mix 0.329.
 - Per-epoch select scores still peak at epoch 1–3 with drift (Q3 0.315 → 0.342 → 0.325 → 0.334); folds disagree on epoch, so a seed/epoch ensemble is a cheap later gain.
+
+### Outcome v3d (2026-10-10, runs/v3d.json) — TAINTED, not banked
+- deploy 0.506 (pred 0.35), null 0.216, lift +0.290; fold A (cos readout) 0.542, fold B (ce+cos) 0.470.
+- **Ablation (scripts/ablate_v3.py, selected epoch-0 checkpoint):** relative word-onset timing zeroed at inference → Q3 0.49→0.31, Q4 0.54→0.29 (cos readout); single-word segments (no context) → 0.26 / 0.25. **v3c likewise: 0.34→0.26 (Q3), 0.33→0.23 (Q4).**
+- **Reading:** the sentence transformer learned word identity from inter-word intervals (word durations), which are stimulus metadata available in the holdout's `word_onsets_s`, not brain signal. Within-subject use is not forbidden by the rules text, but it is not MEG decoding. **Policy from now: timing input OFF (`--rel 0`, the new default); v3c/v3d numbers above are superseded.** Timing-on variants may be reported separately, flagged, if Rohit decides they are admissible.
+- Caveat on the ablation: zeroing an input the model trained with is out-of-distribution, so it bounds the timing contribution from above only loosely; the retrained timing-free runs below are the clean measurement.
+
+## V3 ladder, clean (timing-free) — committed 2026-10-10 ~14:25Z, before the runs
+| rung | change | expected deploy |
+|---|---|---|
+| v3c0 | v3b + sentence transformer, no timing input | 0.30 |
+| v3d0 | v3c0 + T5 SigLIP (all words) | 0.33 |
+Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the brain-side context term is NOT DETECTED at this capacity.
