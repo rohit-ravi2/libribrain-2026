@@ -15,6 +15,7 @@ from src.v3lib import Model, dev
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True, help="comma-separated checkpoints (softmax-averaged)")
 ap.add_argument("--out", required=True); ap.add_argument("--track", default="broad")
 ap.add_argument("--readout", default="ce"); ap.add_argument("--tau", type=float, default=0.5)
+ap.add_argument("--pool_cov", default="runs/pool_cov.pt", help="(306,306) covariance of normalised Broad training windows, written by adapt_v3.py")
 ap.add_argument("--coral", type=float, default=0.0); ap.add_argument("--ent_steps", type=int, default=0); ap.add_argument("--ent_lr", type=float, default=1e-3)
 a = ap.parse_args(); torch.manual_seed(0); rng = np.random.default_rng(0)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname(HOLDOUT), download=False)
@@ -36,7 +37,8 @@ def load_subject(s):
             st = int(round(o * FS)) - ON; aa, bb = max(st, 0), min(st + WIN, T50)
             X[j, :, aa - st:bb - st] = torch.from_numpy(x50[:, aa:bb]); V[j, aa - st:bb - st] = True
         r = rows[rows.epoch == si].sort_values("word")["index"].values; assert len(r) == len(wi)
-        segs.append((X, V, torch.from_numpy((ons - ons[0]).astype(np.float32)), r))
+        rel_s = (ons - ons[0]).astype(np.float32) if any(bool(M.a.get("rel", 1)) for M in models) else np.zeros(len(ons), np.float32)
+        segs.append((X, V, torch.from_numpy(rel_s), r))
     d = np.load(f"{HOLDOUT}/subj{s:02d}_holdout2_word.npz"); meg = d["meg"]
     rows = md[(md.subject == s) & (md.source == "word")].sort_values("epoch")["index"].values
     for ei in range(meg.shape[0]):
@@ -90,7 +92,7 @@ for s in sorted(md.subject.unique()):
     segs = load_subject(int(s)); P = torch.zeros(len(md), 50); cnt = 0
     for M in models:
         if a.coral > 0 and id(M) not in Cp:
-            Cp[id(M)] = msqrt(M.ck.get("pool_cov", torch.eye(306)).to(dev) if isinstance(M.ck.get("pool_cov"), torch.Tensor) else torch.eye(306, device=dev), 0.5)
+            Cp[id(M)] = msqrt(torch.load(a.pool_cov, map_location=dev), 0.5)
         A = subject_A(M, int(s), segs, Cp.get(id(M)))
         with torch.no_grad():
             for X, V, gi, pad, rel, rows in batches(segs):

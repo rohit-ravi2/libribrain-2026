@@ -31,3 +31,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | v3a | continuous FIR cache, CtxEncoder, 1 s window, no ctx, 4 ep × 1500 steps | 0 | — | eval_zs 0.267 | seen 0.274 | deploy 0.272 (null 0.232, lift +0.041); 1s 0.284 | — | parity with V2-REF |
 | 10-10 | v3b | as v3a, 3 s masked sentence-epoch window | 0 | — | eval_zs 0.292 | seen 0.292 | **deploy 0.292** (null 0.220, lift +0.073) | — | +0.03 lift from context window |
 | 10-10 | v3c | v3b + sentence transformer (2 layers, D256) across words of a segment | 0 | — | eval_zs 0.319 | seen 0.330 | **deploy 0.328** (null 0.217, lift +0.111) | — | pred 0.33 HIT |
+| 10-10 | v3c0 | v3c with timing input OFF | 0 | — | eval_zs 0.276 | seen 0.297 | deploy 0.293 (null 0.220, lift +0.073) | — | = v3b; transformer not detected |
+| 10-10 | v3c, v3d | (timing ON) 0.328 / 0.506 | 0 | — | — | — | TAINTED | — | ablation: timing zeroed → 0.26 / 0.30; superseded by v3c0/v3d0 |
