@@ -41,3 +41,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | v3d1_s0_adapt | seen fine-tune + CORAL/entropy TTA grid | 0 | — | — | — | deploy 0.464 vs base 0.463 | — | adaptation NOT DETECTED |
 | 10-10 | v3e1 | v3d1 config, 12 ep | 0 | — | — | — | deploy 0.454 (null 0.215) | — | longer training: not detected (−0.009) |
 | 10-10 | v3e2 | v3d1 config, d192 D384 | 0 | — | — | — | deploy 0.427 (null 0.216) | — | capacity: worse (−0.036) |
+| 10-10 | v3e3 | v3d1 config, t5 weight 2.0 | 0 | — | eval_zs 0.458 | seen 0.470 | deploy 0.468 (null 0.221) | — | +0.005: within noise |
