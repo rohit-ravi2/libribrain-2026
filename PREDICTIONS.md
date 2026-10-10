@@ -274,3 +274,7 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 | v3a (1 s, no ctx, FIR cache) | 0.272 | 0.232 | +0.041 | 0.284 | 0.274 | 0.267 | 0.285: parity on the 1 s score (V2-REF 0.284/0.288) HIT |
 | v3b (3 s masked window) | **0.292** | 0.220 | **+0.073** | 0.271 | 0.292 | 0.292 | 0.31: level MISS (−0.02); lift +0.03 over v3a |
 - The level under-shoots because the null fell (a less frequency-shaped top-10). Lift is the honest comparison: the 3 s sentence-epoch window adds +0.03 lift. Both runs peak at epochs 0–1 and decay (sel_Q3 0.313 → 0.282 for v3b), so capacity/regularisation is still binding.
+
+### Outcome v3c (2026-10-10, runs/v3c.json)
+- deploy **0.328** (pred 0.33: HIT), null 0.217, lift **+0.111** (v3b +0.073). seen 0.330, eval zero-shot 0.319, 1 s-only deploy 0.335 (context across words works even with 1 s windows), deploy_mix 0.329.
+- Per-epoch select scores still peak at epoch 1–3 with drift (Q3 0.315 → 0.342 → 0.325 → 0.334); folds disagree on epoch, so a seed/epoch ensemble is a cheap later gain.
