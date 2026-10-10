@@ -315,10 +315,14 @@ Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the bra
 - **Target 0.40 local: reached on a single seed**, pending the ablations below and seed 1.
 - Ablations on the fold-A checkpoint (ep7), ce+cos readout, seen / eval_zs: full Q3 0.447 / 0.415, Q4 0.493 / 0.486; single words Q3 0.252 / 0.241, Q4 0.280 / 0.222; neighbours randomised Q3 0.267 / 0.268, Q4 0.296 / 0.289. Context gain is neighbouring MEG; structure adds ≤ 0.02. **Clean.**
 
-## FINAL-1 — first v3 leaderboard test (committed 2026-10-10 ~16:05 EDT, before the final training)
+## FINAL-1 — first v3 leaderboard test (committed 2026-10-10 ~10:05 EDT, before the final training)
 - **Model:** v3d1 config (3 s masked sentence-epoch windows, sentence transformer without timing, T5 SigLIP + CE, 8 ep × 1500 steps), trained on ALL subjects 0–32 and ALL stimulus (`--final 1`), seeds 0 and 1, last epoch; readout ce+cos, tau 0 (both local folds chose it). Subjects 1–32 use their own trained input layer, 33–39 the mean Broad layer. No TTA in this first file (TTA goes in FINAL-2 once adapt_v3 reports).
 - **Holdout inference:** each subject's sentence epochs resampled with the same FIR; each sentence = one context segment; isolated words = 1 s only. Within-subject only.
 - **LB prediction:** 0.35–0.42 (local deploy 0.46 is a prose proxy with 38–47/50 word coverage; holdout sentences are shorter and vocab-only, and 10% of rows are isolated words scoring ≈ the 1 s number). Anything ≥ 0.33 beats the d'Ascoli reference; ≥ 0.43 beats MEG-XL. A score < 0.30 would mean the local proxy is not transferring and the next step is diagnosing sentence-vs-isolated rows on the Deep track (subj0 file as calibration, if Rohit okays Deep).
 
 ### Outcome v3d1_s1 (2026-10-10, runs/v3d1_s1.json)
 - deploy **0.455** (pred 0.385: beat), null 0.220, lift +0.235; seen 0.459, eval zero-shot 0.439, 1 s-only 0.427. Seed spread vs s0: 0.008. **Target 0.40 local reached on both seeds.**
+
+### Outcome FINAL-1 (2026-10-10 10:20 EDT, submissions/v3d1_final_ens2.csv)
+- **Public LB 0.4108** (pred 0.35–0.42: HIT, upper half). Previous best 0.2266. Local deploy 0.46 → LB 0.41: the proxy transfers with a ~0.05 discount, consistent with the stated biases (shorter vocab-only sentences, 10% isolated words).
+- Against references: d'Ascoli supervised 0.331 beaten; MEG-XL 0.4296 not yet (−0.019). No TTA, no sentence LM, no adaptation in this file.
