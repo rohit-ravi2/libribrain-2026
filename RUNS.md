@@ -40,3 +40,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | ens_v3d1 | 2-seed softmax ensemble of v3d1 | 0,1 | — | — | — | deploy 0.475 (null 0.221) | — | +0.01 over singles |
 | 10-10 | v3d1_s0_adapt | seen fine-tune + CORAL/entropy TTA grid | 0 | — | — | — | deploy 0.464 vs base 0.463 | — | adaptation NOT DETECTED |
 | 10-10 | v3e1 | v3d1 config, 12 ep | 0 | — | — | — | deploy 0.454 (null 0.215) | — | longer training: not detected (−0.009) |
+| 10-10 | v3e2 | v3d1 config, d192 D384 | 0 | — | — | — | deploy 0.427 (null 0.216) | — | capacity: worse (−0.036) |
