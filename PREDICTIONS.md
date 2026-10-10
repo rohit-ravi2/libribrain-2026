@@ -291,3 +291,6 @@ Metric: BAcc@10 over the 50 competition words (chance 0.20). The reference is th
 | v3c0 | v3b + sentence transformer, no timing input | 0.30 |
 | v3d0 | v3c0 + T5 SigLIP (all words) | 0.33 |
 Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the brain-side context term is NOT DETECTED at this capacity.
+
+### Outcome v3c0 (2026-10-10, runs/v3c0.json)
+- deploy 0.293 (pred 0.30), null 0.220, lift +0.073 — equal to v3b (0.292 / +0.073). **Brain-side sentence context: NOT DETECTED** with instrument "2-layer transformer over ≤12-word segments, no timing input, 4 × 1500 steps". The whole v3c gain (0.328) was inter-word timing.

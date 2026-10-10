@@ -122,7 +122,7 @@ for f, fd in R["folds"].items():
         print(f, "ft", steps, json.dumps(ft[steps]), round(time.time() - t0), flush=True)
     best_ft = max(ft, key=lambda k: ft[k][sel][0]); out["ft"] = {"grid": {str(k): v for k, v in ft.items()}, "chosen": best_ft}
     # unseen TTA: grid on select block (TTA uses that block's own MEG), report on test block
-    Cp_half = msqrt(pool_cov(M), 0.5)
+    Cp = pool_cov(M); torch.save(Cp.cpu(), "runs/pool_cov.pt"); Cp_half = msqrt(Cp, 0.5)
     tta = {}
     for alpha in [float(x) for x in a.coral.split(",")]:
         for steps in [int(x) for x in a.ent_steps.split(",")]:
