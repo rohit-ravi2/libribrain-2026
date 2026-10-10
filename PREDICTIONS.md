@@ -350,3 +350,9 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 - **FINAL-2 file:** softmax average of five all-data models: final_v3d1 seeds 0, 1 (existing), seeds 2, 3 (new), and one T5-weight-2 model (seed 0; equal local quality, different loss balance for diversity). Readout ce+cos, tau 0, no TTA.
 - **LB prediction:** 0.42–0.44 (FINAL-1 0.4108; local ensembling gives +0.01 per 2 seeds). ≥ 0.43 beats the MEG-XL reference.
 ### Outcome v3e4 (2026-10-10): deploy 0.441 (pred 0.473: MISS; −0.022). Wider context window hurts; [−1, +2] s stands.
+
+### Outcome FINAL-2 (2026-10-10 13:05 EDT, submissions/v3_final2_ens5.csv)
+- **Public LB 0.4284** (pred 0.42–0.44: HIT). +0.018 over FINAL-1 (0.4108). MEG-XL reference 0.4296: −0.0012. d'Ascoli 0.331: beaten by +0.10.
+
+## FINAL-3 — 8-model ensemble (committed 2026-10-10 ~13:10 EDT, before the runs)
+- Add final_v3d1 seeds 4, 5, 6 to the FINAL-2 five; same readout. **LB prediction 0.43–0.445** (diminishing returns: 2→5 models gave +0.018). This is the last autonomous step of the build arc; further gains need a new idea, not more seeds.

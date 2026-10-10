@@ -18,9 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-10 08:10 EDT — BUILD arc, target 0.40 local)
-- **build_cont** (CPU, 6 proc): scripts/build_cont.py → /mnt/ssd4tb/data/libribrain_cache/cont/<base>.npy (306×T, 50 Hz fp16, FIR anti-alias) + <base>_ev.npz (all words). Log logs/build_cont.log
-- **text_targets** (GPU): fixed tokenizer crash; scripts/text_targets.py cuda → runs_t5/<base>.npy. Log logs/text_targets.log
-- **queue_v3** RUNNING (GPU lock, started 10-10 ~08:55 EDT): v3a → v3b → v3c → v3d, 4 ep × 1500 steps each (~15 min/run). Logs logs/v3?.log, results runs/v3?.json
-- build_cont DONE (226 runs, 11 GB), text_targets DONE (226 runs, 3.9 GB, 53k unique sentences).
-- DONE 10-08 after session OOM: v2smoke 0.298, v2ref_s0 0.284, v2ref_s1 0.288 (deploy; null 0.234). Not yet in RUNS.md → recorded below.
+## PENDING (updated 2026-10-10 13:15 EDT)
+- **queue_final3** RUNNING: final_v3d1 seeds 4,5,6 (all data, 8 ep) → submissions/v3_final3_ens8.csv → submit (FINAL-3, pred LB 0.43–0.445).
+- DONE 10-10: clean ladder v3a→v3d1 (local deploy 0.463/0.455, ens 0.475); V3-E map (no lever); adaptation (not detected); LB FINAL-1 0.4108, FINAL-2 **0.4284**. Kaggle: 6 lifetime submissions; 8 remaining today.
+- Decisions for Rohit: (1) is within-sentence word TIMING admissible? (default NO; tainted runs v3c/v3d at 0.33/0.51 local kept only as a record); (2) Deep-track calibration submission (never okayed); (3) organiser email (unsent; moot now that TTA/sentence context are ruled in-rules).
+- Freeze Oct 13; Kaggle close Oct 16 12:00 UTC. Code review requires the submitted code: scripts/train_v3.py, predict_holdout_v3.py, src/cont.py, src/v3lib.py, src/models.py (+ cache builders).
