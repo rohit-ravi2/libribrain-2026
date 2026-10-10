@@ -8,7 +8,9 @@ import numpy as np, torch
 from .common import CACHE, IS_MAG
 from .split import parse, T_MAX, SHARED
 
-FS = 50; PRE, POST, TAIL = 1.0, 2.0, 1.0
+import os as _os
+FS = 50; TAIL = 1.0
+PRE, POST = [float(x) for x in _os.environ.get("LB_WIN", "1.0,2.0").split(",")]   # context window around onset, seconds (env LB_WIN="pre,post")
 WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset at sample 50
 GUARD = 1.0; CLIP = 10.0
 

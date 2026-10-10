@@ -37,3 +37,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | v3d1_s0 | v3d0 config, 8 ep × 1500 steps, seed 0 | 0 | — | eval_zs 0.456 | seen 0.464 | **deploy 0.463** (null 0.218, lift +0.244) | — | clean; ≥ 0.40 target |
 | 10-10 | v3d1_s1 | as v3d1_s0, seed 1 | 1 | — | eval_zs 0.439 | seen 0.459 | **deploy 0.455** (null 0.220, lift +0.235) | — | clean |
 | 10-10 | LB FINAL-1 | final_v3d1 ×2 seeds (all data, 8 ep), ce+cos τ0, no TTA | 0,1 | — | — | — | local 0.46 | **0.4108** | +0.18 over previous best |
+| 10-10 | ens_v3d1 | 2-seed softmax ensemble of v3d1 | 0,1 | — | — | — | deploy 0.475 (null 0.221) | — | +0.01 over singles |
+| 10-10 | v3d1_s0_adapt | seen fine-tune + CORAL/entropy TTA grid | 0 | — | — | — | deploy 0.464 vs base 0.463 | — | adaptation NOT DETECTED |
