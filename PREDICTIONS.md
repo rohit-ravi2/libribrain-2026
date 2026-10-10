@@ -326,3 +326,17 @@ Reference v3b (no transformer, no timing) 0.292. If v3c0 ≤ v3b + 0.01, the bra
 ### Outcome FINAL-1 (2026-10-10 10:20 EDT, submissions/v3d1_final_ens2.csv)
 - **Public LB 0.4108** (pred 0.35–0.42: HIT, upper half). Previous best 0.2266. Local deploy 0.46 → LB 0.41: the proxy transfers with a ~0.05 discount, consistent with the stated biases (shorter vocab-only sentences, 10% isolated words).
 - Against references: d'Ascoli supervised 0.331 beaten; MEG-XL 0.4296 not yet (−0.019). No TTA, no sentence LM, no adaptation in this file.
+
+### Outcome ensemble + v3e adaptation (2026-10-10, runs/ens_v3d1.json, runs/v3d1_s0_adapt.json)
+- 2-seed softmax ensemble: deploy **0.475** (singles 0.463 / 0.455), null 0.221 → +0.01 (pred +0.01: HIT).
+- Adaptation on v3d1_s0: seen fine-tune (A + private head, 0/100/300 steps) and zero-shot TTA (CORAL α ∈ {0, .5, 1} × entropy steps ∈ {0, 30}) all within ±0.01 of base; deploy 0.464 vs base 0.463. **Label: NOT DETECTED** with these instruments (pred +0.01–0.03: MISS). The jointly trained per-subject input layers already carry the subject-specific information; unlabelled TTA has no measurable room on this model.
+
+## V3-E map — model levers after the LB test (committed 2026-10-10 ~10:45 EDT, before the runs)
+All vs v3d1_s0 (seed 0, deploy 0.463); seed noise ≈ ±0.01, so a lever counts as detected at ≥ +0.015.
+| arm | change | expected deploy |
+|---|---|---|
+| v3e1 | 12 epochs (OneCycle over the longer horizon) | 0.475 |
+| v3e2 | encoder d 192, embedding D 384 | 0.475 |
+| v3e3 | T5 loss weight 2.0 | 0.468 |
+| v3e4 | window [−1.5, +2.5] s (LB_WIN env; 200 samples) | 0.473 |
+Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB prediction will be stated when that config is chosen.

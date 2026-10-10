@@ -23,6 +23,7 @@ ap.add_argument("--seed", type=int, default=0); ap.add_argument("--init", defaul
 ap.add_argument("--rel", type=int, default=0, help="1 = feed relative word-onset timing to the sentence transformer (stimulus metadata; OFF by default since 2026-10-10)")
 ap.add_argument("--final", type=int, default=0, help="1 = train on ALL subjects and ALL stimulus (no local eval blocks); saves per-epoch ckpts only")
 a = ap.parse_args(); torch.manual_seed(a.seed); rng = np.random.default_rng(a.seed); dev = "cuda"
+a.lb_win = os.environ.get("LB_WIN", "1.0,2.0")   # recorded so inference can set the same window
 TAUS = (0.0, 0.25, 0.5, 0.75, 1.0); READOUTS = ("ce", "cos", "ce+cos") if a.t5 > 0 else ("ce",)
 os.makedirs("runs", exist_ok=True); t0 = time.time()
 
