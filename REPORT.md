@@ -57,3 +57,13 @@ Evaluation = split v2 (`src/split2.py`, `src/cont.py`): training on Q1–Q2 of t
 - **The text-embedding target is the lever** (d'Ascoli recipe). Alone, the brain-side transformer adds nothing; with T5 targets it adds +0.08–0.10, and ablations show that gain is neighbouring MEG, not segment structure (random-neighbour windows: 0.27–0.30; single words: 0.25–0.28; full: 0.45–0.49).
 - **A confound caught and removed.** The first transformer runs (v3c 0.328, v3d 0.506) fed relative word-onset timing into the transformer. Zeroing timing at inference dropped them to 0.26 / 0.30: the model had learned word identity from inter-word intervals, which are stimulus metadata (`word_onsets_s`), not brain signal. Timing input is now off by default (`--rel 0`); all banked numbers are timing-free. We do not use word timing as a feature, and the code review can verify this in `scripts/train_v3.py` and `scripts/predict_holdout_v3.py`.
 - **Rules basis.** Within-subject use of the sentence epoch and sentence grouping; no cross-subject correspondence of holdout rows anywhere.
+
+## Leaderboard (2026-10-10)
+| file | models | public LB |
+|---|---|---|
+| b0_broad (Oct 8) | subj0-only CNN | 0.2032 |
+| final_e1_ens3 τ=1 (Oct 8) | 1 s multi-subject trunk ×3 | 0.2266 |
+| v3d1_final_ens2 | v3d1 ×2 seeds, all data | 0.4108 |
+| v3_final2_ens5 | v3d1 ×4 seeds + T5-weight-2 ×1 | **0.4284** |
+References (competition paper): d'Ascoli supervised 0.331, MEG-XL 0.4296. The public top (0.73) is cross-track leakage per the organisers' notice; the final ranking is code-reviewed.
+Local → LB: split-v2 deploy 0.46–0.48 maps to LB 0.41–0.43, a ~0.05 discount from shorter vocab-only holdout sentences and 10% isolated 1 s words.
