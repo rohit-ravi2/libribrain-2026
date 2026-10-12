@@ -18,8 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-12 21:10 EDT)
-- **GPU queue (in lock order):** deep1b (deep_f running) → deep1c (deep_g, deep_h) and final6 (both wait; order may flip). final6 = subj0-only recipe ×3 seeds → Broad raw + Broad rerank + Deep files, self-submits, records in RUNS.md, urgent notify.
-- **Best LB so far:** Broad 0.4403 (submissions/v3_final2_lmvocab_b1.csv); Deep 0.5662 (submissions/deep_v3_final2_ens5.csv). FINAL-6 predicted Broad 0.55–0.60, Deep 0.62–0.68.
-- **Bet C:** LPP download (rclone) → watcher launches scripts/extmeg/preprocess_lpp_listen.py overnight (logs/extmeg_preprocess_lpp_listen.log). Next step after that: loader + third training stream (docs/extmeg/PLAN.md §5). Given deep_c, the extmeg bet needs rethinking: Broad subjects' short recordings HURT transfer, so 58 LPP subjects × 1.6 h may too; the test is the 0/20/58-subject curve.
-- Rohit actions: select final files on both Kaggle pages before Oct 16 12:00 UTC (wait for FINAL-6 scores); Donders DUA for Armeni/MOUS if Bet C continues.
+## PENDING (updated 2026-10-13 00:15 EDT)
+- **Best LB:** Broad **0.6555** (submissions/final6_broad_ens3.csv, rank 14/48 public); Deep **0.6246** (submissions/final6_deep_ens3.csv, rank 48/85). Rerank retired (hurts strong models).
+- **GPU queue:** deep1c (deep_g ctx6, deep_h 12 ep) → final6b (seeds 3,4 → 5-model ensembles, self-submits) → deep1d (deep_i 24 ep). Order among waiters may vary.
+- Tomorrow: FINAL-7 at the best epochs/depth for both tracks; select final files on Kaggle (Rohit) before Oct 16 12:00 UTC.
+- Bet C: LPP preprocessing overnight (watcher). Reassess: Broad-subject data HURT transfer, so adding LPP subjects is now a hypothesis test, not an expected gain.
