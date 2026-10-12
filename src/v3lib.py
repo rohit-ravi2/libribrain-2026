@@ -14,7 +14,7 @@ class Model:
         self.enc = CtxEncoder(d=a["d"], D=a["D"], T=WIN, p=a["p"]).to(dev); self.enc.load_state_dict(ck["enc"])
         self.ctx = None
         if ck.get("ctx"):
-            self.ctx = SentCtx(D=a["D"], maxw=a["maxw"]).to(dev); self.ctx.load_state_dict(ck["ctx"])
+            self.ctx = SentCtx(D=a["D"], maxw=a["maxw"], layers=a.get("ctx_layers", 2)).to(dev); self.ctx.load_state_dict(ck["ctx"])
         self.head_ce = nn.Linear(a["D"], 50).to(dev); self.head_ce.load_state_dict(ck["head_ce"])
         self.head_t5 = nn.Linear(a["D"], 1024).to(dev); self.head_t5.load_state_dict(ck["head_t5"])
         self.logit_s = ck["logit_s"].to(dev); self.A = ck["A"].to(dev); self.subs = ck["subs"]; self.sid = {s: i for i, s in enumerate(self.subs)}
