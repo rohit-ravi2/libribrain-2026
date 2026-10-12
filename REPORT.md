@@ -67,3 +67,9 @@ Evaluation = split v2 (`src/split2.py`, `src/cont.py`): training on Q1–Q2 of t
 | v3_final2_ens5 | v3d1 ×4 seeds + T5-weight-2 ×1 | **0.4284** |
 References (competition paper): d'Ascoli supervised 0.331, MEG-XL 0.4296. The public top (0.73) is cross-track leakage per the organisers' notice; the final ranking is code-reviewed.
 Local → LB: split-v2 deploy 0.46–0.48 maps to LB 0.41–0.43, a ~0.05 discount from shorter vocab-only holdout sentences and 10% isolated 1 s words.
+
+## Final tests (2026-10-12)
+- **Within-sentence LM rerank** (exact trigram forward–backward over each holdout sentence's own rows, β=1): LB 0.4284 → **0.4344**. Best file: `submissions/v3_final2_lmrerank_b1.csv`.
+- **Acoustic targets** (wav2vec2 layer 8, second SigLIP head): +0.005 locally, within seed noise. Not used.
+- **0–50 Hz content** (100 Hz cache): −0.052 locally. The decodable information is below 25 Hz; higher bands add noise.
+- Not pursued, with reasons recorded in PREDICTIONS.md: word-timing features (stimulus metadata, excluded by policy), forced alignment (annotations already exist), source localisation (no anatomy; sensor-space per-subject layers do the job), external non-MEG datasets (no shared signal).

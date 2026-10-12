@@ -18,8 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-10 13:15 EDT)
-- **queue_final3** RUNNING: final_v3d1 seeds 4,5,6 (all data, 8 ep) → submissions/v3_final3_ens8.csv → submit (FINAL-3, pred LB 0.43–0.445).
-- DONE 10-10: clean ladder v3a→v3d1 (local deploy 0.463/0.455, ens 0.475); V3-E map (no lever); adaptation (not detected); LB FINAL-1 0.4108, FINAL-2 **0.4284**. Kaggle: 6 lifetime submissions; 8 remaining today.
-- Decisions for Rohit: (1) is within-sentence word TIMING admissible? (default NO; tainted runs v3c/v3d at 0.33/0.51 local kept only as a record); (2) Deep-track calibration submission (never okayed); (3) organiser email (unsent; moot now that TTA/sentence context are ruled in-rules).
-- Freeze Oct 13; Kaggle close Oct 16 12:00 UTC. Code review requires the submitted code: scripts/train_v3.py, predict_holdout_v3.py, src/cont.py, src/v3lib.py, src/models.py (+ cache builders).
+## PENDING (updated 2026-10-12 ~13:30 EDT) — nothing running; GPU lock free
+- **Best LB file: submissions/v3_final2_lmrerank_b1.csv = 0.4344** (FINAL-2 five-model ensemble + within-sentence trigram rerank). **Rohit must select it as the final submission on the Kaggle page before Oct 16 12:00 UTC** (second slot: v3_final2_ens5.csv, 0.4284).
+- Kaggle: 8 lifetime submissions; Deep track entered, no submissions.
+- Tests closed 10-12: LM rerank +0.006 (kept); MV1 acoustic targets +0.005 (not detected); FS100 −0.052 (worse). FINAL-4 queue (scripts/queue_final4.sh) prepared but NOT launched — would only matter if MV1 were detected.
+- Open for Rohit: timing-feature admissibility (default NO, unused); Deep-track calibration file (unused); code/checkpoints for the organisers' review are at HEAD (scripts/train_v3.py, predict_holdout_v3.py, lm_rerank_holdout.py, src/).

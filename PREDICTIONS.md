@@ -367,3 +367,13 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 
 ### Outcome MV1 (2026-10-12, runs/mv1.json)
 - deploy 0.468 (pred +0.01 → 0.473; detected only if ≥ +0.015): +0.005 vs v3d1_s0. **NOT DETECTED.** Early epochs led by +0.03 on select scores but the fold-selected epochs converge with the T5-only model. Acoustic targets add no measurable information over contextual text targets at this evidence level (62% of rows have audio). Not used for a final retrain.
+
+### Outcome FS100 (2026-10-12, runs/fs100.json)
+- deploy 0.411 (pred within ±0.01 of 0.463): **−0.052. Worse.** Keeping 25–50 Hz content adds noise and input size without decodable information; the 50 Hz (0–25 Hz) representation stands. The "high-gamma" hypothesis from the brainstorm is refuted at the only band this data can test.
+
+### Summary of the three tests
+| test | result | kept? |
+|---|---|---|
+| LM rerank (LB) | 0.4284 → **0.4344** (+0.006) | yes, best file |
+| MV1 acoustic targets (local) | +0.005 | no (noise) |
+| FS100 0–50 Hz (local) | −0.052 | no |
