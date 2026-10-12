@@ -364,3 +364,6 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 
 ### Outcome LM-rerank (2026-10-12, submissions/v3_final2_lmrerank_b1.csv)
 - **LB 0.4344** vs 0.4284 for the same models without rerank: +0.006 (pred +0.00 to +0.02: HIT). Changed top-1 on 31% of sentence rows. First file above the MEG-XL reference (0.4296). β/δ not tuned on LB.
+
+### Outcome MV1 (2026-10-12, runs/mv1.json)
+- deploy 0.468 (pred +0.01 → 0.473; detected only if ≥ +0.015): +0.005 vs v3d1_s0. **NOT DETECTED.** Early epochs led by +0.03 on select scores but the fold-selected epochs converge with the T5-only model. Acoustic targets add no measurable information over contextual text targets at this evidence level (62% of rows have audio). Not used for a final retrain.

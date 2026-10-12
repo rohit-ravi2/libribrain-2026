@@ -47,3 +47,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | LB FINAL-3 | 8-model ensemble (v3d1 ×7 seeds + t5w2) | 0-6 | — | — | — | — | 0.42352 | pred 0.43–0.445 |
 | 10-12 | note | FINAL-3 0.4235 < FINAL-2 0.4284: 8 models not better than 5 (pred 0.43–0.445 MISS); public rank 29/44 | | | | | | | |
 | 10-12 | LB LM-rerank | FINAL-2 probs + within-sentence trigram forward–backward (β=1) | — | — | — | — | — | **0.4344** | +0.006 over FINAL-2 |
+| 10-12 | mv1 | v3d1 recipe + wav2vec2 SigLIP head (w=1) | 0 | — | eval_zs 0.468 | seen 0.469 | deploy 0.468 (null 0.220) | — | +0.005 vs v3d1_s0: not detected |
