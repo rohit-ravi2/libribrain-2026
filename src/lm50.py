@@ -5,7 +5,9 @@ from .common import VOCAB_ID
 V = 50
 # ---- trigram LM from external text (vocab-only runs inside sentences; START=50 marks run start) ----
 c1 = np.zeros(V); c2 = np.zeros((V + 1, V)); c3 = np.zeros((V + 1, V + 1, V))
-for f in glob.glob("/mnt/ssd4tb/data/gutenberg/*.txt"):
+LM_CORPUS = os.environ.get("LM_CORPUS", "gutenberg")   # gutenberg (prose) | vocab (LLM-generated vocab-only 5-9-word sentences)
+_files = glob.glob("/mnt/ssd4tb/data/gutenberg/*.txt") if LM_CORPUS == "gutenberg" else [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results/vocab_sentences.txt")]
+for f in _files:
     txt = open(f, encoding="utf-8", errors="ignore").read().lower().replace("’", "'")
     for sent in re.split(r"[.!?;:\n]{1,}", txt):
         run = []
