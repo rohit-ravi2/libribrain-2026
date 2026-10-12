@@ -18,8 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-12 ~13:30 EDT) — nothing running; GPU lock free
-- **Best LB file: submissions/v3_final2_lmrerank_b1.csv = 0.4344** (FINAL-2 five-model ensemble + within-sentence trigram rerank). **Rohit must select it as the final submission on the Kaggle page before Oct 16 12:00 UTC** (second slot: v3_final2_ens5.csv, 0.4284).
-- Kaggle: 8 lifetime submissions; Deep track entered, no submissions.
-- Tests closed 10-12: LM rerank +0.006 (kept); MV1 acoustic targets +0.005 (not detected); FS100 −0.052 (worse). FINAL-4 queue (scripts/queue_final4.sh) prepared but NOT launched — would only matter if MV1 were detected.
-- Open for Rohit: timing-feature admissibility (default NO, unused); Deep-track calibration file (unused); code/checkpoints for the organisers' review are at HEAD (scripts/train_v3.py, predict_holdout_v3.py, lm_rerank_holdout.py, src/).
+## PENDING (updated 2026-10-12 21:10 EDT)
+- **GPU queue (in lock order):** deep1b (deep_f running) → deep1c (deep_g, deep_h) and final6 (both wait; order may flip). final6 = subj0-only recipe ×3 seeds → Broad raw + Broad rerank + Deep files, self-submits, records in RUNS.md, urgent notify.
+- **Best LB so far:** Broad 0.4403 (submissions/v3_final2_lmvocab_b1.csv); Deep 0.5662 (submissions/deep_v3_final2_ens5.csv). FINAL-6 predicted Broad 0.55–0.60, Deep 0.62–0.68.
+- **Bet C:** LPP download (rclone) → watcher launches scripts/extmeg/preprocess_lpp_listen.py overnight (logs/extmeg_preprocess_lpp_listen.log). Next step after that: loader + third training stream (docs/extmeg/PLAN.md §5). Given deep_c, the extmeg bet needs rethinking: Broad subjects' short recordings HURT transfer, so 58 LPP subjects × 1.6 h may too; the test is the 0/20/58-subject curve.
+- Rohit actions: select final files on both Kaggle pages before Oct 16 12:00 UTC (wait for FINAL-6 scores); Donders DUA for Armeni/MOUS if Bet C continues.
