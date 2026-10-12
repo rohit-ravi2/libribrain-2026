@@ -444,3 +444,4 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Public ranks after FINAL-6: Broad **14 / 48** (above us: 0.663–0.729, the leak band; below: 0.655, 0.643…); Deep **48 / 85** (top 0.765; published recipe 0.732). Deep local→LB discount ≈ 0.08 (0.705 → 0.625).
 
 ## DEEP-1d (committed 2026-10-13 ~00:10 EDT, before the run): deep_i = bf 0, ctx 4, **24 epochs** (each epoch covers only ~24k of subj0's 60k sentences, so 8 epochs ≈ 3 passes; underfitting is the likely Deep gap). Expect subj0 0.74 / Broad 0.65. If ≥ +0.02 on subj0 over deep_c, FINAL-7 retrains both tracks at 24 epochs.
+- deep_g (bf 0, ctx 6): subj0 0.720 (pred 0.72: HIT), Broad 0.609 (pred 0.65: −0.04 vs pred, −0.02 vs deep_c). Depth 6 vs 4: within noise both ways; 4 layers kept.
