@@ -43,7 +43,7 @@ if a.t5 > 0:
 subs = sorted(set(W.sub[trainable].tolist())); sid = {s: i for i, s in enumerate(subs)}
 vocab_tr = trainable & (W.label >= 0)
 i0 = np.flatnonzero(vocab_tr & (W.sub == 0)); ib = np.flatnonzero(vocab_tr & (W.sub != 0))
-p0 = np.bincount(W.label[i0], minlength=50) / len(i0); pb = np.bincount(W.label[ib], minlength=50) / len(ib)
+p0 = np.bincount(W.label[i0], minlength=50) / len(i0); pb = (np.bincount(W.label[ib], minlength=50) / len(ib)) if len(ib) else p0
 log_prior = torch.log(torch.tensor((1 - a.broad_frac) * p0 + a.broad_frac * pb).float().clamp_min(1e-8)).to(dev)
 
 
@@ -209,7 +209,7 @@ for ep in range(a.epochs):
     for m in mods: m.train()
     tl = tce = tt5 = 0.0
     for k in range(a.steps):
-        segs = [segment(S0[j], a.maxw)[0] for j in rng.integers(0, len(S0), n0)] + [segment(SB[j], a.maxw)[0] for j in rng.integers(0, len(SB), n1)]
+        segs = [segment(S0[j], a.maxw)[0] for j in rng.integers(0, len(S0), n0)] + ([segment(SB[j], a.maxw)[0] for j in rng.integers(0, len(SB), n1)] if n1 > 0 else [])
         idx, gi, pad, rel = pack(segs); N = len(idx)
         iso = rng.random(N) < a.p_iso
         short = rng.random(N) < a.p_short
