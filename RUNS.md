@@ -56,3 +56,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-12 | deep_b | bf 0.1, ctx_layers 4, --deep | 0 | **subj0 0.711** | **Broad-protocol deploy 0.594** (null 0.21) | | | — | depth/subj0-fraction confounded; ablations + DEEP-1b |
 | 10-12 | deep_c | bf 0.0 (subj0 only), ctx 4 | 0 | subj0 0.705 | Broad-protocol see PREDICTIONS | | | — | |
 | 10-12 | deep_d | bf 0.5, ctx 4 | 0 | subj0 0.637 | Broad-protocol: see broad_protocol.py | | | — | depth alone (with 50% Broad) is not the lever |
+| 10-12 | deep_e | bf 0.1, ctx 6 | 0 | subj0 0.704 | Broad-protocol 0.606 | | | — | depth 6 ≈ 4 |
