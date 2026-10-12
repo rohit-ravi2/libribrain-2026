@@ -441,3 +441,6 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - The LM-rerank gains (+0.012 at 0.43) and losses (−0.11 at 0.66, −0.05 at 0.57) bracket the regime: a text prior helps only when per-word evidence is weak.
 
 ## FINAL-6b (committed 2026-10-12 ~23:55 EDT): seeds 3 and 4 of the same recipe → 5-model ensemble, both tracks, raw only. Expect +0.005 to +0.015 on each board. Runs after deep_g/deep_h.
+- Public ranks after FINAL-6: Broad **14 / 48** (above us: 0.663–0.729, the leak band; below: 0.655, 0.643…); Deep **48 / 85** (top 0.765; published recipe 0.732). Deep local→LB discount ≈ 0.08 (0.705 → 0.625).
+
+## DEEP-1d (committed 2026-10-13 ~00:10 EDT, before the run): deep_i = bf 0, ctx 4, **24 epochs** (each epoch covers only ~24k of subj0's 60k sentences, so 8 epochs ≈ 3 passes; underfitting is the likely Deep gap). Expect subj0 0.74 / Broad 0.65. If ≥ +0.02 on subj0 over deep_c, FINAL-7 retrains both tracks at 24 epochs.
