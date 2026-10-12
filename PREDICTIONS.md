@@ -403,3 +403,17 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 - Broad **LB 0.4403** (pred +0.01 to +0.03 over 0.4344: HIT at the low edge, +0.006). Prior fitted on 20k LLM-generated vocab-only 5–9-word sentences (151k tokens) instead of prose. Total rerank gain over the raw ensemble: +0.012. New best Broad file.
 - **DEEP-0 + vocab prior (pre-registered now):** expect Deep 0.5662 → 0.58–0.60 (stronger evidence → smaller LM gain).
 ### Outcome DEEP-0 + vocab prior (2026-10-12): Deep LB **0.5194** vs 0.5662 without (pred 0.58–0.60: MISS, −0.047). At subj0-level evidence the β=1 prior overrides the brain (top-1 changed on 52% of rows; top word share 0.25). Consistent with LM2-sim (gain ≈ 0 at strong evidence). **Deep files are submitted without rerank**; no LB tuning of β.
+
+### Outcome DEEP-1 so far (2026-10-12 ~18:30 EDT; runs/deep_a.json, runs/deep_b.json)
+- deep_a (v3d1 recipe, selected on subj0): subj0 local **0.624** (pred 0.60: ≈). Deep LB of the equivalent models was 0.566 → local→LB discount ≈ 0.06.
+- deep_b (broad_frac 0.1, 4-layer sentence transformer): subj0 local **0.711** (pred 0.64: beat by +0.07), null 0.21.
+- **Side finding, Broad:** scored under the Broad protocol (select on VAL+seen, test on the other block), deep_b gives **deploy 0.594** (seen 0.56, zero-shot 0.55, null 0.21) vs 0.463 for v3d1_s0. Confounded between depth (2→4 layers) and subj0 fraction (0.5→0.9). Ablations and a disentangling map (DEEP-1b) run before anything is banked.
+
+## DEEP-1b map (committed 2026-10-12 ~18:35 EDT, before the runs; all with --deep 1 so both tracks are scored)
+| run | config | expected subj0 / Broad deploy |
+|---|---|---|
+| deep_c | bf 0.0 (subj0 only), ctx 4 | 0.70 / 0.50 (no Broad subjects in training → zero-shot relies on subj0 alone) |
+| deep_d | bf 0.5, ctx 4 | 0.65 / 0.52 (isolates depth) |
+| deep_e | bf 0.1, ctx 6 | 0.72 / 0.60 (more depth) |
+| deep_f | bf 0.2, ctx 4 | 0.70 / 0.58 |
+Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 seeds + vocab rerank) and the best subj0 config becomes DEEP-2 (3 seeds, no rerank), both trained overnight on all data.

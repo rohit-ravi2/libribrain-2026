@@ -52,3 +52,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-12 | DEEP LB DEEP-0 | FINAL-2 five models on subj0 holdout, own A, ce+cos τ0 | 0-3 | — | — | — | — | **0.5662 (Deep)** | first Deep submission |
 | 10-12 | LB LM-rerank-2 | FINAL-2 probs + vocab-corpus trigram forward–backward (β=1) | — | — | — | — | — | **0.4403** | new best Broad |
 | 10-12 | DEEP LB rerank | DEEP-0 + vocab trigram β=1 | — | — | — | — | — | 0.5194 (Deep) | worse (−0.047); Deep stays rerank-free |
+| 10-12 | deep_a | v3d1 recipe, --deep (select on subj0) | 0 | subj0 0.624 | Broad-protocol deploy 0.463 | | | — | |
+| 10-12 | deep_b | bf 0.1, ctx_layers 4, --deep | 0 | **subj0 0.711** | **Broad-protocol deploy 0.594** (null 0.21) | | | — | depth/subj0-fraction confounded; ablations + DEEP-1b |
