@@ -430,3 +430,14 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Config = deep_c: subj0-only training (broad_frac 0), 4-layer sentence transformer, T5 SigLIP + CE, 8 epochs, ALL subj0 stimulus; 3 seeds; readout ce τ0.5 (chosen by both local folds). Broad file: identity input layers for every subject (no Broad training). Deep file: subj0's own layer. Broad also gets the vocab-corpus rerank; Deep does not.
 - **LB predictions (local→LB discount ≈ 0.06):** Broad raw **0.55–0.60**, Broad + rerank +0.00–0.01; Deep **0.62–0.68**. Beating MEG-XL 0.43 by > 0.1 would make this the strongest clean Broad entry we know of.
 - deep_f (bf 0.2, ctx 4): subj0 0.654, Broad 0.528. Monotone: more Broad-subject data in training → worse transfer and worse subj0. Clean finding, reportable.
+
+### Outcome FINAL-6 (2026-10-12 ~23:50 EDT; submissions/final6_*.csv)
+| file | LB | prediction |
+|---|---|---|
+| final6_broad_ens3 (raw) | **0.6555** | 0.55–0.60: beat by +0.06 (local 0.632; no discount this time, the final models see all of subj0's stimulus) |
+| final6_broad_ens3 + vocab rerank | 0.5441 | +0.00–0.01: **MISS, −0.11**. Same failure as on Deep: at strong evidence the β=1 prior overrides the brain. **Rerank retired for both tracks.** |
+| final6_deep_ens3 | **0.6246** | 0.62–0.68: HIT (low edge) |
+- Broad: from 0.2266 (Oct 8) → 0.4284 (T5 targets) → 0.6555 (subj0-only training + 4-layer sentence transformer). Trained on subj0 alone; every Broad subject is predicted zero-shot from their own MEG with identity input layers. No Broad-subject data and no cross-subject correspondence anywhere.
+- The LM-rerank gains (+0.012 at 0.43) and losses (−0.11 at 0.66, −0.05 at 0.57) bracket the regime: a text prior helps only when per-word evidence is weak.
+
+## FINAL-6b (committed 2026-10-12 ~23:55 EDT): seeds 3 and 4 of the same recipe → 5-model ensemble, both tracks, raw only. Expect +0.005 to +0.015 on each board. Runs after deep_g/deep_h.
