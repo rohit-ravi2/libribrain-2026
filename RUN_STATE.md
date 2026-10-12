@@ -19,7 +19,7 @@
 3. Join the Kaggle Broad competition (identity-bound click).
 
 ## PENDING (updated 2026-10-13 00:15 EDT)
-- **Best LB:** Broad **0.6555** (submissions/final6_broad_ens3.csv, rank 14/48 public); Deep **0.6246** (submissions/final6_deep_ens3.csv, rank 48/85). Rerank retired (hurts strong models).
+- **Best LB:** Broad **0.6555** (submissions/final6_broad_ens3.csv); Deep **0.6535** (submissions/final6_deep_ens5.csv). Rerank retired (hurts strong models). FINAL-6b 5-seed Broad 0.6486 (noise).
 - **GPU queue:** deep1c (deep_g ctx6, deep_h 12 ep) → final6b (seeds 3,4 → 5-model ensembles, self-submits) → deep1d (deep_i 24 ep). Order among waiters may vary.
 - Tomorrow: FINAL-7 at the best epochs/depth for both tracks; select final files on Kaggle (Rohit) before Oct 16 12:00 UTC.
 - Bet C: LPP preprocessing overnight (watcher). Reassess: Broad-subject data HURT transfer, so adding LPP subjects is now a hypothesis test, not an expected gain.
