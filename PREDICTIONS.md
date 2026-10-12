@@ -356,3 +356,8 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 
 ## FINAL-3 — 8-model ensemble (committed 2026-10-10 ~13:10 EDT, before the runs)
 - Add final_v3d1 seeds 4, 5, 6 to the FINAL-2 five; same readout. **LB prediction 0.43–0.445** (diminishing returns: 2→5 models gave +0.018). This is the last autonomous step of the build arc; further gains need a new idea, not more seeds.
+
+## Three cheap tests (committed 2026-10-12 ~09:45 EDT, before the runs)
+1. **FS100** — v3d1 recipe on a 100 Hz cache (0–50 Hz content instead of 0–25 Hz), seed 0. Expect deploy within ±0.01 of v3d1_s0 (0.463); detected only if ≥ +0.015.
+2. **MV1** — v3d1 recipe + a second SigLIP head to wav2vec2-base layer-8 acoustic targets (all words with audio, ~75% of rows), weight 1.0, seed 0. Expect +0.01; detected if ≥ +0.015. Earlier B7 null was on the old classifier where targets were not yet the lever.
+3. **LM-rerank** — post-process of the FINAL-2 holdout probabilities: within each holdout sentence, exact forward–backward marginals under the external trigram LM over the 50 words (Gutenberg vocab-only runs), emission p^β with β = 1, δ = 0 (the LM2-v2 dev choice), isolated words untouched. One LB submission. Expect +0.00 to +0.02 over 0.4284; a drop would mean the prose-trained prior misfits the constructed holdout sentences.

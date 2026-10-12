@@ -12,7 +12,10 @@ from scipy.signal import resample_poly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.common import DATA, CACHE, SFREQ, SCALE, VOCAB_ID, norm_word
 
-OUT = f"{CACHE}/cont"; Q = SFREQ // 50
+from math import gcd
+FS = int(os.environ.get("LB_FS", 50))                                   # output rate; 50 (default) or 100
+OUT = f"{CACHE}/cont" if FS == 50 else f"{CACHE}/cont{FS}"
+_g = gcd(SFREQ, FS); UP, DOWN = FS // _g, SFREQ // _g
 
 
 def run_files():
@@ -34,7 +37,7 @@ def process(args):
     with h5py.File(h5) as f:
         data = f["data"][:].astype(np.float32) * SCALE
     data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
-    x = resample_poly(data, 1, Q, axis=1).astype(np.float16)              # (306, T50)
+    x = resample_poly(data, UP, DOWN, axis=1).astype(np.float16)          # (306, T_FS)
     e = pd.read_csv(ev, sep="\t", keep_default_na=False, na_values=[""])   # "None" is a word, not NaN
     w = e[e.kind == "word"].copy()
     w["word"] = w.segment.astype(str).str.strip()
