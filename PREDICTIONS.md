@@ -429,3 +429,4 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ## FINAL-6 — one model family, both tracks (committed 2026-10-12 ~21:05 EDT, before the runs)
 - Config = deep_c: subj0-only training (broad_frac 0), 4-layer sentence transformer, T5 SigLIP + CE, 8 epochs, ALL subj0 stimulus; 3 seeds; readout ce τ0.5 (chosen by both local folds). Broad file: identity input layers for every subject (no Broad training). Deep file: subj0's own layer. Broad also gets the vocab-corpus rerank; Deep does not.
 - **LB predictions (local→LB discount ≈ 0.06):** Broad raw **0.55–0.60**, Broad + rerank +0.00–0.01; Deep **0.62–0.68**. Beating MEG-XL 0.43 by > 0.1 would make this the strongest clean Broad entry we know of.
+- deep_f (bf 0.2, ctx 4): subj0 0.654, Broad 0.528. Monotone: more Broad-subject data in training → worse transfer and worse subj0. Clean finding, reportable.
