@@ -417,3 +417,4 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 | deep_e | bf 0.1, ctx 6 | 0.72 / 0.60 (more depth) |
 | deep_f | bf 0.2, ctx 4 | 0.70 / 0.58 |
 Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 seeds + vocab rerank) and the best subj0 config becomes DEEP-2 (3 seeds, no rerank), both trained overnight on all data.
+- **deep_b ablations (ep6 ckpt, ce readout, seen/eval_zs):** full Q3 0.537/0.515, Q4 0.582/0.583; timing zeroed: identical (rel=0 confirmed); single words 0.229/0.232, 0.218/0.227; neighbours randomised 0.263/0.267, 0.290/0.297. **Clean**; the deeper transformer extracts more from neighbouring MEG.
