@@ -398,3 +398,7 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 | deep_b | broad_frac 0.1, 4-layer ctx | 0.64 |
 | deep_c | subj0 only (broad_frac 0), 4-layer ctx | 0.62 |
 - If deep_b ≥ deep_a + 0.02 the subj0-weighting and depth are kept for the final Deep retrain (3 seeds, all data) → DEEP-2 submission.
+
+### Outcome LM-rerank-2 (2026-10-12, submissions/v3_final2_lmvocab_b1.csv)
+- Broad **LB 0.4403** (pred +0.01 to +0.03 over 0.4344: HIT at the low edge, +0.006). Prior fitted on 20k LLM-generated vocab-only 5–9-word sentences (151k tokens) instead of prose. Total rerank gain over the raw ensemble: +0.012. New best Broad file.
+- **DEEP-0 + vocab prior (pre-registered now):** expect Deep 0.5662 → 0.58–0.60 (stronger evidence → smaller LM gain).
