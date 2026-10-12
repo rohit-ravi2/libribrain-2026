@@ -9,7 +9,8 @@ from scipy.signal import resample_poly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # the context window must match the checkpoints: read it from the first checkpoint's args before importing src.cont
 _ck = torch.load(sys.argv[sys.argv.index("--ckpt") + 1].split(",")[0], map_location="cpu", weights_only=False)
-os.environ["LB_WIN"] = _ck["args"].get("lb_win", "1.0,2.0"); print("LB_WIN", os.environ["LB_WIN"], flush=True)
+os.environ["LB_WIN"] = _ck["args"].get("lb_win", "1.0,2.0"); os.environ["LB_FS"] = str(_ck["args"].get("lb_fs", 50)); print("LB_WIN", os.environ["LB_WIN"], "LB_FS", os.environ["LB_FS"], flush=True)
+from math import gcd
 from pnpl.competition import LibriBrainCompetitionHoldout, write_submission
 from src.common import SCALE, HOLDOUT
 from src.cont import FS, PRE, POST, WIN, ON, normalize
@@ -33,7 +34,7 @@ def load_subject(s):
     meg, nt, wm, on = d["meg"], d["sentence_n_times"].astype(int), d["word_mask"], d["word_onsets_s"]
     rows = md[(md.subject == s) & (md.source == "sentence")]
     for si in range(len(nt)):
-        x50 = resample_poly(np.nan_to_num(meg[si, :, :nt[si]].astype(np.float32) * SCALE), 1, 250 // FS, axis=1).astype(np.float16)
+        x50 = resample_poly(np.nan_to_num(meg[si, :, :nt[si]].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16)
         T50 = x50.shape[1]; wi = np.flatnonzero(wm[si]); ons = on[si][wi]
         X = torch.zeros(len(wi), 306, WIN, dtype=torch.float16); V = torch.zeros(len(wi), WIN, dtype=torch.bool)
         for j, o in enumerate(ons):
@@ -45,7 +46,7 @@ def load_subject(s):
     d = np.load(f"{HOLDOUT}/subj{s:02d}_holdout2_word.npz"); meg = d["meg"]
     rows = md[(md.subject == s) & (md.source == "word")].sort_values("epoch")["index"].values
     for ei in range(meg.shape[0]):
-        x50 = resample_poly(np.nan_to_num(meg[ei].astype(np.float32) * SCALE), 1, 250 // FS, axis=1).astype(np.float16)
+        x50 = resample_poly(np.nan_to_num(meg[ei].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16)
         X = torch.zeros(1, 306, WIN, dtype=torch.float16); V = torch.zeros(1, WIN, dtype=torch.bool)
         X[0, :, ON:ON + FS] = torch.from_numpy(x50[:, :FS]); V[0, ON:ON + FS] = True
         segs.append((X, V, torch.zeros(1), rows[ei:ei + 1]))

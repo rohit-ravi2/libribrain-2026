@@ -9,7 +9,9 @@ from .common import CACHE, IS_MAG
 from .split import parse, T_MAX, SHARED
 
 import os as _os
-FS = 50; TAIL = 1.0
+FS = int(_os.environ.get("LB_FS", 50)); TAIL = 1.0                 # cache rate: 50 (cont/) or 100 (cont100/)
+CONT = f"{CACHE}/cont" if FS == 50 else f"{CACHE}/cont{FS}"
+MMAP = _os.environ.get("LB_MMAP") == "1"                          # keep MEG on disk (memmap) instead of RAM
 PRE, POST = [float(x) for x in _os.environ.get("LB_WIN", "1.0,2.0").split(",")]   # context window around onset, seconds (env LB_WIN="pre,post")
 WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset at sample 50
 GUARD = 1.0; CLIP = 10.0
@@ -18,13 +20,13 @@ GUARD = 1.0; CLIP = 10.0
 class Words:
     """Global word table over all runs + continuous MEG in RAM (fp16)."""
 
-    def __init__(self, runs=None, load_meg=True, load_t5=False):
-        evs = sorted(glob.glob(f"{CACHE}/cont/*_ev.npz"))
+    def __init__(self, runs=None, load_meg=True, load_t5=False, load_w2v=False):
+        evs = sorted(glob.glob(f"{CONT}/*_ev.npz"))
         self.bases = [os.path.basename(f)[:-7] for f in evs]
         if runs is not None:
             keep = [i for i, b in enumerate(self.bases) if b in set(runs)]; evs = [evs[i] for i in keep]; self.bases = [self.bases[i] for i in keep]
         cols = {k: [] for k in ("run", "sub", "onset", "label", "tc", "sent", "s0", "s1", "li", "ntimes")}
-        self.meg, self.t5 = [], []
+        self.meg, self.t5, self.w2v = [], [], []
         gs = 0
         for r, (b, f) in enumerate(zip(self.bases, evs)):
             d = np.load(f, allow_pickle=True); n = len(d["label"]); sub, ses = parse(b)
@@ -34,8 +36,9 @@ class Words:
             cols["sent"].append(si + gs); gs += int(si.max()) + 10 ** 6 + 1
             cols["s0"].append(d["sent_start_s"]); cols["s1"].append(d["sent_end_s"]); cols["li"].append(np.arange(n))
             cols["ntimes"].append(np.full(n, int(d["n_times50"])))
-            if load_meg: self.meg.append(torch.from_numpy(np.load(f"{CACHE}/cont/{b}.npy")))
+            if load_meg: self.meg.append(np.load(f"{CONT}/{b}.npy", mmap_mode="r" if MMAP else None))
             if load_t5: self.t5.append(np.load(f"{CACHE}/runs_t5/{b}.npy", mmap_mode="r"))
+            if load_w2v: self.w2v.append(np.load(f"{CACHE}/runs_w2v/{b}.npy", mmap_mode="r"))
         for k, v in cols.items(): setattr(self, k, np.concatenate(v))
         self.n = len(self.label)
         # re-index sentences densely
@@ -56,9 +59,15 @@ class Words:
         return q
 
     def t5_rows(self, idx):
-        out = np.zeros((len(idx), 1024), np.float32)
+        return self._rows(self.t5, idx, 1024)
+
+    def w2v_rows(self, idx):
+        return self._rows(self.w2v, idx, 768)
+
+    def _rows(self, store, idx, D):
+        out = np.zeros((len(idx), D), np.float32)
         for r in np.unique(self.run[idx]):
-            m = self.run[idx] == r; out[m] = self.t5[r][self.li[idx][m]]
+            m = self.run[idx] == r; out[m] = store[r][self.li[idx][m]]
         return out
 
     # ---- windows ----
@@ -77,7 +86,7 @@ class Words:
             r = int(self.run[idx[j]]); T = self.meg[r].shape[1]
             a, b = max(start[j], 0), min(start[j] + WIN, T)
             if b <= a: continue
-            x[j, :, a - start[j]:b - start[j]] = self.meg[r][:, a:b]
+            x[j, :, a - start[j]:b - start[j]] = torch.from_numpy(np.ascontiguousarray(self.meg[r][:, a:b]))
             va, vb = max(lo[j], a), min(hi[j], b)
             if vb > va: valid[j, va - start[j]:vb - start[j]] = True
         return x, valid
