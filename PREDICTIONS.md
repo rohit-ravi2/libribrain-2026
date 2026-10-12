@@ -390,3 +390,11 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 
 ### Outcome DEEP-0 (2026-10-12, submissions/deep_v3_final2_ens5.csv)
 - **Deep LB 0.5662** (pred 0.55–0.65: HIT). Broad-trained ensemble, subj0's own input layer, no Deep tuning, no rerank. Reference d'Ascoli 0.732; public top 0.765.
+
+## DEEP-1 map (committed 2026-10-12 ~17:05 EDT, before the runs). Selection and test = subj0's own Q3/Q4 blocks (≈1.3k vocab words each, so ±0.02 noise).
+| run | config | expected subj0 local |
+|---|---|---|
+| deep_a | v3d1 recipe (broad_frac 0.5, 2-layer ctx), selected on subj0 | 0.60 |
+| deep_b | broad_frac 0.1, 4-layer ctx | 0.64 |
+| deep_c | subj0 only (broad_frac 0), 4-layer ctx | 0.62 |
+- If deep_b ≥ deep_a + 0.02 the subj0-weighting and depth are kept for the final Deep retrain (3 seeds, all data) → DEEP-2 submission.
