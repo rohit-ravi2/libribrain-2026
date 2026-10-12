@@ -44,3 +44,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | v3e3 | v3d1 config, t5 weight 2.0 | 0 | — | eval_zs 0.458 | seen 0.470 | deploy 0.468 (null 0.221) | — | +0.005: within noise |
 | 10-10 | v3e4 | v3d1 config, window [−1.5,+2.5] s | 0 | — | eval_zs 0.431 | seen 0.444 | deploy 0.441 (null 0.219) | — | wider window: worse (−0.022) |
 | 10-10 | LB FINAL-2 | 5-model ensemble (v3d1 ×4 seeds + t5w2), ce+cos τ0, no TTA | 0-3 | — | — | — | local ens ≈0.48 | **0.4284** | −0.001 vs MEG-XL 0.4296 |
+| 10-10 | LB FINAL-3 | 8-model ensemble (v3d1 ×7 seeds + t5w2) | 0-6 | — | — | — | — | 0.42352 | pred 0.43–0.445 |
+| 10-12 | note | FINAL-3 0.4235 < FINAL-2 0.4284: 8 models not better than 5 (pred 0.43–0.445 MISS); public rank 29/44 | | | | | | | |
