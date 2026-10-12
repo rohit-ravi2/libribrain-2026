@@ -15,6 +15,7 @@ ap.add_argument("--tag", required=True); ap.add_argument("--epochs", type=int, d
 ap.add_argument("--bs_seg", type=int, default=32); ap.add_argument("--maxw", type=int, default=12)
 ap.add_argument("--win", default="3s", choices=["1s", "3s"]); ap.add_argument("--ctx", type=int, default=1)
 ap.add_argument("--t5", type=float, default=0.0); ap.add_argument("--ce", type=float, default=1.0)
+ap.add_argument("--w2v", type=float, default=0.0, help="weight of a second SigLIP head to wav2vec2-base L8 acoustic targets (rows with audio only)")
 ap.add_argument("--lr", type=float, default=1e-3); ap.add_argument("--wd", type=float, default=0.1); ap.add_argument("--lam", type=float, default=1e-3)
 ap.add_argument("--d", type=int, default=128); ap.add_argument("--D", type=int, default=256); ap.add_argument("--p", type=float, default=0.3)
 ap.add_argument("--broad_frac", type=float, default=0.5); ap.add_argument("--aug", type=int, default=1)
@@ -24,10 +25,11 @@ ap.add_argument("--rel", type=int, default=0, help="1 = feed relative word-onset
 ap.add_argument("--final", type=int, default=0, help="1 = train on ALL subjects and ALL stimulus (no local eval blocks); saves per-epoch ckpts only")
 a = ap.parse_args(); torch.manual_seed(a.seed); rng = np.random.default_rng(a.seed); dev = "cuda"
 a.lb_win = os.environ.get("LB_WIN", "1.0,2.0")   # recorded so inference can set the same window
+a.lb_fs = int(os.environ.get("LB_FS", 50))
 TAUS = (0.0, 0.25, 0.5, 0.75, 1.0); READOUTS = ("ce", "cos", "ce+cos") if a.t5 > 0 else ("ce",)
 os.makedirs("runs", exist_ok=True); t0 = time.time()
 
-W = Words(load_meg=True, load_t5=a.t5 > 0); q = W.quarters()
+W = Words(load_meg=True, load_t5=a.t5 > 0, load_w2v=a.w2v > 0); q = W.quarters()
 scored = set(S2.EVAL + S2.VAL + S2.SEEN)
 trainable = ~np.isin(W.sub, S2.EVAL + S2.VAL) & np.isin(q, ["other", "Q1", "Q2"])
 if a.final: trainable = q != ""                      # everything (guard-dropped boundary words excluded only)
@@ -63,18 +65,22 @@ if a.t5 > 0:
         m = W.label[samp] == c
         if m.any(): proto[c] = F.normalize(Tn[m].mean(0), dim=0)
     proto, t_mean = proto.to(dev), t_mean.to(dev)
+if a.w2v > 0:
+    samp = np.sort(rng.choice(np.flatnonzero(trainable), 20000, replace=False)); Wt = torch.from_numpy(W.w2v_rows(samp))
+    w2v_mean = Wt[torch.isfinite(Wt).all(1)].mean(0).to(dev)
 
 enc = CtxEncoder(d=a.d, D=a.D, T=WIN, p=a.p).to(dev)
 ctx = SentCtx(D=a.D, maxw=a.maxw).to(dev) if a.ctx else None
-head_ce = nn.Linear(a.D, 50).to(dev); head_t5 = nn.Linear(a.D, 1024).to(dev)
+head_ce = nn.Linear(a.D, 50).to(dev); head_t5 = nn.Linear(a.D, 1024).to(dev); head_w2v = nn.Linear(a.D, 768).to(dev)
+logit_s2 = nn.Parameter(torch.tensor(np.log(10.0), device=dev)); logit_b2 = nn.Parameter(torch.tensor(-10.0, device=dev))
 logit_s = nn.Parameter(torch.tensor(np.log(10.0), device=dev)); logit_b = nn.Parameter(torch.tensor(-10.0, device=dev))
 A = nn.Parameter(torch.eye(306, device=dev).repeat(len(subs), 1, 1)); I = torch.eye(306, device=dev)
-mods = [enc, head_ce, head_t5] + ([ctx] if ctx else [])
+mods = [enc, head_ce, head_t5, head_w2v] + ([ctx] if ctx else [])
 if a.init:
     ck = torch.load(a.init, map_location=dev); enc.load_state_dict(ck["enc"]); head_ce.load_state_dict(ck["head_ce"])
     if ctx and ck.get("ctx"): ctx.load_state_dict(ck["ctx"])
 params = [p for m in mods for p in m.parameters()]
-opt = torch.optim.AdamW([{"params": params, "weight_decay": a.wd}, {"params": [A, logit_s, logit_b], "weight_decay": 0.0}], lr=a.lr)
+opt = torch.optim.AdamW([{"params": params, "weight_decay": a.wd}, {"params": [A, logit_s, logit_b, logit_s2, logit_b2], "weight_decay": 0.0}], lr=a.lr)
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, a.lr, total_steps=a.epochs * a.steps, pct_start=0.1)
 n0 = int(a.bs_seg * (1 - a.broad_frac)); n1 = a.bs_seg - n0
 
@@ -122,11 +128,24 @@ def forward(idx, gi, pad, rel, Am, iso=None, clip=None, train=False):
         return e.float(), head_ce(e).float(), head_t5(e).float()
 
 
+def forward_w2v(e):
+    return head_w2v(e).float()
+
+
 def siglip(z, idx):
     t = torch.from_numpy(W.t5_rows(idx)).to(dev); ok = t.abs().sum(1) > 0
     z, t = F.normalize(z[ok], dim=1), F.normalize(t[ok] - t_mean, dim=1)
     pos = (t @ t.T) > 0.999                                  # duplicate-aware positives (same token, other subject)
     lg = logit_s.exp() * (z @ t.T) + logit_b
+    return -F.logsigmoid(torch.where(pos, lg, -lg)).sum() / len(z)
+
+
+def siglip_w2v(z, idx):
+    t = torch.from_numpy(W.w2v_rows(idx)).to(dev); ok = torch.isfinite(t).all(1)
+    if ok.sum() < 8: return torch.zeros((), device=dev)
+    z, t = F.normalize(z[ok], dim=1), F.normalize(t[ok] - w2v_mean, dim=1)
+    pos = (t @ t.T) > 0.999
+    lg = logit_s2.exp() * (z @ t.T) + logit_b2
     return -F.logsigmoid(torch.where(pos, lg, -lg)).sum() / len(z)
 
 
@@ -201,6 +220,8 @@ for ep in range(a.epochs):
             l_ce = F.cross_entropy(ce[has], y[has], label_smoothing=0.1); loss = loss + a.ce * l_ce; tce += l_ce.item()
         if a.t5 > 0:
             l_t5 = siglip(zt, idx); loss = loss + a.t5 * l_t5; tt5 += l_t5.item()
+        if a.w2v > 0:
+            loss = loss + a.w2v * siglip_w2v(forward_w2v(e), idx)
         opt.zero_grad(set_to_none=True); loss.backward(); torch.nn.utils.clip_grad_norm_(params, 5.0); opt.step(); sched.step(); tl += loss.item()
         if k % 200 == 0: print(f"  ep{ep} step {k} loss {tl / (k + 1):.3f} ce {tce / (k + 1):.3f} t5 {tt5 / (k + 1):.3f} t {round(time.time() - t0)}s", flush=True)
     if a.final:

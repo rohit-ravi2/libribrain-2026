@@ -46,3 +46,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-10 | LB FINAL-2 | 5-model ensemble (v3d1 ×4 seeds + t5w2), ce+cos τ0, no TTA | 0-3 | — | — | — | local ens ≈0.48 | **0.4284** | −0.001 vs MEG-XL 0.4296 |
 | 10-10 | LB FINAL-3 | 8-model ensemble (v3d1 ×7 seeds + t5w2) | 0-6 | — | — | — | — | 0.42352 | pred 0.43–0.445 |
 | 10-12 | note | FINAL-3 0.4235 < FINAL-2 0.4284: 8 models not better than 5 (pred 0.43–0.445 MISS); public rank 29/44 | | | | | | | |
+| 10-12 | LB LM-rerank | FINAL-2 probs + within-sentence trigram forward–backward (β=1) | — | — | — | — | — | **0.4344** | +0.006 over FINAL-2 |
