@@ -402,3 +402,4 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 ### Outcome LM-rerank-2 (2026-10-12, submissions/v3_final2_lmvocab_b1.csv)
 - Broad **LB 0.4403** (pred +0.01 to +0.03 over 0.4344: HIT at the low edge, +0.006). Prior fitted on 20k LLM-generated vocab-only 5–9-word sentences (151k tokens) instead of prose. Total rerank gain over the raw ensemble: +0.012. New best Broad file.
 - **DEEP-0 + vocab prior (pre-registered now):** expect Deep 0.5662 → 0.58–0.60 (stronger evidence → smaller LM gain).
+### Outcome DEEP-0 + vocab prior (2026-10-12): Deep LB **0.5194** vs 0.5662 without (pred 0.58–0.60: MISS, −0.047). At subj0-level evidence the β=1 prior overrides the brain (top-1 changed on 52% of rows; top word share 0.25). Consistent with LM2-sim (gain ≈ 0 at strong evidence). **Deep files are submitted without rerank**; no LB tuning of β.
