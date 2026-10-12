@@ -418,3 +418,9 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 | deep_f | bf 0.2, ctx 4 | 0.70 / 0.58 |
 Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 seeds + vocab rerank) and the best subj0 config becomes DEEP-2 (3 seeds, no rerank), both trained overnight on all data.
 - **deep_b ablations (ep6 ckpt, ce readout, seen/eval_zs):** full Q3 0.537/0.515, Q4 0.582/0.583; timing zeroed: identical (rel=0 confirmed); single words 0.229/0.232, 0.218/0.227; neighbours randomised 0.263/0.267, 0.290/0.297. **Clean**; the deeper transformer extracts more from neighbouring MEG.
+
+### Outcome deep_c (2026-10-12, runs/deep_c.json) — subj0-only training, 4-layer transformer
+- subj0 local 0.705 (pred 0.70: HIT). **Broad-protocol deploy 0.632** (pred 0.50: beat by +0.13; seen 0.642/0.627, zero-shot 0.602/0.641, null 0.21), with NO Broad subject in training and all subject input layers at identity. Pure zero-shot transfer from subj0's 80 h. Broad training data at 10–50% of batches was reducing transfer (deep_b 0.594, deep_d tracking lower).
+- Consequence: one subj0-centred model family serves both tracks (Deep file = subj0's own path; Broad file = the same model with identity input layers).
+
+## DEEP-1c (committed 2026-10-12 ~20:05 EDT, before the runs): deep_g = bf 0.0, ctx 6 (expect subj0 0.72 / Broad 0.65); deep_h = bf 0.0, ctx 4, 12 epochs (expect 0.71 / 0.64). Finals for both tracks use the best of deep_c/e/g/h.
