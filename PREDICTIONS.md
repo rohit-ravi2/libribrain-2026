@@ -377,3 +377,9 @@ Detected levers are combined into FINAL-2 (3 seeds, all data). FINAL-2 LB predic
 | LM rerank (LB) | 0.4284 → **0.4344** (+0.006) | yes, best file |
 | MV1 acoustic targets (local) | +0.005 | no (noise) |
 | FS100 0–50 Hz (local) | −0.052 | no |
+
+## Upside arc (committed 2026-10-12 ~14:30 EDT, before any run) — Rohit: do not close with days left
+Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22), fixed spatial filters (learned per-subject A ⊇ them; CORAL ±0.01), ridge alignment to subj0 (P1a/P1b at floor), softmax sharpening (monotone, no effect on a ranking metric).
+1. **MEGXL-F** — MEG-XL (pnpl/MEG-XL) frozen features on the 8 GB card, short context (holdout sentences are 3–4 s). Step 1 is a memory/feasibility test only; if features extract, train our T5-target head + sentence transformer on them (split v2). Expect: 50% chance it does not fit or is unusable at short context; if it works, deploy ≥ 0.50 local.
+2. **LM-prior-2** — n-gram prior fitted on LLM-generated vocab-only 5–9-word sentences (constrained to the 50 words) instead of Victorian prose; β chosen on a local simulation built from the same sentence family. One LB submission. Expect +0.01 to +0.03 over 0.4344.
+3. **SELF-TRAIN** — per-subject pseudo-label fine-tuning of the full per-subject path on the subject's own confidently decoded holdout sentences; validated first on EVAL subjects' test block in split v2. Expect 0 to +0.02; a local loss means confirmation bias and it is dropped.
