@@ -60,3 +60,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-12 | deep_f | bf 0.2, ctx 4 | 0 | subj0 0.654 | Broad-protocol 0.528 | | | — | monotone in broad_frac: 0.452/.528/.594/.632 for .5/.2/.1/0 |
 | 10-12 | LB FINAL-6 | subj0-only ×3 (bf 0, ctx 4): Broad raw / Broad+rerank / Deep | 0-2 | — | — | — | — | 0.54412 0.65549 0.62462  | |
 | 10-13 | deep_g | bf 0, ctx 6 | 0 | subj0 0.720 | Broad-protocol 0.609 | | | — | ≈ deep_c within noise |
+| 10-13 | deep_h | bf 0, ctx 4, 12 ep | 0 | subj0 0.721 | Broad-protocol 0.606 | | | — | more training: +subj0, −Broad (both ~noise) |
