@@ -387,3 +387,6 @@ Refuted-by-our-own-runs and not re-run: hard 50-way classifier (Oct 4–8, 0.22)
 ## BET A — Deep track (committed 2026-10-12 ~16:40 EDT, before any Deep submission or run). Bet B dropped by Rohit; Bet C runs as a background agent (docs/extmeg/).
 - **DEEP-0 (calibration):** the existing FINAL-2 five models predict subj0's holdout (own trained input layer), ce+cos τ0, no rerank. LB prediction **0.55–0.65** (subj0 has 80 h; our local 1 s subj0 score was 0.50 before the v3 target change; d'Ascoli reference 0.732).
 - **DEEP-1:** subj0-weighted v3 training (low broad_frac, deeper sentence transformer), selected on subj0's own Q3/Q4 blocks (fold A/B), seeds, + matched-corpus LM prior. Expect local subj0 deploy ≥ 0.70 and LB 0.68–0.75.
+
+### Outcome DEEP-0 (2026-10-12, submissions/deep_v3_final2_ens5.csv)
+- **Deep LB 0.5662** (pred 0.55–0.65: HIT). Broad-trained ensemble, subj0's own input layer, no Deep tuning, no rerank. Reference d'Ascoli 0.732; public top 0.765.

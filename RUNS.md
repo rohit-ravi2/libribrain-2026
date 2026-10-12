@@ -49,3 +49,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-12 | LB LM-rerank | FINAL-2 probs + within-sentence trigram forward–backward (β=1) | — | — | — | — | — | **0.4344** | +0.006 over FINAL-2 |
 | 10-12 | mv1 | v3d1 recipe + wav2vec2 SigLIP head (w=1) | 0 | — | eval_zs 0.468 | seen 0.469 | deploy 0.468 (null 0.220) | — | +0.005 vs v3d1_s0: not detected |
 | 10-12 | fs100 | v3d1 recipe on 100 Hz cache (0–50 Hz) | 0 | — | eval_zs 0.422 | seen 0.409 | deploy 0.411 (null 0.217) | — | −0.052: worse |
+| 10-12 | DEEP LB DEEP-0 | FINAL-2 five models on subj0 holdout, own A, ce+cos τ0 | 0-3 | — | — | — | — | **0.5662 (Deep)** | first Deep submission |

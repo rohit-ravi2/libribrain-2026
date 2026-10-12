@@ -21,6 +21,8 @@ ap.add_argument("--d", type=int, default=128); ap.add_argument("--D", type=int, 
 ap.add_argument("--broad_frac", type=float, default=0.5); ap.add_argument("--aug", type=int, default=1)
 ap.add_argument("--p_iso", type=float, default=0.15); ap.add_argument("--p_short", type=float, default=0.3)
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--init", default=None)
+ap.add_argument("--deep", type=int, default=0, help="1 = Deep track: also score subj0 (own A) on Q3/Q4 and SELECT on subj0")
+ap.add_argument("--ctx_layers", type=int, default=2)
 ap.add_argument("--rel", type=int, default=0, help="1 = feed relative word-onset timing to the sentence transformer (stimulus metadata; OFF by default since 2026-10-10)")
 ap.add_argument("--final", type=int, default=0, help="1 = train on ALL subjects and ALL stimulus (no local eval blocks); saves per-epoch ckpts only")
 a = ap.parse_args(); torch.manual_seed(a.seed); rng = np.random.default_rng(a.seed); dev = "cuda"
@@ -30,7 +32,7 @@ TAUS = (0.0, 0.25, 0.5, 0.75, 1.0); READOUTS = ("ce", "cos", "ce+cos") if a.t5 >
 os.makedirs("runs", exist_ok=True); t0 = time.time()
 
 W = Words(load_meg=True, load_t5=a.t5 > 0, load_w2v=a.w2v > 0); q = W.quarters()
-scored = set(S2.EVAL + S2.VAL + S2.SEEN)
+scored = set(S2.EVAL + S2.VAL + S2.SEEN) | ({0} if a.deep else set())
 trainable = ~np.isin(W.sub, S2.EVAL + S2.VAL) & np.isin(q, ["other", "Q1", "Q2"])
 if a.final: trainable = q != ""                      # everything (guard-dropped boundary words excluded only)
 if a.t5 > 0:
@@ -70,7 +72,7 @@ if a.w2v > 0:
     w2v_mean = Wt[torch.isfinite(Wt).all(1)].mean(0).to(dev)
 
 enc = CtxEncoder(d=a.d, D=a.D, T=WIN, p=a.p).to(dev)
-ctx = SentCtx(D=a.D, maxw=a.maxw).to(dev) if a.ctx else None
+ctx = SentCtx(D=a.D, maxw=a.maxw, layers=a.ctx_layers).to(dev) if a.ctx else None
 head_ce = nn.Linear(a.D, 50).to(dev); head_t5 = nn.Linear(a.D, 1024).to(dev); head_w2v = nn.Linear(a.D, 768).to(dev)
 logit_s2 = nn.Parameter(torch.tensor(np.log(10.0), device=dev)); logit_b2 = nn.Parameter(torch.tensor(-10.0, device=dev))
 logit_s = nn.Parameter(torch.tensor(np.log(10.0), device=dev)); logit_b = nn.Parameter(torch.tensor(-10.0, device=dev))
@@ -180,7 +182,7 @@ def evaluate():
             CE, COS, Y, SUB = [], [], [], []
             for i in range(0, len(segs), 40):
                 idx, gi, pad, rel = pack(segs[i:i + 40])
-                own = np.array([v in S2.SEEN for v in W.sub[idx]])
+                own = np.array([(v in S2.SEEN) or (a.deep and v == 0) for v in W.sub[idx]])
                 Am = torch.stack([A[sid[int(v)]].detach() if o else Amean for v, o in zip(W.sub[idx], own)])
                 iso = np.ones(len(idx), bool) if mode == "1s" else None
                 e, ce, zt = forward(idx, gi, pad, rel, Am, iso=iso)
@@ -192,13 +194,14 @@ def evaluate():
                 for tau in TAUS:
                     if ro != "ce" and tau > 0: continue
                     lo = CE - tau * log_prior.cpu() if ro == "ce" else COS if ro == "cos" else F.log_softmax(CE - 0.5 * log_prior.cpu(), 1) + F.log_softmax(COS, 1)
-                    outs[(mode, ro, tau)] = {"seen": group(lo, Y, SUB, S2.SEEN), "val_zs": group(lo, Y, SUB, S2.VAL), "eval_zs": group(lo, Y, SUB, S2.EVAL)}
+                    outs[(mode, ro, tau)] = {"seen": group(lo, Y, SUB, S2.SEEN), "val_zs": group(lo, Y, SUB, S2.VAL), "eval_zs": group(lo, Y, SUB, S2.EVAL),
+                                             "sub0": group(lo, Y, SUB, (0,)) if a.deep else (float("nan"), float("nan"))}
         res[blk] = outs
     for m in mods: m.train()
     return res
 
 
-def dep(r): return S2.deploy(r["seen"][0], r["val_zs"][0])
+def dep(r): return r["sub0"][0] if a.deep else S2.deploy(r["seen"][0], r["val_zs"][0])
 
 
 hist = []
@@ -241,16 +244,16 @@ for ep in range(a.epochs):
     best = {blk: max((dep(v), k) for k, v in ev[blk].items() if k[0] == "ctx") for blk in ev}
     print(json.dumps({"epoch": ep, "loss": round(tl / a.steps, 3), "ce": round(tce / a.steps, 3), "t5": round(tt5 / a.steps, 3),
                       "sel_Q3": [round(best["Q3"][0], 4), best["Q3"][1]], "sel_Q4": [round(best["Q4"][0], 4), best["Q4"][1]],
-                      "eval_zs_Q3_ctx": round(ev["Q3"][("ctx", "ce", 0.5)]["eval_zs"][0], 4), "t": round(time.time() - t0)}), flush=True)
+                      "eval_zs_Q3_ctx": round(ev["Q3"][("ctx", "ce", 0.5)]["eval_zs"][0], 4), "sub0_Q3": round(ev["Q3"][("ctx", "ce", 0.5)]["sub0"][0], 4) if a.deep else None, "t": round(time.time() - t0)}), flush=True)
 
 if a.final: sys.exit(0)
 folds = {}
 for f, (sel, test) in S2.FOLDS.items():
     best = max(((dep(h["eval"][sel][key]), h["epoch"], key) for h in hist for key in h["eval"][sel] if key.startswith("ctx|")))
     _, ep, key = best; mode, ro, tau = key.split("|"); e = hist[ep]["eval"][test][key]; e1 = hist[ep]["eval"][test][f"1s|{ro}|{tau}"]
-    d_ctx = S2.deploy(e["seen"][0], e["eval_zs"][0]); d_1s = S2.deploy(e1["seen"][0], e1["eval_zs"][0])
+    d_ctx = e["sub0"][0] if a.deep else S2.deploy(e["seen"][0], e["eval_zs"][0]); d_1s = e1["sub0"][0] if a.deep else S2.deploy(e1["seen"][0], e1["eval_zs"][0])
     folds[f] = {"select": sel, "test": test, "epoch": ep, "readout": ro, "tau": float(tau), "sel_score": best[0],
-                "seen": e["seen"], "eval_zs": e["eval_zs"], "deploy": d_ctx, "deploy_null": S2.deploy(e["seen"][1], e["eval_zs"][1]),
+                "seen": e["seen"], "eval_zs": e["eval_zs"], "sub0": e["sub0"], "deploy": d_ctx, "deploy_null": (e["sub0"][1] if a.deep else S2.deploy(e["seen"][1], e["eval_zs"][1])),
                 "deploy_1s": d_1s, "deploy_mix": 0.9 * d_ctx + 0.1 * d_1s}
 summ = {k: float(np.mean([folds[f][k] for f in folds])) for k in ("deploy", "deploy_null", "deploy_1s", "deploy_mix")}
 summ["deploy_lift"] = summ["deploy"] - summ["deploy_null"]
