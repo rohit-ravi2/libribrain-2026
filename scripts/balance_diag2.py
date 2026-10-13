@@ -48,14 +48,16 @@ for blk in ("Q3", "Q4"):
         if len(y) == 0: continue
         pres = torch.unique(y); tgt = torch.zeros(50); tgt[pres] = 1 / len(pres)
         r = {"asis": bacc_null(lo, y)[0]}
-        for T in (0.5, 1.0, 2.0):
-            for it in (10, 50):
-                r[f"sink_T{T}_i{it}"] = bacc_null(sinkhorn(lo, it, T, tgt), y)[0]
+        r["sink_T2"] = bacc_null(sinkhorn(lo, 10, 2.0, tgt), y)[0]
+        e = P["e"][m]
         for kappa in (5.0, 20.0):
-            r[f"pool_k{kappa}"] = bacc_null(pool_em(lo, z, tgt, kappa=kappa), y)[0]
+            r[f"poolE_k{kappa}"] = bacc_null(pool_em(lo, e, tgt, kappa=kappa), y)[0]
+            r[f"poolL_k{kappa}"] = bacc_null(pool_em(lo, F.log_softmax(lo, 1), tgt, kappa=kappa), y)[0]
+        for T in (3.0, 4.0):
+            r[f"sink_T{T}_i10"] = bacc_null(sinkhorn(lo, 10, T, tgt), y)[0]
         if vr.sum() >= 20 and (~vr).sum() >= 20:
             r["asis_vocabrun"] = bacc_null(lo[vr], y[vr])[0]; r["asis_other"] = bacc_null(lo[~vr], y[~vr])[0]; r["n_vocabrun"] = int(vr.sum())
         res[f"{blk}/{s}"] = r
 keys = sorted({k for v in res.values() for k in v}); agg = {k: float(np.mean([v[k] for v in res.values() if k in v])) for k in keys}
 print("MEAN", json.dumps({k: round(v, 4) for k, v in agg.items()}))
-json.dump({"per": res, "mean": agg}, open("runs/balance_diag2.json", "w"), indent=1)
+json.dump({"per": res, "mean": agg}, open("runs/balance_diag3.json", "w"), indent=1)

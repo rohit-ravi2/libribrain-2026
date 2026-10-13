@@ -84,11 +84,11 @@ def group(lo, y, s, members):
 def predict(M, W, segs, Amap, iso=False, bs=40):
     """Amap: dict subject -> (306,306) tensor (or None -> Amean). Returns dict of per-word tensors for ALL words in segs
     (ce, zt, label, sub, idx) in pack order."""
-    CE, ZT, IDX = [], [], []
+    CE, ZT, IDX, EE = [], [], [], []
     for i in range(0, len(segs), bs):
         idx, gi, pad, rel = pack(W, segs[i:i + bs], rel_on=bool(M.a.get("rel", 1)))
         Am = torch.stack([Amap.get(int(s), M.Amean) if Amap.get(int(s), None) is not None else M.Amean for s in W.sub[idx]])
         x, v = W.windows(idx, iso=np.ones(len(idx), bool) if iso else None)
-        _, ce, zt = M.forward(x, v, Am, gi, pad, rel); CE.append(ce.cpu()); ZT.append(zt.cpu()); IDX.append(idx)
+        e, ce, zt = M.forward(x, v, Am, gi, pad, rel); CE.append(ce.cpu()); ZT.append(zt.cpu()); EE.append(e.cpu()); IDX.append(idx)
     idx = np.concatenate(IDX)
-    return {"ce": torch.cat(CE), "zt": torch.cat(ZT), "idx": idx, "y": torch.from_numpy(W.label[idx]), "sub": torch.from_numpy(W.sub[idx])}
+    return {"ce": torch.cat(CE), "zt": torch.cat(ZT), "e": torch.cat(EE), "idx": idx, "y": torch.from_numpy(W.label[idx]), "sub": torch.from_numpy(W.sub[idx])}
