@@ -21,6 +21,9 @@ ap.add_argument("--d", type=int, default=128); ap.add_argument("--D", type=int, 
 ap.add_argument("--broad_frac", type=float, default=0.5); ap.add_argument("--aug", type=int, default=1)
 ap.add_argument("--p_iso", type=float, default=0.15); ap.add_argument("--p_short", type=float, default=0.3)
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--init", default=None)
+ap.add_argument("--upweight", default=None, help="regex over run base names: sentences from matching runs are oversampled by --upw_factor")
+ap.add_argument("--upw_factor", type=float, default=4.0)
+ap.add_argument("--vocab_runs", type=float, default=0.0, help="fraction of subj0 segments drawn from natural runs of >=4 consecutive vocab words (holdout-like contexts)")
 ap.add_argument("--exclude", default=None, help="regex over run base names: excluded from training AND scored as the PROXY block (vocab words, sentence segments, subj0 own A)")
 ap.add_argument("--deep", type=int, default=0, help="1 = Deep track: also score subj0 (own A) on Q3/Q4 and SELECT on subj0")
 ap.add_argument("--ctx_layers", type=int, default=2)
@@ -62,6 +65,20 @@ def sentences(mask):
 
 
 S0 = [s for s in sentences(trainable & (W.sub == 0))]; SB = [s for s in sentences(trainable & (W.sub != 0))]
+# holdout-like oversampling: (a) whole runs matching --upweight (e.g. TIMIT/MOCHA read sentences); (b) natural vocab-only runs
+if a.upweight:
+    up = [s for s in S0 if _re.search(a.upweight, W.bases[int(W.run[s[0]])])]
+    S0 = S0 + up * (int(a.upw_factor) - 1); print("upweighted sentences", len(up), "x", int(a.upw_factor), flush=True)
+VR = []
+if a.vocab_runs > 0:
+    for s in S0:
+        lab = W.label[s]; i = 0
+        while i < len(s):
+            j = i
+            while j < len(s) and lab[j] >= 0: j += 1
+            if j - i >= 4: VR.append(s[max(0, i - 1):min(len(s), j + 1)])   # the vocab run plus one neighbour each side
+            i = j if j > i else i + 1
+    print("vocab-only runs (>=4 words) for oversampling:", len(VR), flush=True)
 print(f"train words subj0 {len(i0)} vocab / {sum(map(len, S0))} all; broad {len(ib)} vocab / {sum(map(len, SB))} all ({len(subs) - 1} subj); "
       f"sentences {len(S0)} / {len(SB)}; load {round(time.time() - t0)}s", flush=True)
 
@@ -217,7 +234,8 @@ for ep in range(a.epochs):
     for m in mods: m.train()
     tl = tce = tt5 = 0.0
     for k in range(a.steps):
-        segs = [segment(S0[j], a.maxw)[0] for j in rng.integers(0, len(S0), n0)] + ([segment(SB[j], a.maxw)[0] for j in rng.integers(0, len(SB), n1)] if n1 > 0 else [])
+        nv = int(round(n0 * a.vocab_runs)) if VR else 0
+        segs = [segment(S0[j], a.maxw)[0] for j in rng.integers(0, len(S0), n0 - nv)] + [segment(VR[j], a.maxw)[0] for j in rng.integers(0, len(VR), nv)] + ([segment(SB[j], a.maxw)[0] for j in rng.integers(0, len(SB), n1)] if n1 > 0 else [])
         idx, gi, pad, rel = pack(segs); N = len(idx)
         iso = rng.random(N) < a.p_iso
         short = rng.random(N) < a.p_short
