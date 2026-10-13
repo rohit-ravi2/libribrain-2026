@@ -487,3 +487,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Status of the factor-level map (today): balance ✔ (+0.036/+0.010 LB); pooling ✘; read-speech regime ✘ (not the gap); vocab-run training ✘; Bet C dose-response pending (ext20/ext58 running).
 
 ## FINAL-6c (committed 2026-10-13 ~21:45 EDT, before the runs): seeds 5–9 of the FINAL-6 recipe → 10-model ensembles, per-subject balance (Broad T=2, Deep T=3), both tracks. Pred: Broad 0.69–0.70, Deep 0.67–0.68 (end-game variance reduction; Deep gains more from averaging).
+
+### Outcome EXT-1 / Bet C dose-response (2026-10-14 ~01:30 EDT, runs/ext20.json vs runs/deep_c.json)
+- +20 Le Petit Prince listeners (French, same helmet, T5-SigLIP-only stream, 6 of 38 segments per batch): subj0 0.731 (+0.026), **Broad deploy 0.481 (−0.151)** (pred ±0.02: MISS, far below). **Shallow external subjects HURT zero-shot transfer, confirmed on a second corpus**, and more strongly than LibriBrain's own Broad subjects did (−0.04 at bf 0.1). ext58 stopped to free the GPU for the finals; it is the third dose point for the paper, post-deadline.
+- Interpretation: anything added to subj0's stream slightly helps subj0 (VR-1 +0.024, ext20 +0.026) and hurts transfer; the trunk's generalisation to new brains comes from the depth and homogeneity of one subject's data, not from subject diversity at this scale (1–2 h per added subject).
