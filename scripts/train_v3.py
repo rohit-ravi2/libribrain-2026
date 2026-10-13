@@ -21,6 +21,7 @@ ap.add_argument("--d", type=int, default=128); ap.add_argument("--D", type=int, 
 ap.add_argument("--broad_frac", type=float, default=0.5); ap.add_argument("--aug", type=int, default=1)
 ap.add_argument("--p_iso", type=float, default=0.15); ap.add_argument("--p_short", type=float, default=0.3)
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--init", default=None)
+ap.add_argument("--exclude", default=None, help="regex over run base names: excluded from training AND scored as the PROXY block (vocab words, sentence segments, subj0 own A)")
 ap.add_argument("--deep", type=int, default=0, help="1 = Deep track: also score subj0 (own A) on Q3/Q4 and SELECT on subj0")
 ap.add_argument("--ctx_layers", type=int, default=2)
 ap.add_argument("--rel", type=int, default=0, help="1 = feed relative word-onset timing to the sentence transformer (stimulus metadata; OFF by default since 2026-10-10)")
@@ -34,7 +35,13 @@ os.makedirs("runs", exist_ok=True); t0 = time.time()
 W = Words(load_meg=True, load_t5=a.t5 > 0, load_w2v=a.w2v > 0); q = W.quarters()
 scored = set(S2.EVAL + S2.VAL + S2.SEEN) | ({0} if a.deep else set())
 trainable = ~np.isin(W.sub, S2.EVAL + S2.VAL) & np.isin(q, ["other", "Q1", "Q2"])
-if a.final: trainable = q != ""                      # everything (guard-dropped boundary words excluded only)
+if a.final: trainable = q != ""
+import re as _re
+excl = np.zeros(W.n, bool)
+if a.exclude:
+    for r_, b_ in enumerate(W.bases):
+        if _re.search(a.exclude, b_): excl[W.run == r_] = True
+    trainable &= ~excl; print("excluded runs:", [b for b in W.bases if _re.search(a.exclude, b)], flush=True)                      # everything (guard-dropped boundary words excluded only)
 if a.t5 > 0:
     has_t5 = np.zeros(W.n, bool)
     for r in range(len(W.bases)):
@@ -165,8 +172,9 @@ def group(lo, y, s, members):
 
 # ---- eval sets: per block, all words of scored subjects' sentences in that block (context), scored = vocab words ----
 EV = {}
-for blk in ("Q3", "Q4"):
-    m = (q == blk) & np.isin(W.sub, list(scored))
+BLOCKS = ("Q3", "Q4") + (("PX",) if a.exclude else ())
+for blk in BLOCKS:
+    m = (q == blk) & np.isin(W.sub, list(scored)) if blk != "PX" else excl
     segs = [c for s in sentences(m) for c in segment(s, a.maxw, train=False)]
     EV[blk] = segs
     print(blk, "segments", len(segs), "words", sum(map(len, segs)), "vocab", int((W.label[np.concatenate(segs)] >= 0).sum()), flush=True)
@@ -182,7 +190,7 @@ def evaluate():
             CE, COS, Y, SUB = [], [], [], []
             for i in range(0, len(segs), 40):
                 idx, gi, pad, rel = pack(segs[i:i + 40])
-                own = np.array([(v in S2.SEEN) or (a.deep and v == 0) for v in W.sub[idx]])
+                own = np.array([(v in S2.SEEN) or ((a.deep or blk == "PX") and v == 0) for v in W.sub[idx]])
                 Am = torch.stack([A[sid[int(v)]].detach() if o else Amean for v, o in zip(W.sub[idx], own)])
                 iso = np.ones(len(idx), bool) if mode == "1s" else None
                 e, ce, zt = forward(idx, gi, pad, rel, Am, iso=iso)
@@ -195,7 +203,7 @@ def evaluate():
                     if ro != "ce" and tau > 0: continue
                     lo = CE - tau * log_prior.cpu() if ro == "ce" else COS if ro == "cos" else F.log_softmax(CE - 0.5 * log_prior.cpu(), 1) + F.log_softmax(COS, 1)
                     outs[(mode, ro, tau)] = {"seen": group(lo, Y, SUB, S2.SEEN), "val_zs": group(lo, Y, SUB, S2.VAL), "eval_zs": group(lo, Y, SUB, S2.EVAL),
-                                             "sub0": group(lo, Y, SUB, (0,)) if a.deep else (float("nan"), float("nan"))}
+                                             "sub0": group(lo, Y, SUB, (0,)) if (a.deep or blk == "PX") else (float("nan"), float("nan"))}
         res[blk] = outs
     for m in mods: m.train()
     return res
@@ -241,7 +249,8 @@ for ep in range(a.epochs):
                 "logit_s": logit_s.detach().cpu(), "logit_b": logit_b.detach().cpu(), "A": A.detach().cpu(), "subs": subs,
                 "proto": proto.cpu() if a.t5 > 0 else None, "t_mean": t_mean.cpu() if a.t5 > 0 else None,
                 "log_prior": log_prior.cpu(), "args": vars(a), "epoch": ep}, f"runs/{a.tag}_ep{ep}.pt")
-    best = {blk: max((dep(v), k) for k, v in ev[blk].items() if k[0] == "ctx") for blk in ev}
+    best = {blk: max((dep(v), k) for k, v in ev[blk].items() if k[0] == "ctx") for blk in ev if blk != "PX"}
+    if "PX" in ev: print(json.dumps({"epoch": ep, "PROXY": {f"{k[1]}|{k[2]}": round(v["sub0"][0], 4) for k, v in ev["PX"].items() if k[0] == "ctx"}}), flush=True)
     print(json.dumps({"epoch": ep, "loss": round(tl / a.steps, 3), "ce": round(tce / a.steps, 3), "t5": round(tt5 / a.steps, 3),
                       "sel_Q3": [round(best["Q3"][0], 4), best["Q3"][1]], "sel_Q4": [round(best["Q4"][0], 4), best["Q4"][1]],
                       "eval_zs_Q3_ctx": round(ev["Q3"][("ctx", "ce", 0.5)]["eval_zs"][0], 4), "sub0_Q3": round(ev["Q3"][("ctx", "ce", 0.5)]["sub0"][0], 4) if a.deep else None, "t": round(time.time() - t0)}), flush=True)
