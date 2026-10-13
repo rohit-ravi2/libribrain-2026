@@ -7,10 +7,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pnpl.competition import LibriBrainCompetitionHoldout, write_submission
 from src.common import HOLDOUT, VOCAB
 ap = argparse.ArgumentParser(); ap.add_argument("--inp", required=True); ap.add_argument("--out", required=True)
-ap.add_argument("--track", default="broad"); ap.add_argument("--iters", type=int, default=10); a = ap.parse_args()
+ap.add_argument("--track", default="broad"); ap.add_argument("--iters", type=int, default=10); ap.add_argument("--T", type=float, default=1.0); a = ap.parse_args()
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname(HOLDOUT), download=False); md = H.metadata_frame()
 df = pd.read_csv(a.inp); assert list(df.columns[1:]) == VOCAB and len(df) == len(md)
 P = df.iloc[:, 1:].to_numpy().astype(np.float64); P /= P.sum(1, keepdims=True); out = P.copy()
+if a.T != 1.0: P = np.clip(P, 1e-12, None) ** (1.0 / a.T); P /= P.sum(1, keepdims=True)
 for s, g in md.groupby("subject"):
     rows = g["index"].values; Q = P[rows].copy(); n = len(rows)
     for _ in range(a.iters):

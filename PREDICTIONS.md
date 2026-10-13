@@ -461,3 +461,9 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Threshold met → **BAL-2:** per-subject Sinkhorn (10 iters, uniform target over all 50 words, over the subject's own 960 rows) applied to final6_broad_ens3.csv and final6_deep_ens5.csv. LB prediction: Broad 0.6555 → 0.68–0.75; Deep 0.6535 → 0.68–0.75 (larger than local because the holdout is actually balanced and all 50 classes are present).
 ### Outcome BAL-2 (2026-10-13, LB)
 - Broad **0.6879** (pred 0.68–0.75: HIT, low edge; +0.032 = local estimate). Deep **0.6579** (pred 0.68–0.75: MISS, +0.004; Deep public ≈ 290 rows, noisy). New best files: final6_broad_ens3_bal.csv, final6_deep_ens5_bal.csv.
+### Outcome BAL-3 map (2026-10-13, runs/balance_diag2.json; local, deep_c ep6)
+- Sinkhorn temperature before balancing: T 0.5 → 0.655, 1 → 0.674, 2 → **0.687**; iterations 10 = 50. Flatter posteriors balance better.
+- Prototype-pooling EM in the T5-projection space: κ5 0.609, κ20 0.472 — **hurts**; the cos head's space is not discriminative enough to pool in. Next: pool in the encoder embedding or logit space.
+- **Regime check:** vocabulary words inside runs of ≥4 consecutive vocab words (the holdout's regime) score **0.570** vs 0.653 elsewhere. Function-word-only contexts are harder for the current model; a holdout-like local proxy is needed (TIMIT read sentences: 450 sentences/session, 8.6 words, 2.7 s — structurally close to the holdout).
+- **BAL-2b (pre-registered now):** Broad file re-balanced at T=2. LB pred 0.69–0.71.
+## PROXY-1 (committed 2026-10-13 ~10:40 EDT): retrain the deep_c recipe with subj0 TIMIT ses-10..14 EXCLUDED (`--exclude 'task-TIMIT'` for those sessions); evaluate vocab words of those sessions in sentence segments → a read-short-sentence proxy. Prediction: proxy BAcc 0.55–0.65 (below the 0.705 prose number), and τ/T re-tuned on it transfers to LB better than prose tuning.
