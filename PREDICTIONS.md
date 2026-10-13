@@ -468,3 +468,4 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - **BAL-2b (pre-registered now):** Broad file re-balanced at T=2. LB pred 0.69–0.71.
 ## PROXY-1 (committed 2026-10-13 ~10:40 EDT): retrain the deep_c recipe with subj0 TIMIT ses-10..14 EXCLUDED (`--exclude 'task-TIMIT'` for those sessions); evaluate vocab words of those sessions in sentence segments → a read-short-sentence proxy. Prediction: proxy BAcc 0.55–0.65 (below the 0.705 prose number), and τ/T re-tuned on it transfers to LB better than prose tuning.
 ### Outcome BAL-3b (runs/balance_diag3.json): pooling in logit space 0.676 (= balancing alone), in encoder space 0.659/0.547 (hurts). **Unsupervised prototype pooling: NOT DETECTED as a lever in any space.** Sinkhorn T 3 → 0.688, T 4 → 0.689 (saturating; +0.045 total over as-is).
+### Outcome BAL-2b (LB): Broad **0.6913** at T=2 (pred 0.69–0.71: HIT). Deep at T=3 submitted now (pred 0.66–0.68).
