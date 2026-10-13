@@ -459,3 +459,5 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ### Outcome BAL-1 (2026-10-13, runs/balance_diag.json; deep_c ep6, 13 subject-blocks)
 - as-is 0.643 → Sinkhorn 0.674 (**+0.030**; pred −0.02..+0.03: top edge); balanced resamples 0.643 → 0.686 (**+0.043**; pred +0.03..+0.08: HIT). One-step marginal correction: 0.000. Top-1 max share locally 0.23 → the skew is real and costly under balanced accuracy.
 - Threshold met → **BAL-2:** per-subject Sinkhorn (10 iters, uniform target over all 50 words, over the subject's own 960 rows) applied to final6_broad_ens3.csv and final6_deep_ens5.csv. LB prediction: Broad 0.6555 → 0.68–0.75; Deep 0.6535 → 0.68–0.75 (larger than local because the holdout is actually balanced and all 50 classes are present).
+### Outcome BAL-2 (2026-10-13, LB)
+- Broad **0.6879** (pred 0.68–0.75: HIT, low edge; +0.032 = local estimate). Deep **0.6579** (pred 0.68–0.75: MISS, +0.004; Deep public ≈ 290 rows, noisy). New best files: final6_broad_ens3_bal.csv, final6_deep_ens5_bal.csv.
