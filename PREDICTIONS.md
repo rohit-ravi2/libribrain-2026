@@ -450,3 +450,4 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ### Outcome FINAL-6b (2026-10-13 ~03:40 EDT; 5 seeds)
 - Broad 0.6486 (pred +0.005–0.015 over 0.6555: MISS, −0.007; noise). **Broad best stays final6_broad_ens3.csv = 0.6555.**
 - Deep **0.6535** (pred: HIT, +0.029 over 0.6246). **Deep best = final6_deep_ens5.csv.** Deep benefits from averaging more than Broad does, consistent with the per-subject-hours scaling: subj0 evidence is strong enough that variance reduction pays.
+- deep_i (bf 0, ctx 4, 24 ep): subj0 0.708 (pred 0.74: MISS), Broad 0.633 (= deep_c). Select-block peaks (0.75) did not transfer to the test block. **DEEP-1 maps closed:** the subj0-only, 4-layer, 8-epoch recipe (deep_c = FINAL-6) is the optimum found; depth 6, 12 and 24 epochs, and any Broad-subject fraction are all neutral or worse. No FINAL-7 retrain is justified by the local evidence.

@@ -18,8 +18,9 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-13 00:15 EDT)
-- **Best LB:** Broad **0.6555** (submissions/final6_broad_ens3.csv); Deep **0.6535** (submissions/final6_deep_ens5.csv). Rerank retired (hurts strong models). FINAL-6b 5-seed Broad 0.6486 (noise).
-- **GPU queue:** deep1c (deep_g ctx6, deep_h 12 ep) → final6b (seeds 3,4 → 5-model ensembles, self-submits) → deep1d (deep_i 24 ep). Order among waiters may vary.
-- Tomorrow: FINAL-7 at the best epochs/depth for both tracks; select final files on Kaggle (Rohit) before Oct 16 12:00 UTC.
-- Bet C: LPP preprocessing overnight (watcher). Reassess: Broad-subject data HURT transfer, so adding LPP subjects is now a hypothesis test, not an expected gain.
+## PENDING (updated 2026-10-13 06:40 EDT) — GPU queue empty
+- **Best LB:** Broad **0.6555** = `submissions/final6_broad_ens3.csv` (3 seeds); Deep **0.6535** = `submissions/final6_deep_ens5.csv` (5 seeds). Recipe: subj0-only training, 3 s sentence-epoch windows, 4-layer sentence transformer (no timing), T5 SigLIP + CE, ce readout τ0.5, no rerank, identity input layers for Broad subjects.
+- **Rohit must SELECT these two files as final on the Kaggle pages before Oct 16 12:00 UTC.** Kaggle auto-picks best public otherwise, but select explicitly.
+- Maps closed (all local, split v2 / subj0 blocks): broad_frac 0.5/0.2/0.1/0 → 0.452/0.528/0.594/0.632; ctx 2/4/6; epochs 8/12/24; 5 vs 3 seeds (Broad noise, Deep +0.03). LM rerank: helps weak models only (retired).
+- Bet C (extmeg): LPP preprocessing status in logs/extmeg_preprocess_lpp_listen.log; next step = loader + third stream (docs/extmeg/PLAN.md §5). Given that Broad-subject data hurt transfer, this is a hypothesis test for after the deadline.
+- Code review package (if asked): scripts/train_v3.py, predict_holdout_v3.py, src/{cont,models,v3lib,common}.py, scripts/build_cont.py, scripts/text_targets.py; checkpoints runs/final6_s{0..4}_ep7.pt.
