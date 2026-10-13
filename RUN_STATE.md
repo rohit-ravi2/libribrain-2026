@@ -18,9 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-13 06:40 EDT) — GPU queue empty
-- **Best LB:** Broad **0.6555** = `submissions/final6_broad_ens3.csv` (3 seeds); Deep **0.6535** = `submissions/final6_deep_ens5.csv` (5 seeds). Recipe: subj0-only training, 3 s sentence-epoch windows, 4-layer sentence transformer (no timing), T5 SigLIP + CE, ce readout τ0.5, no rerank, identity input layers for Broad subjects.
-- **Rohit must SELECT these two files as final on the Kaggle pages before Oct 16 12:00 UTC.** Kaggle auto-picks best public otherwise, but select explicitly.
-- Maps closed (all local, split v2 / subj0 blocks): broad_frac 0.5/0.2/0.1/0 → 0.452/0.528/0.594/0.632; ctx 2/4/6; epochs 8/12/24; 5 vs 3 seeds (Broad noise, Deep +0.03). LM rerank: helps weak models only (retired).
-- Bet C (extmeg): LPP preprocessing status in logs/extmeg_preprocess_lpp_listen.log; next step = loader + third stream (docs/extmeg/PLAN.md §5). Given that Broad-subject data hurt transfer, this is a hypothesis test for after the deadline.
-- Code review package (if asked): scripts/train_v3.py, predict_holdout_v3.py, src/{cont,models,v3lib,common}.py, scripts/build_cont.py, scripts/text_targets.py; checkpoints runs/final6_s{0..4}_ep7.pt.
+## PENDING (updated 2026-10-13 15:30 EDT)
+- **Best LB:** Broad **0.6913** (`submissions/final6_broad_ens3_balT2.csv`), Deep **0.6639** (`submissions/final6_deep_ens5_balT3.csv`). Both = subj0-only recipe + per-subject Sinkhorn class balance (T 2–3). **Rohit must select these on Kaggle before Oct 16 12:00 UTC.**
+- **GPU queue:** Bet C dose-response (ext0 control → ext20 → ext58, scripts/extmeg/queue_dose.sh, ~75–90 min each under load) → vr1 (vocab-run oversampling test, scripts/queue_vr1.sh). Results: logs/ext*.log, logs/vr1.log, logs/vr1_diag.log; `scripts/broad_protocol.py ext0 ext20 ext58 vr1`.
+- Today's findings: balance re-rank +0.03/+0.04 local, +0.036/+0.010 LB; prototype pooling NOT DETECTED (all spaces); read-sentence proxy (held-out TIMIT) 0.705 = prose → sentence form is not the holdout's difficulty; vocab-only runs locally 0.57 vs 0.65 → VR-1 tests oversampling them.
+- Next decisions: if VR-1 lifts the vocab-run subset ≥ 0.04 with overall intact → retrain finals (both tracks) with --vocab_runs 0.3, balance, submit. If ext20/ext58 ≥ +0.03 → multi-subject pretraining reopens (post-deadline scale-up).
