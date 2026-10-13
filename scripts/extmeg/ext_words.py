@@ -21,8 +21,14 @@ from src.cont import Words
 SUB_OFFSET = 1000
 
 
+def _prewarm(path, chunk=1 << 24):
+    """Pull a file into the OS page cache without allocating (evictable under memory pressure, unlike a RAM copy)."""
+    with open(path, "rb") as fh:
+        while fh.read(chunk): pass
+
+
 class ExtWords(Words):
-    def __init__(self, corpus="lpp_listen", subjects=None, load_meg=True, load_t5=True, mmap=True):
+    def __init__(self, corpus="lpp_listen", subjects=None, load_meg=True, load_t5=True, mmap=True, prewarm=True):
         """subjects: None = all; int N = the first N subject numbers; iterable = those subject numbers (1-based, as in sub-XX)."""
         self.corpus = corpus; src = f"{CACHE}/ext_{corpus}"
         evs = sorted(glob.glob(f"{src}/*_ev.npz"))
@@ -50,7 +56,9 @@ class ExtWords(Words):
             cols["sent"].append(si + gs); gs += int(si.max()) + 10 ** 6 + 1
             cols["s0"].append(d["sent_start_s"].astype(np.float64)); cols["s1"].append(d["sent_end_s"].astype(np.float64)); cols["li"].append(np.arange(n))
             cols["ntimes"].append(np.full(n, int(d["n_times50"])))
-            if load_meg: self.meg.append(np.load(f"{src}/{b}.npy", mmap_mode="r" if mmap else None))
+            if load_meg:
+                if mmap and prewarm: _prewarm(f"{src}/{b}.npy")      # sequential read -> page cache; random window reads then cost ~0.1 ms
+                self.meg.append(np.load(f"{src}/{b}.npy", mmap_mode="r" if mmap else None))
             if load_t5: self.t5.append(np.load(f"{src}/t5/{b}.npy", mmap_mode="r"))
         for k, v in cols.items(): setattr(self, k, np.concatenate(v) if v else np.zeros(0, np.int64))
         self.n = len(self.label)
