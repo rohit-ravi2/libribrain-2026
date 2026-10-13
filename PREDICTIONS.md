@@ -482,3 +482,8 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ## VR-1 — oversample vocabulary-only runs (committed 2026-10-13 ~15:10 EDT, before the run)
 - deep_c recipe + `--vocab_runs 0.3` (30% of subj0 segments drawn from natural runs of ≥4 consecutive vocab words, ±1 neighbour). Score: Broad deploy, subj0, and the vocab-run subset via balance_diag2.
 - Predictions: vocab-run subset 0.57 → ≥ 0.62; overall Broad deploy within ±0.02 of 0.632. If the subset gains ≥ 0.04 with overall intact, the final models are retrained with it (both tracks), pred LB +0.02–0.05.
+### Outcome VR-1 (2026-10-13, runs/vr1.json, logs/vr1_diag.log)
+- subj0 0.729 (+0.024), **Broad deploy 0.599 (−0.033)**, vocab-run subset **0.535** (pred ≥ 0.62: MISS; worse than 0.570), as-is Broad 0.591 vs 0.643. **NOT DETECTED / harmful for Broad.** More exposure to vocabulary-only contexts does not make reduced function words more decodable; it over-fits subj0. Not used.
+- Status of the factor-level map (today): balance ✔ (+0.036/+0.010 LB); pooling ✘; read-speech regime ✘ (not the gap); vocab-run training ✘; Bet C dose-response pending (ext20/ext58 running).
+
+## FINAL-6c (committed 2026-10-13 ~21:45 EDT, before the runs): seeds 5–9 of the FINAL-6 recipe → 10-model ensembles, per-subject balance (Broad T=2, Deep T=3), both tracks. Pred: Broad 0.69–0.70, Deep 0.67–0.68 (end-game variance reduction; Deep gains more from averaging).
