@@ -620,3 +620,18 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ## SLP-β — emission sharpness (committed 2026-10-14 ~16:50 UTC; LB slots after 00:00 UTC)
 - κ 20 with emissions (P / mean P)^β, β ∈ {0.7, 1.4}, both tracks. Files `submissions/slpb_{broad,deep_bn}_k20_b{0.7,1.4}.csv`. The decoder is over-confident (Sinkhorn prefers T 2–3), so flatter emissions may let the learned grammar act more.
 - Predictions vs κ20 β1 (Broad 0.70958 / Deep 0.71611): β 0.7 −0.005..+0.01; β 1.4 −0.015..+0.003.
+
+## ORACLE-1 — low-compute headroom scan (Rohit 2026-10-14: test the neurophysiology / hardware / out-of-the-box ideas cheaply; timing stays untouched) (committed ~18:15 UTC, before the run)
+- Mode: GENERATIVE map with a CONFIRMATORY gate. Frozen deep_c ep6 (Q3/Q4 held out), 13 Broad subjects (identity A) + subj0 (A0), both blocks; `scripts/oracle_scan.py` → `runs/oracle_scan.json`. All Δ below are vs base+Sinkhorn.
+- **Decision rule:** an idea gets an unsupervised build only if its oracle headroom is ≥ +0.10 (or, for directly label-free variants, the label-free gain is ≥ +0.02 on the calibrated proxy).
+- Predictions:
+  - O1 sensor type (mags 0 / ×0.5, grads 0): mags×0.5 −0.02..+0.01; zeroing either type −0.05..−0.15 (trained on all 306).
+  - O2 latency ±60 ms: oracle +0.005..+0.02 (per-word windows already span 3 s; the encoder is roughly shift-tolerant); label-free ≈ 0.
+  - O3 artifact PCs k 1–8: −0.02..+0.01 (SSS already removed external interference; per-window normalisation removes slow drifts).
+  - O4 pooling ceiling: pool-4 +0.10..+0.20, pool-16 +0.20..+0.30 (d'Ascoli: averaging ×2 above chance). kNN purity in logit/embedding space ≤ 2× chance, which is why unsupervised pooling failed.
+  - O5 grammar on prose vocab-runs (~30–40% of rows in runs): learned SLP +0.00..+0.01; oracle bigram +0.02..+0.06 (in-sample, an upper bound).
+  - O6 spatial map: in-sample oracle +0.05..+0.12; labelled (subjects' Q1–Q2) +0.01..+0.04.
+
+## PROXY-2 — holdout-shaped proxy, calibrated against known LB effects (committed ~18:15 UTC, before the run)
+- `scripts/proxy_calib.py`: 5–9-word sentences, epoch-clipped windows, +10% isolated 1 s rows, class-balanced scoring (≤ 8 rows/class), AdaBN statistics from exactly these rows. Broad: deep_c on Q3/Q4. Deep: lso1 (leave-recording-day-out: subj0's 2024-10-04 runs excluded) on the held-out day.
+- **Calibration targets (LB):** Sinkhorn Broad +0.036 / Deep +0.010; AdaBN Broad −0.011; AdaBN Deep +0.044. **Proxy accepted** if signs match on all four and magnitudes are within ±0.02. Otherwise ideas are ranked only with the LB.
