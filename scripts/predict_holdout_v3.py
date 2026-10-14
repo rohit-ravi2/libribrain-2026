@@ -22,6 +22,10 @@ ap.add_argument("--readout", default="ce"); ap.add_argument("--tau", type=float,
 ap.add_argument("--pool_cov", default="runs/pool_cov.pt", help="(306,306) covariance of normalised Broad training windows, written by adapt_v3.py")
 ap.add_argument("--identA", type=int, default=0, help="1 = identity input layer for every subject (incl. subj0)")
 ap.add_argument("--bnrecal", type=int, default=0, help="1 = re-estimate encoder BatchNorm stats on each subject's own holdout rows (within-subject TTA)")
+ap.add_argument("--bn_alpha", type=float, default=1.0, help="with --bnrecal: running stats = (1-alpha)*training + alpha*subject")
+ap.add_argument("--bn_dropout_off", type=int, default=0, help="with --bnrecal: hold dropout in eval while estimating subject stats (standard AdaBN)")
+ap.add_argument("--fitA_steps", type=int, default=0, help="N > 0: for subjects with labelled training data, fit A_s (from identity) on ALL their labelled words with the trunk frozen (CE, shared head)")
+ap.add_argument("--fitA_lr", type=float, default=3e-4)
 ap.add_argument("--coral", type=float, default=0.0); ap.add_argument("--ent_steps", type=int, default=0); ap.add_argument("--ent_lr", type=float, default=1e-3)
 a = ap.parse_args(); torch.manual_seed(0); rng = np.random.default_rng(0)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname(HOLDOUT), download=False)
@@ -96,12 +100,42 @@ def subject_A(M, s, segs, Cp_half):
 @torch.no_grad()
 def bn_recal(M, segs, A):
     import copy
-    saved = copy.deepcopy(M.enc.state_dict())
-    for mod in M.enc.modules():
-        if isinstance(mod, nn.BatchNorm1d): mod.reset_running_stats(); mod.momentum = None
+    saved = copy.deepcopy(M.enc.state_dict()); bns = [m for m in M.enc.modules() if isinstance(m, nn.BatchNorm1d)]
+    train_stats = [(m.running_mean.clone(), m.running_var.clone()) for m in bns]
+    for mod in bns: mod.reset_running_stats(); mod.momentum = None
     M.enc.train()
+    if a.bn_dropout_off:
+        for mod in M.enc.modules():
+            if isinstance(mod, nn.Dropout): mod.eval()
     for X, V, gi, pad, rel, _ in batches(segs): M.forward(X, V, A, gi, pad, rel)
-    M.enc.eval(); return saved
+    M.enc.eval()
+    if a.bn_alpha != 1.0:
+        for m, (mt, vt) in zip(bns, train_stats):
+            m.running_mean.copy_((1 - a.bn_alpha) * mt + a.bn_alpha * m.running_mean); m.running_var.copy_((1 - a.bn_alpha) * vt + a.bn_alpha * m.running_var)
+    return saved
+
+
+_FITW = {}
+def fit_A_labelled(M, s, steps):
+    """Frozen-trunk input layer for subject s from its own labelled LibriBrain recordings (same objective as INF-1 fitA)."""
+    import glob as _g
+    from src.cont import Words as _Words
+    from src.v3lib import segments as _segments, pack as _pack
+    from src.common import CACHE as _C
+    if s not in _FITW:
+        runs = [os.path.basename(f)[:-7] for f in _g.glob(f"{_C}/cont/sub-{s}_*_ev.npz")]
+        _FITW[s] = _Words(runs=runs, load_meg=True) if runs else None
+    W = _FITW[s]
+    if W is None: return None
+    segs = _segments(W, W.label > -2, M.a["maxw"]); I = torch.eye(306, device=dev); A_s = nn.Parameter(I.clone())
+    opt = torch.optim.Adam([A_s], lr=a.fitA_lr); g = np.random.default_rng(s)
+    for _ in range(steps):
+        b = [segs[j] for j in g.integers(0, len(segs), 24)]
+        idx, gi, pad, rel = _pack(W, b); x, v = W.windows(idx)
+        _, ce, _ = M.forward(x, v, A_s, gi, pad, rel); y = torch.from_numpy(W.label[idx]).to(dev); h = y >= 0
+        loss = F.cross_entropy(ce[h], y[h], label_smoothing=0.1) + 1e-3 * ((A_s - I) ** 2).sum()
+        opt.zero_grad(); loss.backward(); opt.step()
+    return A_s.detach()
 
 
 probs = torch.zeros(len(md), 50); Cp = {}
@@ -111,12 +145,16 @@ for s in sorted(md.subject.unique()):
         if a.coral > 0 and id(M) not in Cp:
             Cp[id(M)] = msqrt(torch.load(a.pool_cov, map_location=dev), 0.5)
         A = torch.eye(306, device=dev) if a.identA else subject_A(M, int(s), segs, Cp.get(id(M)))
+        if a.fitA_steps > 0 and 1 <= int(s) <= 32:
+            Af = fit_A_labelled(M, int(s), a.fitA_steps)
+            if Af is not None: A = Af
         saved = bn_recal(M, segs, A) if a.bnrecal else None
         with torch.no_grad():
             for X, V, gi, pad, rel, rows in batches(segs):
                 _, ce, zt = M.forward(X, V, A, gi, pad, rel)
                 lo = M.readout(ce, zt, a.readout, a.tau); P[rows] += F.softmax(lo, 1).cpu()
         if saved is not None: M.enc.load_state_dict(saved)
+    _FITW.pop(int(s), None)
     probs += P / len(models); print(f"subj{int(s):02d} own_A={int(s) in models[0].sid} rows={int((P.sum(1) > 0).sum())}", flush=True)
 assert (probs.sum(1) > 0.99).all()
 os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
