@@ -11,10 +11,14 @@ from src.common import CACHE
 from src.v3lib import Model, segments, pack, predict, bacc_null, dev
 
 M = Model(sys.argv[1]); maxw = M.a["maxw"]; tau = 0.5; t0 = time.time()
-BROAD = sorted(set(S2.EVAL + S2.VAL + S2.SEEN)); SUBS = BROAD + [0]
+import re as _re
+PX = os.environ.get("PX")                       # regex of held-out subj0 runs (leave-day-out) -> blocks PX_all / PX_short (5-9-word sentences)
+BROAD = sorted(set(S2.EVAL + S2.VAL + S2.SEEN)); SUBS = [0] if PX else BROAD + [0]
 runs = [os.path.basename(f)[:-7] for f in glob.glob(f"{CACHE}/cont/*_ev.npz")]
-runs = [b for b in runs if any(s in b for s in SHARED) and int(b.split("_")[0][4:]) in SUBS]
+runs = [b for b in runs if _re.search(PX, b)] if PX else [b for b in runs if any(s in b for s in SHARED) and int(b.split("_")[0][4:]) in SUBS]
 W = Words(runs=runs, load_meg=True); q = W.quarters(); I = torch.eye(306, device=dev)
+if PX:
+    q = np.array(["PX_all"] * W.n, dtype=object); _, cnt = np.unique(W.sent, return_counts=True); short = (cnt[W.sent] >= 5) & (cnt[W.sent] <= 9)
 BNS = [m for m in M.enc.modules() if isinstance(m, nn.BatchNorm1d)]; TRAIN = [(m.running_mean.clone(), m.running_var.clone()) for m in BNS]
 ALPHAS = (0.0, 0.25, 0.5, 0.75, 1.0)
 
@@ -38,9 +42,9 @@ def subject_stats(segs, A):
 
 
 res = {}
-for blk in ("Q3", "Q4"):
+for blk in (("PX_all", "PX_short") if PX else ("Q3", "Q4")):
     for s in SUBS:
-        segs = segments(W, (q == blk) & (W.sub == s), maxw)
+        segs = segments(W, ((q == "PX_all") & short if blk == "PX_short" else (q == blk)) & (W.sub == s), maxw)
         if not segs: continue
         A = M.A[M.sid[0]] if s == 0 else I; T = 3.0 if s == 0 else 2.0; r = {}
         SUBJ = subject_stats(segs, A)
@@ -54,7 +58,9 @@ for blk in ("Q3", "Q4"):
         res[f"{blk}/{s}"] = r; print(blk, s, json.dumps({k: round(v, 3) for k, v in r.items()}), round(time.time() - t0), "s", flush=True)
 out = {}
 for grp, members in (("broad", BROAD), ("deep", [0])):
-    rows = [v for k, v in res.items() if int(k.split("/")[1]) in members]
-    out[grp] = {k: round(float(np.mean([v[k] for v in rows])), 4) for k in rows[0]}
-    print("MEAN", grp, json.dumps(out[grp]), flush=True)
-json.dump({"per": res, "mean": out}, open("runs/bn_alpha_map.json", "w"), indent=1)
+    for blkset in ((("PX_all",), ("PX_short",)) if PX else (("Q3", "Q4"),)):
+        rows = [v for k, v in res.items() if int(k.split("/")[1]) in members and k.split("/")[0] in blkset]
+        if not rows: continue
+        out[grp + "/" + "+".join(blkset)] = {k: round(float(np.mean([v[k] for v in rows])), 4) for k in rows[0]}
+        print("MEAN", grp, "+".join(blkset), json.dumps(out[grp + "/" + "+".join(blkset)]), flush=True)
+json.dump({"per": res, "mean": out}, open(os.environ.get("OUT", "runs/bn_alpha_map.json"), "w"), indent=1)
