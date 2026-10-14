@@ -567,3 +567,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - α 0.5 + Sinkhorn: **+0.028** over α 0 (pred +0.00..+0.02: beat; interior optimum HIT). 6/7 subjects positive, one +0.004. Full recalibration +0.008 (LB said −0.011). Mechanism: a new brain needs part of its own normalisation (amplitude/offset of the spatial-conv features) and part of subj0's reference scale. Q4 and the subj0 sanity column were not run.
 ### Outcome BN-α Deep LB arms (2026-10-14 ~15:30 UTC)
 - α 1.0, dropout off: **0.70767** (= dropout-on, pred ±0.01: HIT). α 0.5: **0.67906** (−0.029; pred −0.03..+0.01: HIT, bottom edge). Subj0's new session wants full recalibration. New Broad brains locally want α≈0.5. Deep best unchanged (drift1_deep_bn_balT3 / bnD_deep_a1.0_balT3, 0.70767).
+
+## DIV-1 — Deep diversity ensemble with AdaBN (committed 2026-10-14 ~15:45 UTC, before the run)
+- Members: FINAL-6c ×10 (all data) + fold-selected checkpoints of 5 local-map runs that score higher on subj0 and differ in inductive bias: deep_g ep7 (ctx 6, 0.720), deep_h ep6 (12 ep, 0.721), vr1 ep6 (vocab-run oversampling, 0.729), ext20 ep7 (+20 LPP listeners, 0.731), deep_i ep18 (24 ep, 0.708). These hold out only subj0's Sherlock1 ses-11/12 Q3/Q4 (~2% of subj0). Full per-subject AdaBN (α 1), ce τ0.5, softmax mean, balT3.
+- Prediction: Deep LB 0.70767 → 0.71–0.73. Its value lies in diversity that seeds of one recipe lack. 5→10 seeds gave 0.000 on Deep, so a plain variance-reduction model predicts ~0.
