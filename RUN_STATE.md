@@ -18,7 +18,7 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-14 14:50 UTC)
+## PENDING (updated 2026-10-14 14:30 UTC)
 - **Deadline:** Kaggle close **2026-10-16 12:00 UTC**; new-submission hard stop ~10:00 UTC Oct 16.
 - **Best LB:** Deep **0.70767** `submissions/drift1_deep_bn_balT3.csv` (FINAL-6c ×10 + per-subject BN recalibration on own holdout rows + Sinkhorn T3). Broad **0.69213** `submissions/final6_broad_ens10_balT2.csv` (BN-1 Broad version pending). **Rohit must SELECT on Kaggle.**
 - **In flight:** BN-1 Broad predict (`logs/bn1_broad.log`, holds the GPU lock under its bash pid) → chain `scripts/queue_resume5.sh` (log `logs/queue_resume5.log`): submit BN-1 → ABS-1 stage 2 (`logs/abs_eval.log`) → INF-1b slim on deep_c (`logs/infer_map_b.log`) → SPB-1 train `--pure_runs 1` (`logs/spb1.log`) + AdaBN eval (`logs/infer_map_spb1.log`) → INF-2 self-training/TENT map (`logs/tta_map.log`) → DW-1 width (`logs/dw1.log`). All pre-registered in PREDICTIONS.md.
