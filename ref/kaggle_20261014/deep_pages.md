@@ -1,0 +1,352 @@
+
+
+######## PAGE: data-description
+
+This competition uses the **LibriBrain100** dataset, a large-scale MEG dataset of neural responses recorded while participants listened to speech. The full dataset is hosted on [HuggingFace](https://huggingface.co/datasets/pnpl/LibriBrain) and can be loaded directly using the PNPL library.
+
+### Tracks
+
+- **Track 1 (Deep):** Data from a single deeply-sampled subject (`subj0`), recorded across a wide range of stimuli including audiobooks, phonetically balanced speech corpora, and narrative podcasts.
+- **Track 2 (Broad):** Data from 32 held-out subjects with varying amounts of labelled data per subject (ranging from ~40 minutes down to subject identifiers only).
+
+
+### Getting Started
+
+All data loading and submission utilities are provided through the PNPL library. See the starter notebook for a complete walkthrough covering installation, data loading, and submission file generation.
+
+```
+pip install pnpl
+```
+
+
+######## PAGE: Description
+
+The **PNPL Competition 2026** invites researchers, students, and practitioners to advance **non-invasive speech decoding from MEG** by tackling a new large-scale word classification benchmark. Building on the LibriBrain effort and the 2025 PNPL competition, this year’s challenge is designed to push progress in two complementary directions: **depth** and **breadth**. The long-term goal is to accelerate the development of safe, effective brain–computer interfaces for speech and communication, while lowering the barrier to entry through standardized data splits, benchmark baselines, tutorials, and an open leaderboard. ([neural-processing-lab.github.io][3])r’s competition centers on **LibriBrain100** (Mantegna et al., in prep), a new dataset that expands the LibriBrain family in two ways. First, it expands **within-subject depth** through substantially more data from a single participant (*subj0*), including the full Sherlock Holmes canon as well as carefully selected stimuli that better balance phonetic and semantic structure. Second, it expands **across-subject breadth** through a larger group of participants (*subj1–N*), enabling the study of cross-subject generalization and data-efficient adaptation. The result is a benchmark designed not only to reward raw performance, but also to encourage methods that transfer across people and across levels of supervision.
+
+### Competition Tasks
+
+The competition consists of **two tracks**, both focused on **word classification from MEG**.
+
+**Track 1: Word Classification on subj0**
+Participants develop models for word classification using the deepest single-subject non-invasive speech-decoding dataset in the LibriBrain family. This track is intended to encourage approaches that exploit large amounts of within-subject data to learn stronger neural representations of spoken language.
+
+**Track 2: Word Classification on subj1–N**
+Participants develop models for word classification across multiple subjects. This track is intended to encourage approaches that generalize beyond a single individual and make efficient use of limited supervised data for adaptation.
+
+Together, these tracks reflect two complementary challenges in non-invasive speech decoding: scaling performance with more data from one person, and achieving robust transfer across many people.
+
+### Dataset Overview
+
+LibriBrain100 is released as a superset of the existing **LibriBrain** resources, extending them along both the depth and breadth dimensions.
+
+For **subj0**, the competition data will include substantially deeper recordings, spanning:
+
+* the entire Sherlock Holmes canon,
+* **TIMIT** and **MOCHA-TIMIT**, included to provide stronger phonetic coverage,
+* **The Moth** and **Modern Love** podcast stimuli, included to provide richer semantic diversity.
+
+For **subj1–N**, the competition will use broader multi-subject data derived from the public validation and test portions of LibriBrain, based on *Sherlock 1* sessions 11 and 12. This track is additionally designed to probe performance under varying amounts of supervised fine-tuning data.
+
+To support this, subjects in the multi-subject track will be released in supervision groups with different amounts of labeled data:
+
+* **100% group:** approximately 40 minutes of audiobook listening data
+* **50% group:** approximately 20 minutes
+* **25% group:** approximately 10 minutes
+* **0% group:** no released listening data, but subject IDs will be provided
+
+This setup is intended to encourage methods that combine pretraining on deep single-subject data with efficient adaptation to new subjects under realistic supervision constraints.
+
+### Why This Competition?
+
+Word classification is a natural next step for large-scale non-invasive language decoding. Relative to simpler detection tasks, it requires richer representations of linguistic content; relative to fully open-vocabulary decoding, it remains sufficiently controlled to support reproducible benchmarking and clear scientific comparisons.
+
+The 2025 LibriBrain competition focused on speech detection and phoneme classification, while the associated LibriBrain dataset paper already positioned **word classification** as one of the benchmark task families supported by the dataset and its tooling. The 2026 competition builds directly on that foundation by making word classification the central challenge.
+
+To make participation accessible, we provide:
+
+* starter code and tutorials,
+* standardized train/validation/test splits,
+* baseline submissions,
+* an evaluation server and public leaderboard.
+
+As in 2025, the goal is to make it possible for new participants to get started quickly while still leaving room for highly ambitious approaches. The previous competition emphasized plug-and-play access through the `pnpl` Python package, online tutorials, and community support, and this competition follows the same spirit.
+
+The primary evaluation metric will be **top-10 balanced accuracy** over a fixed vocabulary. This metric is intended to measure how reliably models recover the correct target word while accounting for class imbalance and maintaining comparability across approaches.
+
+A more detailed description of the metric, vocabulary construction, submission format, and tie-breaking rules will be provided in the **Evaluation** tab.
+
+### Competition Philosophy
+
+This competition is designed to encourage progress along two axes that matter for real-world non-invasive speech BCIs:
+
+1. **How far can we push performance with deep, single-subject data?**
+2. **How well can we generalize to new subjects with limited supervision?**
+
+By pairing a deep single-subject benchmark with a broader multi-subject adaptation benchmark, LibriBrain Competition 2026 aims to provide a clearer picture of what current methods can achieve, where they break down, and which ideas are most promising for scalable non-invasive speech decoding.
+
+We look forward to seeing what the community builds!
+
+
+######## PAGE: Evaluation
+
+Submissions are evaluated on **Top-10 Balanced Accuracy (BAcc@10)** over the
+competition vocabulary of **50 words**.
+
+Each trial in the test set is one word the participant heard. For every trial your
+model outputs a **probability distribution over the 50 competition words**, and a
+trial counts as correct if the true word is among your **10 highest-scoring**
+words. The score is *balanced* across classes: we average the per-word Top-10
+recall and then average those over the 50 words, so rare words count equally.
+
+Formally, for each word *w* in the vocabulary let
+
+- Recall@10(*w*) = the fraction of trials whose true word is *w* for which *w*
+  appears in the model's top-10 predictions.
+
+The final score is the mean of Recall@10(*w*) across all 50 words:
+
+$$\mathrm{BAcc@10} = \frac{1}{50}\sum_{w}\mathrm{Recall@10}(w).$$
+
+Higher is better. Uniform random guessing scores about **20%** (a random top-10
+covers 10 of the 50 words). Ties are broken with **Top-1 Balanced Accuracy
+(BAcc@1)** — the same quantity computed with a top-1 shortlist.
+
+The leaderboard ranks on the competition vocabulary. The **Moses-50** vocabulary
+(`moses-vocabulary.csv`) is tracked as a **secondary** metric using the same
+BAcc@10 formula and does not affect the primary ranking.
+
+# Submission File
+
+For each `index` in the test set you provide a probability distribution over the
+competition vocabulary — a single predicted word is **not** enough, because the
+metric needs your top-10 ranking. The file has a header and one row per test
+`index`:
+
+- `index`,
+- one column per competition word, in `vocabulary.csv` order (`is`, `the`, `a`,
+  …, `as`, `on`),
+- optionally, one column per Moses-50 word, each prefixed `moses_` (`moses_am`,
+  `moses_are`, …, `moses_yes`, `moses_you`).
+
+```
+index,is,the,a,...,on,moses_am,moses_are,...,moses_you
+0,0.041,0.016,0.022,...,0.030,0.008,0.030,...,0.015
+1,0.010,0.001,0.003,...,0.020,0.014,0.001,...,0.009
+2,0.007,0.033,0.004,...,0.011,0.002,0.004,...,0.021
+etc.
+```
+
+Notes:
+
+- Provide **51 or 101 columns**: `index` + 50 competition-vocab columns, plus
+  optionally the 50 `moses_` columns.
+- Values are treated as scores — only the ranking **within each block** matters,
+  so they need not sum to exactly 1 (a softmax is a natural choice). They must be
+  non-negative and finite.
+- Include exactly one row per test `index`, in any order.
+
+The competition vocabulary is in `vocabulary.csv` and the Moses-50 vocabulary in
+`moses-vocabulary.csv` (see the **Data** tab).
+
+## Generating a submission
+
+The `pnpl` library builds a correctly-formatted file for you. Load the holdout,
+run your model over the released MEG windows, and write the CSV:
+
+```python
+import numpy as np
+from pnpl.competition import LibriBrainCompetitionHoldout, write_submission
+
+holdout = LibriBrainCompetitionHoldout(track="deep")   # "deep" or "broad"
+
+primary, moses = [], []
+for meg, _meta in holdout.iter_windows(batch_size=256):  # meg: (B, 306, 250)
+    p, m = your_model(meg)                               # each (B, 50) probabilities
+    primary.append(p); moses.append(m)
+
+write_submission(
+    "submission.csv",
+    indices=holdout.indices,                 # required row order
+    primary_probs=np.concatenate(primary),   # (N, 50) competition vocab, scored
+    secondary_probs=np.concatenate(moses),   # (N, 50) Moses-50, optional/secondary
+)
+```
+
+`holdout.indices` provides the exact `index` order the leaderboard expects. See
+the starter notebook for a full example.
+
+
+
+######## PAGE: rules
+
+## Getting started
+
+This challenge encourages broad participation and aims to advance the societal impact of speech decoding technologies. Everyone is welcome — no neuroscience background or specialised hardware required. Free GPU access is available through [Google Colab](https://colab.research.google.com/).
+
+## Tracks and divisions
+
+The competition uses the **LibriBrain100** dataset and has **two tracks**, both evaluated on **word classification** (top-10 balanced accuracy over a vocabulary of 50 words):
+
+| | Track 1 — *Deep* | Track 2 — *Broad* |
+|---|---|---|
+| **Goal** | Word classification on a single, deeply-sampled subject (`subj0`) | Word classification across 32 held-out subjects (`subj1`–`subj32`) |
+| **Training data** | Extensive recordings from `subj0` across audiobooks, phonetically balanced speech corpora (TIMIT, MOCHA-TIMIT), and narrative podcasts | Varying amounts of labelled data per subject (see below) |
+
+
+**Track 2 data groups.** To study how performance scales with the amount of fine-tuning data, subjects in Track 2 are split into four groups:
+
+| Group | Subjects | Labelled data per subject |
+|---|---|---|
+| 100% | 12 | ~40 min of audiobook listening |
+| 50% | 10 | ~20 min of audiobook listening |
+| 25% | 10 | ~10 min of audiobook listening |
+
+
+## Submissions and leaderboards
+
+- You may submit to either or both track. Your progress will appear on the relevant leaderboard.
+- Final rankings are determined on **independent holdout data** recorded with stimuli that are entirely different from anything released to participants.
+- Submissions must beat the reference baselines to be eligible for prizes.
+
+<!-- TODO: fill in actual baseline values once computed -->
+
+
+## Prizes
+
+- The **top 3 confirmed teams** per track win prizes, provided they beat the baselines.
+- Each team may only win prize money **once** across the entire competition. If the same team places in the top 3 on multiple leaderboards, they will still be listed on all of them, but the prize for each additional placement goes to the next-ranked team.
+- In the unlikely event of a tie, the prize will be split.
+
+## Verification
+
+After the submission deadline, all top-ranking teams** will be asked to provide runable **model checkpoints**. We may also ask specific teams to provide their **training code** so we can verify no cheating took place.
+
+The top 3 teams per track combination whose submissions are confirmed through this process will be declared the winners.
+
+## Open science
+
+We strongly encourage all participants to share their code openly. We also welcome pull requests to the [PNPL library](https://github.com/neural-processing-lab/pnpl) — for example, adding data loaders for new datasets to accelerate the community.
+
+## Communication
+
+We have set up a **Discord server**, which already has an active community of researchers working on neural speech decoding. Join here: [Discord invite link](http://libribrain.com/links/discord)
+
+
+######## PAGE: abstract
+
+> Competition submissions are now open!
+
+Welcome to the **PNPL Competition 2026**! Our goal is to advance the societal impact of speech decoding technologies by tackling a new large-scale word classification benchmark.
+
+This is the landing page for the Deep (i.e., single-subject) track. If you want to try generalizing across multiple subjects, take a look at the Broad track [here](https://www.kaggle.com/competitions/pnpl-competition-2026-broad).
+
+More details can be found on [LibriBrain.com](https://libribrain.com/)
+
+
+######## PAGE: foundational-rules
+
+The following Kaggle Competition Foundational Rules (“ Foundational Rules ”) apply to every competition regardless of whether the Sponsor creates competition-specific rules. Any competition-specific rules provided by the Sponsor are in addition to these rules, and in the case of any conflict or inconsistency, these Foundational Rules control and nullify contrary competition-specific rules.
+###GENERAL COMPETITION RULES - BINDING AGREEMENT
+####1. ELIGIBILITY
+a. To be eligible to enter the Competition, you must be:</h5>
+1. a registered account holder at Kaggle.com; </h6>
+2. the older of 18 years old or the age of majority in your jurisdiction of residence (unless otherwise agreed to by Competition Sponsor and appropriate parental/guardian consents have been obtained by Competition Sponsor); </h6>
+3. not a resident of Crimea, so-called Donetsk People's Republic (DNR) or Luhansk People's Republic (LNR), Cuba, Iran, or North Korea; and</h6>
+4. not a person or representative of an entity under U.S. export controls or sanctions (see: [https://www.treasury.gov/resourcecenter/sanctions/Programs/Pages/Programs.aspx][1]).</h6>
+
+b. Competitions are open to residents of the United States and worldwide, except that if you are a resident of Crimea, so-called Donetsk People's Republic (DNR) or Luhansk People's Republic (LNR), Cuba, Iran, North Korea, or are subject to U.S. export controls or sanctions, you may not enter the Competition. Other local rules and regulations may apply to you, so please check your local laws to ensure that you are eligible to participate in skills-based competitions. The Competition Host reserves the right to forego or award alternative Prizes where needed to comply with local laws. If a winner is located in a country where prizes cannot be awarded, then they are not eligible to receive a prize.</h5>
+
+c. If you are entering as a representative of a company, educational institution or other legal entity, or on behalf of your employer, these rules are binding on you, individually, and the entity you represent or where you are an employee. If you are acting within the scope of your employment, or as an agent of another party, you warrant that such party or your employer has full knowledge of your actions and has consented thereto, including your potential receipt of a Prize. You further warrant that your actions do not violate your employer's or entity's policies and procedures.</h5>   
+
+d. The Competition Sponsor reserves the right to verify eligibility and to adjudicate on any dispute at any time. If you provide any false information relating to the Competition concerning your identity, residency, mailing address, telephone number, email address, ownership of right, or information required for entering the Competition, you may be immediately disqualified from the Competition.</h5>
+
+####2. SPONSOR AND HOSTING PLATFORM
+
+a. The Competition is sponsored by Competition Sponsor named above. The Competition is hosted on behalf of Competition Sponsor by Kaggle Inc. ("Kaggle"). Kaggle is an independent contractor of Competition Sponsor, and is not a party to this or any agreement between you and Competition Sponsor. You understand that Kaggle has no responsibility with respect to selecting the potential Competition winner(s) or awarding any Prizes. Kaggle will perform certain administrative functions relating to hosting the Competition, and you agree to abide by the provisions relating to Kaggle under these Rules. As a Kaggle.com account holder and user of the Kaggle competition platform, remember you have accepted and are subject to the Kaggle Terms of Service at [www.kaggle.com/terms][2] in addition to these Rules.</h5>
+
+####3. COMPETITION PERIOD
+a. For the purposes of Prizes, the Competition will run from the Start Date and time to the Final Submission Deadline (such duration the “Competition Period”). The Competition Timeline is subject to change, and Competition Sponsor may introduce additional hurdle deadlines during the Competition Period. Any updated or additional deadlines will be publicized on the Competition Website. It is your responsibility to check the Competition Website regularly to stay informed of any deadline changes. YOU ARE RESPONSIBLE FOR DETERMINING THE CORRESPONDING TIME ZONE IN YOUR LOCATION.</h5>
+
+####4. COMPETITION ENTRY
+a. NO PURCHASE NECESSARY TO ENTER OR WIN. To enter the Competition, you must register on the Competition Website prior to the Entry Deadline, and follow the instructions for developing and entering your Submission through the Competition Website. Your Submissions must be made in the manner and format, and in compliance with all other requirements, stated on the Competition Website (the "Requirements"). Submissions must be received before any Submission deadlines stated on the Competition Website. Submissions not received by the stated deadlines will not be eligible to receive a Prize.</h5>
+b. Submissions may not use or incorporate information from hand labeling or human prediction of the validation dataset or test data records.</h5>
+c. If the Competition is a multi-stage competition with temporally separate training and/or test data, one or more valid Submissions may be required during each Competition stage in the manner described on the Competition Website in order for the Submissions to be Prize eligible.</h5>
+d. Submissions are void if they are in whole or part illegible, incomplete, damaged, altered, counterfeit, obtained through fraud, or late. Competition Sponsor reserves the right to disqualify any entrant who does not follow these Rules, including making a Submission that does not meet the Requirements. </h5>
+
+####5. INDIVIDUALS AND TEAMS
+a. Individual Account. You may make Submissions only under one, unique Kaggle.com account. You will be disqualified if you make Submissions through more than one Kaggle account, or attempt to falsify an account to act as your proxy. You may submit up to the maximum number of Submissions per day as specified on the Competition Website. </h5>
+b. Teams. If permitted under the Competition Website guidelines, multiple individuals may collaborate as a Team; however, you may join or form only one Team. Each Team member must be a single individual with a separate Kaggle account. You must register individually for the Competition before joining a Team. You must confirm your Team membership to make it official by responding to the Team notification message sent to your Kaggle account. Team membership may not exceed the Maximum Team Size stated on the Competition Website.</h5>
+c. Team Merger. Teams may request to merge via the Competition Website. Team mergers may be allowed provided that: (i) the combined Team does not exceed the Maximum Team Size; (ii) the number of Submissions made by the merging Teams does not exceed the number of Submissions permissible for one Team at the date of the merger request; (iii) the merger is completed before the earlier of: any merger deadline or the Competition deadline; and (iv) the proposed combined Team otherwise meets all the requirements of these Rules. </h5>
+d. Private Sharing. No private sharing outside of Teams. Privately sharing code or data outside of Teams is not permitted. It's okay to share code if made available to all Participants on the forums.</h5>
+
+####6. SUBMISSION CODE REQUIREMENTS
+a. Private Code Sharing. Unless otherwise specifically permitted under the Competition Website or Competition Specific Rules above, during the Competition Period, you are not allowed to privately share source or executable code developed in connection with or based upon the Competition Data or other source or executable code relevant to the Competition (“Competition Code”). This prohibition includes sharing Competition Code between separate Teams, unless a Team merger occurs. Any such sharing of Competition Code is a breach of these Competition Rules and may result in disqualification.</h5>
+b. Public Code Sharing. You are permitted to publicly share Competition Code, provided that such public sharing does not violate the intellectual property rights of any third party. If you do choose to share Competition Code or other such code, you are required to share it on Kaggle.com on the discussion forum or notebooks associated specifically with the Competition for the benefit of all competitors. By so sharing, you are deemed to have licensed the shared code under an Open Source Initiative-approved license (see [www.opensource.org][3]) that in no event limits commercial use of such Competition Code or model containing or depending on such Competition Code.</h5>
+c. Use of Open Source. Unless otherwise stated in the Specific Competition Rules above, if open source code is used in the model to generate the Submission, then you must only use open source code licensed under an Open Source Initiative-approved license (see [www.opensource.org][4]) that in no event limits commercial use of such code or model containing or depending on such code.</h5>
+
+####7. DETERMINING WINNERS
+a. Each Submission will be scored and ranked by the evaluation metric stated on the Competition Website. During the Competition Period, the current ranking will be visible on the Competition Website's Public Leaderboard. The potential winner(s) are determined solely by the leaderboard ranking on the Private Leaderboard, subject to compliance with these Rules. The Public Leaderboard will be based on the public test set and the Private Leaderboard will be based on the private test set.</h5>
+b. In the event of a tie, the Submission that was entered first to the Competition will be the winner. In the event a potential winner is disqualified for any reason, the Submission that received the next highest score rank will be chosen as the potential winner.</h5>
+
+####8. NOTIFICATION OF WINNERS & DISQUALIFICATION
+a. The potential winner(s) will be notified by email.</h5> 
+b. If a potential winner (i) does not respond to the notification attempt within one (1) week from the first notification attempt or (ii) notifies Kaggle within one week after the Final Submission Deadline that the potential winner does not want to be nominated as a winner or does not want to receive a Prize, then, in each case (i) and (ii) such potential winner will not receive any Prize, and an alternate potential winner will be selected from among all eligible entries received based on the Competition’s judging criteria.</h5>
+c. In case (i) and (ii) above Kaggle may disqualify the Participant.  However, in case (ii) above, if requested by Kaggle, such potential winner may provide code and documentation to verify the Participant’s compliance with these Rules. If the potential winner provides code and documentation to the satisfaction of Kaggle, the Participant will not be disqualified pursuant to this paragraph.</h5>
+d. Competition Sponsor reserves the right to disqualify any Participant from the Competition if the Competition Sponsor reasonably believes that the Participant has attempted to undermine the legitimate operation of the Competition by cheating, deception, or other unfair playing practices or abuses, threatens or harasses any other Participants, Competition Sponsor or Kaggle.</h5>
+e. A disqualified Participant may be removed from the Competition leaderboard, at Kaggle's sole discretion. If a Participant is removed from the Competition Leaderboard, additional winning features associated with the Kaggle competition platform, for example Kaggle points or medals, may also not be awarded.</h5>
+f. The final leaderboard list will be publicly displayed at Kaggle.com. Determinations of Competition Sponsor are final and binding.</h5>
+
+####9. PRIZES
+a. Prize(s) are as described on the Competition Website and are only available for winning during the time period described on the Competition Website. The odds of winning any Prize depends on the number of eligible Submissions received during the Competition Period and the skill of the Participants. </h5>
+b. All Prizes are subject to Competition Sponsor's review and verification of the Participant’s eligibility and compliance with these Rules, and the compliance of the winning Submissions with the Submissions Requirements. In the event that the Submission demonstrates non-compliance with these Competition Rules, Competition Sponsor may at its discretion take either of the following actions: (i) disqualify the Submission(s); or (ii) require the potential winner to remediate within one week after notice all issues identified in the Submission(s) (including, without limitation, the resolution of license conflicts, the fulfillment of all obligations required by software licenses, and the removal of any software that violates the software restrictions).</h5>
+c. A potential winner may decline to be nominated as a Competition winner in accordance with Section 3.8.</h5>
+d. Potential winners must return all required Prize acceptance documents within two (2) weeks following notification of such required documents, or such potential winner will be deemed to have forfeited the prize and another potential winner will be selected. Prize(s) will be awarded within approximately thirty (30) days after receipt by Competition Sponsor or Kaggle of the required Prize acceptance documents. Transfer or assignment of a Prize is not allowed. </h5>
+e. You are not eligible to receive any Prize if you do not meet the Eligibility requirements in Section 2.7 and Section 3.1 above.</h5>
+f. If a Team wins a monetary Prize, the Prize money will be allocated in even shares between the eligible Team members, unless the Team unanimously opts for a different Prize split and notifies Kaggle before Prizes are issued.</h5>
+
+####10. TAXES
+a. ALL TAXES IMPOSED ON PRIZES ARE THE SOLE RESPONSIBILITY OF THE WINNERS. Payments to potential winners are subject to the express requirement that they submit all documentation requested by Competition Sponsor or Kaggle for compliance with applicable state, federal, local and foreign (including provincial) tax reporting and withholding requirements. Prizes will be net of any taxes that Competition Sponsor is required by law to withhold. If a potential winner fails to provide any required documentation or comply with applicable laws, the Prize may be forfeited and Competition Sponsor may select an alternative potential winner. Any winners who are U.S. residents will receive an IRS Form-1099 in the amount of their Prize.</h5>
+
+####11. GENERAL CONDITIONS
+a. All federal, state, provincial and local laws and regulations apply.</h5>
+
+####12. PUBLICITY
+a. You agree that Competition Sponsor, Kaggle and its affiliates may use your name and likeness for advertising and promotional purposes without additional compensation, unless prohibited by law.</h5>
+
+####13. PRIVACY
+a. You acknowledge and agree that Competition Sponsor and Kaggle may collect, store, share and otherwise use personally identifiable information provided by you during the Kaggle account registration process and the Competition, including but not limited to, name, mailing address, phone number, and email address (“Personal Information”). Kaggle acts as an independent controller with regard to its collection, storage, sharing, and other use of this Personal Information, and will use this Personal Information in accordance with its Privacy Policy <[www.kaggle.com/privacy][6]>, including for administering the Competition. As a Kaggle.com account holder, you have the right to request access to, review, rectification, portability or deletion of any personal data held by Kaggle about you by logging into your account and/or contacting Kaggle Support at <[www.kaggle.com/contact][7]>.</h5>
+b. As part of Competition Sponsor performing this contract between you and the Competition Sponsor, Kaggle will transfer your Personal Information to Competition Sponsor, which acts as an independent controller with regard to this Personal Information. As a controller of such Personal Information, Competition Sponsor agrees to comply with all U.S. and foreign data protection obligations with regard to your Personal Information. Kaggle will transfer your Personal Information to Competition Sponsor in the country specified in the Competition Sponsor Address listed above, which may be a country outside the country of your residence. Such country may not have privacy laws and regulations similar to those of the country of your residence.</h5>
+
+####14. WARRANTY, INDEMNITY AND RELEASE 
+a. You warrant that your Submission is your own original work and, as such, you are the sole and exclusive owner and rights holder of the Submission, and you have the right to make the Submission and grant all required licenses.  You agree not to make any Submission that: (i) infringes any third party proprietary rights, intellectual property rights, industrial property rights, personal or moral rights or any other rights, including without limitation, copyright, trademark, patent, trade secret, privacy, publicity or confidentiality obligations, or defames any person; or (ii) otherwise violates any applicable U.S. or foreign state or federal law.</h5>
+b. To the maximum extent permitted by law, you indemnify and agree to keep indemnified Competition Entities at all times from and against any liability, claims, demands, losses, damages, costs and expenses resulting from any of your acts, defaults or omissions and/or a breach of any warranty set forth herein. To the maximum extent permitted by law, you agree to defend, indemnify and hold harmless the Competition Entities from and against any and all claims, actions, suits or proceedings, as well as any and all losses, liabilities, damages, costs and expenses (including reasonable attorneys fees) arising out of or accruing from: (a) your Submission or other material uploaded or otherwise provided by you that infringes any third party proprietary rights, intellectual property rights, industrial property rights, personal or moral rights or any other rights, including without limitation, copyright, trademark, patent, trade secret, privacy, publicity or confidentiality obligations, or defames any person; (b) any misrepresentation made by you in connection with the Competition; (c) any non-compliance by you with these Rules or any applicable U.S. or foreign state or federal law; (d) claims brought by persons or entities other than the parties to these Rules arising from or related to your involvement with the Competition; and (e) your acceptance, possession, misuse or use of any Prize, or your participation in the Competition and any Competition-related activity.</h5>
+c. You hereby release Competition Entities from any liability associated with: (a) any malfunction or other problem with the Competition Website; (b) any error in the collection, processing, or retention of any Submission; or (c) any typographical or other error in the printing, offering or announcement of any Prize or winners.</h5>
+
+####15. INTERNET
+a. Competition Entities are not responsible for any malfunction of the Competition Website or any late, lost, damaged, misdirected, incomplete, illegible, undeliverable, or destroyed Submissions or entry materials due to system errors, failed, incomplete or garbled computer or other telecommunication transmission malfunctions, hardware or software failures of any kind, lost or unavailable network connections, typographical or system/human errors and failures, technical malfunction(s) of any telephone network or lines, cable connections, satellite transmissions, servers or providers, or computer equipment, traffic congestion on the Internet or at the Competition Website, or any combination thereof, which may limit a Participant’s ability to participate.</h5>
+
+####16. RIGHT TO CANCEL, MODIFY OR DISQUALIFY
+a. If for any reason the Competition is not capable of running as planned, including infection by computer virus, bugs, tampering, unauthorized intervention, fraud, technical failures, or any other causes which corrupt or affect the administration, security, fairness, integrity, or proper conduct of the Competition, Competition Sponsor reserves the right to cancel, terminate, modify or suspend the Competition. Competition Sponsor further reserves the right to disqualify any Participant who tampers with the submission process or any other part of the Competition or Competition Website.  Any attempt by a Participant to deliberately damage any website, including the Competition Website, or undermine the legitimate operation of the Competition is a violation of criminal and civil laws. Should such an attempt be made, Competition Sponsor and Kaggle each reserves the right to seek damages from any such Participant to the fullest extent of the applicable law.</h5>
+
+####17. NOT AN OFFER OR CONTRACT OF EMPLOYMENT
+a. Under no circumstances will the entry of a Submission, the awarding of a Prize, or anything in these Rules be construed as an offer or contract of employment with Competition Sponsor or any of the Competition Entities. You acknowledge that you have submitted your Submission voluntarily and not in confidence or in trust. You acknowledge that no confidential, fiduciary, agency, employment or other similar relationship is created between you and Competition Sponsor or any of the Competition Entities by your acceptance of these Rules or your entry of your Submission.</h5>
+
+####18. DEFINITIONS
+a. "Competition Data" are the data or datasets available from the Competition Website for the purpose of use in the Competition, including any prototype or executable code provided on the Competition Website. The Competition Data will contain private and public test sets. Which data belongs to which set will not be made available to Participants. </h5>
+b. An “Entry” is when a Participant has joined, signed up, or accepted the rules of a competition. Entry is required to make a Submission to a competition.</h5>
+c. A “Final Submission” is the Submission selected by the user, or automatically selected by Kaggle in the event not selected by the user, that is/are used for final placement on the competition leaderboard.</h5>
+d. A “Participant” or “Participant User” is an individual who participates in a competition by entering the competition and making a Submission.</h5>
+e. The “Private Leaderboard” is a ranked display of Participants’ Submission scores against the private test set. The Private Leaderboard determines the final standing in the competition.</h5>
+f. The “Public Leaderboard” is a ranked display of Participants’ Submission scores against a representative sample of the test data. This leaderboard is visible throughout the competition.</h5>
+g. A “Sponsor” is responsible for hosting the competition, which includes but is not limited to providing the data for the competition, determining winners, and enforcing competition rules.</h5>
+h. A “Submission” is anything provided by the Participant to the Sponsor to be evaluated for competition purposes and determine leaderboard position. A Submission may be made as a model, notebook, prediction file, or other format as determined by the Sponsor.</h5>
+i. A “Team” is one or more Participants participating together in a Kaggle competition, by officially merging together as a Team within the competition platform.</h5>
+
+  [1]: https://www.treasury.gov/resource-center/sanctions/Programs/Pages/Programs.aspx
+  [2]: http://www.kaggle.com/terms
+  [3]: http://www.opensource.org
+  [4]: http://www.opensource.org
+  [5]: https://www.kaggle.com/WinningModelDocumentationGuidelines
+  [6]: http://www.kaggle.com/privacy
+  [7]: http://www.kaggle.com/contact
+
