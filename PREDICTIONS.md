@@ -553,3 +553,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - **NOT DETECTED with instrument "linear one-hot word-locked TRF, K=60 whitened PCA, one mean-field step"** (pred Deep +0.00..+0.04, Broad +0.00..+0.02: MISS low). The subj0 TRF does not transfer to other brains (gen ≈ chance on Broad). On subj0 it carries +0.06–0.11 over chance, all of it already in the decoder.
 - Direction OPEN. Strongest next test: a nonlinear, contextual forward model (word-embedding sequence → whitened MEG, trained on subj0's 80 h with a temporal conv net), scored per candidate sentence. Needs ~3–4 GPU-hours; queued behind SPB-1 only if the GPU frees.
 - Side observation: on short sentences (≤ 8 s, holdout-like) decoder+Sinkhorn reaches 0.75 Broad / 0.81 Deep locally, against 0.69 / 0.71 on all rows. Short sentences are easier, as the LB levels suggest.
+
+## BN-α — partial AdaBN (committed 2026-10-14 ~14:55 UTC, before the run)
+- Encoder BN running stats = (1−α)·training + α·subject's own rows (dropout off during estimation), α ∈ {0, .25, .5, .75, 1}, deep_c ep6, local Q3/Q4 (CPU). Locally subj0 has no session shift, so the Deep column is a sanity check only. The Broad column measures the new-brain effect.
+- Prediction: Broad peaks at α 0.25–0.5 with +0.00 to +0.02 over α 0 (α 1 ≈ −0.01, matching BN-1's LB −0.011); Deep flat ±0.01. If Broad α* gains ≥ +0.01 locally → one Broad LB submission at α*; Deep LB arm at α 0.5 vs 1.0 only if the Broad curve suggests an interior optimum.
