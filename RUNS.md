@@ -80,3 +80,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-14 | LB SLP-3 | Broad κ 10 / κ 5; Deep κ 20 (AdaBN) | 0-9 | — | — | — | — | Broad 0.70481 / 0.68755; Deep **0.71611** | Broad peak κ≈20; Deep new best |
 | 10-14 | LB SLP-4 Broad | κ20 + end / bal_em / vocab base | 0-9 | — | — | — | — | 0.69635 / 0.70120 / 0.66265 | all worse than plain κ20 |
 | 10-14 | LB SLP-5 Deep | AdaBN + HMM κ 10 | 0-9 | — | — | — | — | Deep 0.70711 | κ20 stays best |
+| 10-14 | LB SLP-T Deep | AdaBN + trigram-backoff HMM κ2 20 κ3 20 | 0-9 | — | — | — | — | Deep 0.70711 | −0.009 vs bigram |
