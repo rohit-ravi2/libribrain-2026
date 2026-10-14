@@ -558,3 +558,10 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Encoder BN running stats = (1−α)·training + α·subject's own rows (dropout off during estimation), α ∈ {0, .25, .5, .75, 1}, deep_c ep6, local Q3/Q4 (CPU). Locally subj0 has no session shift, so the Deep column is a sanity check only. The Broad column measures the new-brain effect.
 - Prediction: Broad peaks at α 0.25–0.5 with +0.00 to +0.02 over α 0 (α 1 ≈ −0.01, matching BN-1's LB −0.011); Deep flat ±0.01. If Broad α* gains ≥ +0.01 locally → one Broad LB submission at α*; Deep LB arm at α 0.5 vs 1.0 only if the Broad curve suggests an interior optimum.
 - BN-α interim (4 Broad subject-blocks, Q3): α0.5+sk − α0+sk = +0.027, +0.043, +0.023, +0.020 (4/4 positive); α1.0 −0.011, −0.011, +0.051, −0.024. **BN-α LB arm (pre-registered now):** Broad holdout, FINAL-6 ens3 (seeds 0–2), partial AdaBN α 0.5 with dropout off, balT2, against `final6_broad_ens3_balT2.csv` 0.69134. Pred +0.01 to +0.035.
+- **BN-α Deep LB arms (pre-registered now):** 10 FINAL-6c models, AdaBN with dropout off at α 1.0 and α 0.5, balT3, against drift1_deep_bn_balT3 0.70767 (α 1, dropout on). Pred: α1-dropout-off = 0.70767 ± 0.01; α 0.5 −0.03 to +0.01 (subj0's holdout shift favoured full recalibration). Deep public ≈ 288 rows, so only |Δ| ≥ 0.02 is readable.
+### Outcome BN-α local (stopped after 7 Broad subject-blocks of Q3 to free the CPU; logs/bn_alpha_map_partial.log)
+| α | 0 | 0.25 | 0.5 | 0.75 | 1.0 |
+|---|---|---|---|---|---|
+| raw | 0.632 | 0.652 | 0.659 | 0.667 | 0.650 |
+| +Sinkhorn T2 | 0.669 | 0.686 | **0.697** | 0.692 | 0.676 |
+- α 0.5 + Sinkhorn: **+0.028** over α 0 (pred +0.00..+0.02: beat; interior optimum HIT). 6/7 subjects positive, one +0.004. Full recalibration +0.008 (LB said −0.011). Mechanism: a new brain needs part of its own normalisation (amplitude/offset of the spatial-conv features) and part of subj0's reference scale. Q4 and the subj0 sanity column were not run.
