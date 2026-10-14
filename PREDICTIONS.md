@@ -529,7 +529,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Predictions (Δ vs base+Sinkhorn): Broad st150 −0.01 to +0.03; Deep ±0.01. Confirmation bias is the failure mode, and a negative Δ measures it. Threshold +0.015 to carry into a holdout file.
 - DRIFT-1 side check (CPU, before the LB arms): spatial-covariance similarity (corr of normalised 306×306 covariances) of subj0 holdout vs subj0 training = 0.928. For comparison: training session vs session 0.944; Broad subjects' holdout vs their own training 0.926–0.950. No gross covariance drift in subj0's holdout session, which weakens hypothesis (i) before the LB test.
 - Caveat on the PROXY-1 reading: `ses-N` in LibriBrain counts sessions within each task (each book has its own ses-10), so whether the 5 held-out TIMIT runs shared recording days with training runs is unknown. PROXY-1 therefore may not have tested a held-out *recording day*, and the session-novelty discount is unmeasured locally. A leave-session-out run (all of subj0's runs on held-out session days excluded) is the instrument; it is queued conditionally on DRIFT-1.
-### Outcome DRIFT-1 (2026-10-14 ~15:10 UTC, Deep LB, 10 FINAL-6c models, balT3)
+### Outcome DRIFT-1 (2026-10-14 ~14:20 UTC, Deep LB, 10 FINAL-6c models, balT3)
 | arm | Deep LB | Δ vs 0.66390 | pred |
 |---|---|---|---|
 | (a) identity A for subj0 | 0.69228 | +0.028 | −0.03..+0.05: HIT |
@@ -537,3 +537,9 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 | (c) both | 0.70650 | +0.043 | 0..+0.06: HIT |
 - **Drift confirmed as the main Deep discount** (≥ +0.03 rule met). The miscalibration lives in the encoder's BatchNorm running statistics (estimated on the training sessions). Re-estimating them from the subject's own unlabelled holdout epochs removes most of the gap; the covariance check said the raw spatial structure barely moved. Identity A recovers part of it (A0 had co-adapted to training-session BN statistics). New Deep best: `submissions/drift1_deep_bn_balT3.csv` 0.70767.
 - **BN-1 (pre-registered now):** the same BN recalibration per Broad subject (own holdout rows only), 10 models, balT2. Prediction: Broad 0.6921 → 0.70–0.74 (each Broad subject is a new brain *and* session; the BN statistics are subj0's).
+- INF-2 amended before its start: + `bnD` (BN recalibration with dropout held in eval, i.e. standard AdaBN) and `bnD+aff100` (TENT-style: BN affine params trained 100 steps on balanced pseudo-labels, running stats frozen). Predictions: bnD = bn ± 0.005; aff100 −0.01 to +0.02 over bnD.
+
+## SPB-1 — session-pure batches + per-subject AdaBN (committed 2026-10-14 ~14:45 UTC, before the run)
+- **Principle (domain adaptation via normalisation statistics, AdaBN):** DRIFT-1 showed the Deep discount is BN statistics. If every training batch comes from one recording run, the encoder learns features normalised *within a session*, and per-subject recalibration at test then matches training exactly, for subj0's new session and for every Broad brain.
+- Run `spb1` = deep_c recipe + `--pure_runs 1`, seed 0, Q3/Q4 held out. Evaluation: `SLIM=1 infer_map.py runs/spb1_ep6.pt` (bn variant = per-subject-block AdaBN, + Sinkhorn), against the same on deep_c ep6 (INF-1b).
+- Prediction (AdaBN+Sinkhorn, spb1 vs deep_c): Broad +0.00 to +0.05; Deep +0.00 to +0.03. Risk: one-run batches are less diverse, so the running-stats (non-AdaBN) numbers may drop. Threshold: ≥ +0.02 on either track's AdaBN number → retrain final models with `--pure_runs 1` (10 seeds ≈ 3–5 h) and submit with AdaBN.

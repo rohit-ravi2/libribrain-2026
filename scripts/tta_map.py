@@ -39,11 +39,34 @@ def fwd_all(segs, A, grad=False):
 
 
 @torch.no_grad()
-def bn_recal(segs, A):
+def bn_recal(segs, A, dropout_off=False):
     saved = copy.deepcopy(M.enc.state_dict())
     for mod in M.enc.modules():
         if isinstance(mod, nn.BatchNorm1d): mod.reset_running_stats(); mod.momentum = None
-    M.enc.train(); fwd_all(segs, A); M.enc.eval(); return saved
+    M.enc.train()
+    if dropout_off:
+        for mod in M.enc.modules():
+            if isinstance(mod, nn.Dropout): mod.eval()
+    fwd_all(segs, A); M.enc.eval(); return saved
+
+
+def bn_affine_train(segs, A, T, steps=100, every=25, lr=1e-3):
+    """TENT-style: train only BN affine params (running stats frozen at the recalibrated values) on balanced pseudo-labels."""
+    params = [p for mod in M.enc.modules() if isinstance(mod, nn.BatchNorm1d) for p in (mod.weight, mod.bias)]
+    for p in M.enc.parameters(): p.requires_grad_(False)
+    for p in params: p.requires_grad_(True)
+    opt = torch.optim.Adam(params, lr=lr); tgt50 = torch.full((50,), 1 / 50, device=dev)
+    for k in range(steps):
+        if k % every == 0:
+            with torch.no_grad():
+                lo, _ = fwd_all(segs, A); Ptar = sinkhorn_p(F.softmax(lo, 1), T, tgt50)
+            perm = rng.permutation(len(segs)); pos = 0
+        b = [segs[j] for j in perm[pos:pos + 24]]; pos = (pos + 24) % max(len(segs) - 24, 1)
+        idx, gi, pad, rel = pack(W, b); x, v = W.windows(idx)
+        _, ce, _ = M.forward(x, v, A, gi, pad, rel); lo = ce - tau * M.log_prior
+        loss = F.kl_div(F.log_softmax(lo, 1), Ptar[torch.from_numpy(ROW[np.concatenate(b)]).to(dev)], reduction="batchmean")
+        opt.zero_grad(); loss.backward(); opt.step()
+    for p in M.enc.parameters(): p.requires_grad_(True)
 
 
 def self_train(segs, A_init, T, steps, every=25, lr=3e-4, lam=1e-2):
@@ -78,6 +101,8 @@ for blk in ("Q3", "Q4"):
         for st in (50, 150):
             ev(f"st{st}", self_train(segs, A0, T, st))
         saved = bn_recal(segs, A0); ev("bn", A0); ev("bn+st150", self_train(segs, A0, T, 150)); M.enc.load_state_dict(saved)
+        saved = bn_recal(segs, A0, dropout_off=True); ev("bnD", A0)
+        bn_affine_train(segs, A0, T, 100); ev("bnD+aff100", A0); M.enc.load_state_dict(saved)
         res[f"{blk}/{s}"] = r; print(blk, s, json.dumps({k: round(v, 3) for k, v in r.items()}), round(time.time() - t0), "s", flush=True)
 
 out = {}
