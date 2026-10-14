@@ -75,3 +75,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-14 | LB BN-α Deep | FINAL-6c ×10, AdaBN dropout-off α 1.0 / 0.5, balT3 | 0-9 | — | — | — | — | Deep 0.70767 / 0.67906 | full recal best for subj0 |
 | 10-14 | LB DIV-1 Deep | FINAL-6c ×10 + deep_g/deep_h/vr1/ext20/deep_i, AdaBN, balT3 | — | — | — | — | — | Deep 0.69917 | −0.008 (noise) |
 | 10-14 | LB BN-α Broad | FINAL-6 ens3 + partial AdaBN α 0.5 (dropout off), balT2 | 0-2 | — | — | — | — | Broad 0.68908 | −0.002 vs ens3_balT2 |
+| 10-14 | LB SLP-1 Broad | FINAL-6c ens10 + self-learned within-subject HMM prior κ 50 / κ 200, balT2 | 0-9 | — | — | — | — | Broad **0.70366** / 0.68910 | κ 50 new best (+0.0115) |
+| 10-14 | LB SLP-2 | Broad κ 20 / Deep κ 50 (on AdaBN) | 0-9 | — | — | — | — | Broad **0.70958** / Deep **0.71061** | prior strength trend real |

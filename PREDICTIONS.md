@@ -585,3 +585,14 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Run `lso1` = deep_c recipe + `--exclude "sub-0_ses-1[12]_task-Sherlock1"` (that day removed from training entirely; Broad subjects untouched). Eval: `PX=... bn_alpha_map.py runs/lso1_ep6.pt` on the held-out day, all sentences (PX_all) and 5–9-word sentences (PX_short, holdout-like), α ∈ {0, .25, .5, .75, 1}, + Sinkhorn T3.
 - Predictions: day-novel subj0 at α 0 ≈ 0.64–0.68 (a same-day number would be ~0.70–0.73); AdaBN α 1 gains +0.02..+0.06 (LB showed +0.044). If α 1 gain ≥ +0.02 the instrument counts as faithful and is used to rank Deep TTA (self-training, TENT, SPB) locally.
 - **SPB-LSO** (same exclusion + `--pure_runs 1`) follows on the GPU; prediction: with AdaBN α 1 it beats lso1 by +0.00..+0.03 on PX.
+
+## SLP-1 — self-learned within-subject sentence prior (committed 2026-10-14 ~17:05 UTC, before the run)
+- Approved Oct-13 plan item (b). `scripts/hmm_prior.py`: per subject, an HMM over its own 156 holdout sentences. Emissions = posteriors / the subject's mean posterior. Transitions and start distribution learned by EM (10 iters) from that subject's rows only, Dirichlet-smoothed toward uniform with strength κ per row (~14 transitions per source word per subject). Forward-backward marginals, then Sinkhorn T2. Sanity: κ→∞ reproduces `final6_broad_ens10_balT2.csv` to 1e-6.
+- Instrument = Broad LB (~11k public rows; local prose cannot mimic the constructed vocab-only holdout sentences). Arms κ 50 and κ 200 on FINAL-6c ens10.
+- Predictions vs 0.69213: κ 50 −0.015..+0.010; κ 200 −0.005..+0.005. Risk: EM learns the decoder's own neighbour smearing (overlapping windows) as grammar.
+### Outcome SLP-1 (2026-10-14 ~17:12 UTC, Broad LB)
+- κ 50: **0.70366** (+0.0115; pred −0.015..+0.010: above band) → new Broad best. κ 200: 0.68910 (−0.003; pred ±0.005: HIT). Not monotone in prior strength. The paired-difference SE on ~11k public rows is ~0.004, so κ 50 is ~2.5 SE and κ 200 is noise.
+- **SLP-2 (pre-registered now):** κ 20 Broad (trend test: if κ 20 ≥ κ 50 the self-learned prior is real and stronger is better; if κ 20 < 0.692 the κ 50 result was likely noise), and κ 50 on Deep (AdaBN raw `drift1_deep_bn.csv` → HMM → balT3; pred −0.02..+0.01, since text priors hurt strong evidence before).
+### Outcome SLP-2 (2026-10-14 ~17:20 UTC)
+- Broad κ 20: **0.70958** (+0.0175 over 0.69213; above κ 50 0.70366) → trend confirmed. The self-learned within-subject grammar is a real lever and stronger is better so far. Deep κ 50 (on AdaBN): **0.71061** (+0.003 over 0.70767; noise-level, positive).
+- **SLP-3 (pre-registered now):** Broad κ 10 and κ 5 (pred: peak somewhere in κ 5–20, each within ±0.01 of κ 20); Deep κ 20 (pred 0.70–0.72).
