@@ -18,8 +18,9 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-14 14:20 UTC, session resume after the usage cap + reboot)
+## PENDING (updated 2026-10-14 14:50 UTC)
 - **Deadline:** Kaggle close **2026-10-16 12:00 UTC**; new-submission hard stop ~10:00 UTC Oct 16.
-- **Best LB (fallbacks, Rohit to SELECT):** Broad **0.69213** `submissions/final6_broad_ens10_balT2.csv` (alt ens3_balT2 0.69134); Deep **0.66390** `submissions/final6_deep_ens10_balT3.csv` (ens5_balT3 ties; files differ, 92% top-1 agreement).
-- **Nothing running** (machine rebooted; GPU lock free). FINAL-6c, VR-1, ext20 all recorded. ext58 never ran (post-deadline, Rohit's call).
-- **Next (approved Oct 13 plan, untested items):** (c) inference-only: frozen-trunk adaptation at 0.66, Deep TTA / normalisation recalibration, small-β prior after balance; (a) analysis-by-synthesis gate (generative word-response model on subj0, fused with decoder, local Q3/Q4); Deep encoder-width map (subj0-only). Each pre-registered below in PREDICTIONS.md.
+- **Best LB:** Deep **0.70767** `submissions/drift1_deep_bn_balT3.csv` (FINAL-6c ×10 + per-subject BN recalibration on own holdout rows + Sinkhorn T3). Broad **0.69213** `submissions/final6_broad_ens10_balT2.csv` (BN-1 Broad version pending). **Rohit must SELECT on Kaggle.**
+- **In flight:** BN-1 Broad predict (`logs/bn1_broad.log`, holds the GPU lock under its bash pid) → chain `scripts/queue_resume5.sh` (log `logs/queue_resume5.log`): submit BN-1 → ABS-1 stage 2 (`logs/abs_eval.log`) → INF-1b slim on deep_c (`logs/infer_map_b.log`) → SPB-1 train `--pure_runs 1` (`logs/spb1.log`) + AdaBN eval (`logs/infer_map_spb1.log`) → INF-2 self-training/TENT map (`logs/tta_map.log`) → DW-1 width (`logs/dw1.log`). All pre-registered in PREDICTIONS.md.
+- **Decision rules:** SPB-1 ≥ +0.02 (AdaBN numbers) → retrain 10 finals with `--pure_runs 1`, submit with `--bnrecal 1`. INF-2 ≥ +0.015 → add to predictor. ABS-1 fused ≥ +0.02 → holdout implementation.
+- INF-1 full run was stopped part-way (partial rows in `logs/infer_map_partial.log`) to give BN-1 the GPU.
