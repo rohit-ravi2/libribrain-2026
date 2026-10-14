@@ -18,11 +18,11 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-14 17:58 UTC)
+## PENDING (updated 2026-10-14 17:15 UTC)
 - **Deadline:** Kaggle close **2026-10-16 12:00 UTC**; new-submission hard stop ~10:00 UTC Oct 16.
 - **Best LB (Rohit must SELECT):** Broad **0.70958** `submissions/slp2_broad_k20.csv` (FINAL-6c ens10 → self-learned within-subject HMM prior κ 20 → Sinkhorn T2). Deep **0.71611** `submissions/slp3_deep_bn_k20.csv` (ens10 + per-subject AdaBN → HMM κ 20 → Sinkhorn T3). Recipes: `predict_holdout_v3.py [--bnrecal 1]` → `hmm_prior.py --kappa 20 [--track deep --T 3]`.
 - **Submissions today:** Broad 10/10 used, Deep 9/10 used. They reset at 00:00 UTC.
-- **GPU:** sister meta-emg 'E1 full' until ~20:25 UTC. Then `scripts/queue_gpu9.sh` (log `logs/queue_gpu9.log`): SLP-ST Deep/Broad files → T5-3B targets → TX-1 → LSO-1 (+PX α map) → INF-1b → SPB-LSO (+PX α map) → DW-1.
+- **GPU:** sister meta-emg 'E1 full' until ~19:20 UTC. Then `scripts/queue_gpu9.sh` (log `logs/queue_gpu9.log`): SLP-ST Deep/Broad files → T5-3B targets → TX-1 → LSO-1 (+PX α map) → INF-1b → SPB-LSO (+PX α map) → DW-1.
 - **Ready for tomorrow's slots:** `submissions/slpt_broad_k3_{50,10}.csv` (trigram SLP), SLP-ST files when built.
 - **Closed today (LB):** BN recal on Broad (α1 −0.011, α0.5 −0.002); DIV-1 Deep diversity (−0.008); SLP end/bal_em/vocab-base options (all worse); ABS-1 linear encoding model (local, not detected).
 - **Next CPU idea:** trigram-backoff SLP (states = word pairs, κ3 backoff to the κ20 bigram), LB-tested tomorrow.

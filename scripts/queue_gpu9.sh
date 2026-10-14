@@ -2,8 +2,6 @@
 # GPU chain (each step waits for the lock): SLP-ST Deep + Broad files -> T5-3B targets -> TX-1 -> LSO-1 (+PX map) -> INF-1b -> SPB-LSO (+PX map) -> DW-1.
 cd ~/projects/libribrain-2026; PY=~/venvs/libribrain/bin/python; PXR="sub-0_ses-1[12]_task-Sherlock1"
 CK=$(ls runs/final6_s{0..9}_ep7.pt | paste -sd,); COMMON="--win 3s --ctx 1 --rel 0 --t5 1.0 --epochs 8 --seed 0 --deep 1 --broad_frac 0.0 --ctx_layers 4"
-scripts/gpu_run.sh stdeep $PY scripts/predict_holdout_v3.py --track deep --ckpt $CK --readout ce --tau 0.5 --bnrecal 1 --st_steps 100 --st_targets submissions/slp3_deep_bn_k20.csv --out submissions/st_deep_bn.csv > logs/st_deep.log 2>&1
-$PY scripts/hmm_prior.py --track deep --T 3 --inp submissions/st_deep_bn.csv --out submissions/st_deep_bn_k20.csv --kappa 20 >> logs/st_deep.log 2>&1
 scripts/gpu_run.sh stbroad $PY scripts/predict_holdout_v3.py --track broad --ckpt $CK --readout ce --tau 0.5 --st_steps 100 --st_targets submissions/slp2_broad_k20.csv --out submissions/st_broad.csv > logs/st_broad.log 2>&1
 $PY scripts/hmm_prior.py --inp submissions/st_broad.csv --out submissions/st_broad_k20.csv --kappa 20 >> logs/st_broad.log 2>&1
 ~/bin/notify "LibriBrain SLP-ST files ready (st_deep_bn_k20, st_broad_k20); submit after 00:00 UTC" "LibriBrain"

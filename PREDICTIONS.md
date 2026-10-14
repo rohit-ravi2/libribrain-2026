@@ -554,7 +554,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Direction OPEN. Strongest next test: a nonlinear, contextual forward model (word-embedding sequence → whitened MEG, trained on subj0's 80 h with a temporal conv net), scored per candidate sentence. Needs ~3–4 GPU-hours; queued behind SPB-1 only if the GPU frees.
 - Side observation: on short sentences (≤ 8 s, holdout-like) decoder+Sinkhorn reaches 0.75 Broad / 0.81 Deep locally, against 0.69 / 0.71 on all rows. Short sentences are easier, as the LB levels suggest.
 
-## BN-α — partial AdaBN (committed 2026-10-14 ~14:55 UTC, before the run)
+## BN-α — partial AdaBN (committed 2026-10-14 ~14:50 UTC, before the run)
 - Encoder BN running stats = (1−α)·training + α·subject's own rows (dropout off during estimation), α ∈ {0, .25, .5, .75, 1}, deep_c ep6, local Q3/Q4 (CPU). Locally subj0 has no session shift, so the Deep column is a sanity check only. The Broad column measures the new-brain effect.
 - Prediction: Broad peaks at α 0.25–0.5 with +0.00 to +0.02 over α 0 (α 1 ≈ −0.01, matching BN-1's LB −0.011); Deep flat ±0.01. If Broad α* gains ≥ +0.01 locally → one Broad LB submission at α*; Deep LB arm at α 0.5 vs 1.0 only if the Broad curve suggests an interior optimum.
 - BN-α interim (4 Broad subject-blocks, Q3): α0.5+sk − α0+sk = +0.027, +0.043, +0.023, +0.020 (4/4 positive); α1.0 −0.011, −0.011, +0.051, −0.024. **BN-α LB arm (pre-registered now):** Broad holdout, FINAL-6 ens3 (seeds 0–2), partial AdaBN α 0.5 with dropout off, balT2, against `final6_broad_ens3_balT2.csv` 0.69134. Pred +0.01 to +0.035.
@@ -568,55 +568,55 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ### Outcome BN-α Deep LB arms (2026-10-14 ~15:30 UTC)
 - α 1.0, dropout off: **0.70767** (= dropout-on, pred ±0.01: HIT). α 0.5: **0.67906** (−0.029; pred −0.03..+0.01: HIT, bottom edge). Subj0's new session wants full recalibration. New Broad brains locally want α≈0.5. Deep best unchanged (drift1_deep_bn_balT3 / bnD_deep_a1.0_balT3, 0.70767).
 
-## DIV-1 — Deep diversity ensemble with AdaBN (committed 2026-10-14 ~15:45 UTC, before the run)
+## DIV-1 — Deep diversity ensemble with AdaBN (committed 2026-10-14 ~15:34 UTC, before the run)
 - Members: FINAL-6c ×10 (all data) + fold-selected checkpoints of 5 local-map runs that score higher on subj0 and differ in inductive bias: deep_g ep7 (ctx 6, 0.720), deep_h ep6 (12 ep, 0.721), vr1 ep6 (vocab-run oversampling, 0.729), ext20 ep7 (+20 LPP listeners, 0.731), deep_i ep18 (24 ep, 0.708). These hold out only subj0's Sherlock1 ses-11/12 Q3/Q4 (~2% of subj0). Full per-subject AdaBN (α 1), ce τ0.5, softmax mean, balT3.
 - Prediction: Deep LB 0.70767 → 0.71–0.73. Its value lies in diversity that seeds of one recipe lack. 5→10 seeds gave 0.000 on Deep, so a plain variance-reduction model predicts ~0.
-### Outcome DIV-1 (2026-10-14 ~16:15 UTC): Deep LB **0.69917** vs 0.70767 (pred 0.71–0.73: MISS, −0.008, inside the Deep public SE). Recipe diversity from the local-map checkpoints adds nothing on the LB. NOT DETECTED. Deep best unchanged.
-### Outcome BN-α Broad LB arm (2026-10-14 ~16:30 UTC)
+### Outcome DIV-1 (2026-10-14 ~16:00 UTC): Deep LB **0.69917** vs 0.70767 (pred 0.71–0.73: MISS, −0.008, inside the Deep public SE). Recipe diversity from the local-map checkpoints adds nothing on the LB. NOT DETECTED. Deep best unchanged.
+### Outcome BN-α Broad LB arm (2026-10-14 ~16:10 UTC)
 - `bna05_broad_ens3_balT2.csv` **0.68908** vs ens3_balT2 0.69134 (pred +0.01..+0.035: **MISS, −0.002**). The local +0.028 did not transfer. Likely cause: local blocks are long prose sentences with mostly fully-valid windows, while holdout batches are short epochs with heavy masking plus 1 s isolated words. Subject-level BN statistics computed on them confound masking pattern with brain, so the local map was not a faithful proxy for the holdout's BN statistics. Broad: BN family tested on LB at α 1 (−0.011) and α 0.5 (−0.002). NOT DETECTED for new brains; Deep keeps full AdaBN.
 - Instrument note: any future TTA proxy must cut local epochs like the holdout (short sentences, epoch-clipped windows, ~10% isolated 1 s words) before its BN/TTA statistics mean anything.
 
-## TX-1 — second-generation text target: T5-3B block 12/24 (committed 2026-10-14 ~16:35 UTC, before the run)
+## TX-1 — second-generation text target: T5-3B block 12/24 (committed 2026-10-14 ~16:12 UTC, before the run)
 - The target space produced the largest jumps (T5 targets +0.07 local / +0.18 LB on Broad). Untested: a larger text model of the same family. T5-3B shares T5-large's d_model 1024 and tokenizer, so it drops in; the middle layer (12/24) mirrors the d'Ascoli choice. Extraction with `T5_MODEL=t5-3b T5_OUT=runs_t5_3b scripts/text_targets.py cuda` (~5–10 min GPU). Train deep_c recipe with `LB_T5DIR=runs_t5_3b`, seed 0, `--deep 1`.
 - Prediction vs deep_c (subj0 0.705 / Broad-protocol 0.632): subj0 +0.00..+0.03, Broad −0.01..+0.03. Threshold: ≥ +0.02 on either track → 3-seed (Broad) / 5–10-seed (Deep) finals with it.
 
-## LSO-1 — leave-recording-day-out instrument for subj0 drift (committed 2026-10-14 ~16:50 UTC, before the run)
+## LSO-1 — leave-recording-day-out instrument for subj0 drift (committed 2026-10-14 ~16:14 UTC, before the run)
 - BIDS `scans.tsv` acquisition dates: subj0 has 262 runs over 47 days. Sherlock1 ses-11/12 run-2 (the split-v2 shared stimulus) are the **only** runs of 2024-10-04, and their Q1–Q2 halves were in every local training set. So all local subj0 numbers so far were same-day numbers, which explains why the local proxy could not see the Deep LB discount.
 - Run `lso1` = deep_c recipe + `--exclude "sub-0_ses-1[12]_task-Sherlock1"` (that day removed from training entirely; Broad subjects untouched). Eval: `PX=... bn_alpha_map.py runs/lso1_ep6.pt` on the held-out day, all sentences (PX_all) and 5–9-word sentences (PX_short, holdout-like), α ∈ {0, .25, .5, .75, 1}, + Sinkhorn T3.
 - Predictions: day-novel subj0 at α 0 ≈ 0.64–0.68 (a same-day number would be ~0.70–0.73); AdaBN α 1 gains +0.02..+0.06 (LB showed +0.044). If α 1 gain ≥ +0.02 the instrument counts as faithful and is used to rank Deep TTA (self-training, TENT, SPB) locally.
 - **SPB-LSO** (same exclusion + `--pure_runs 1`) follows on the GPU; prediction: with AdaBN α 1 it beats lso1 by +0.00..+0.03 on PX.
 
-## SLP-1 — self-learned within-subject sentence prior (committed 2026-10-14 ~17:05 UTC, before the run)
+## SLP-1 — self-learned within-subject sentence prior (committed 2026-10-14 ~16:18 UTC, before the run)
 - Approved Oct-13 plan item (b). `scripts/hmm_prior.py`: per subject, an HMM over its own 156 holdout sentences. Emissions = posteriors / the subject's mean posterior. Transitions and start distribution learned by EM (10 iters) from that subject's rows only, Dirichlet-smoothed toward uniform with strength κ per row (~14 transitions per source word per subject). Forward-backward marginals, then Sinkhorn T2. Sanity: κ→∞ reproduces `final6_broad_ens10_balT2.csv` to 1e-6.
 - Instrument = Broad LB (~11k public rows; local prose cannot mimic the constructed vocab-only holdout sentences). Arms κ 50 and κ 200 on FINAL-6c ens10.
 - Predictions vs 0.69213: κ 50 −0.015..+0.010; κ 200 −0.005..+0.005. Risk: EM learns the decoder's own neighbour smearing (overlapping windows) as grammar.
-### Outcome SLP-1 (2026-10-14 ~17:12 UTC, Broad LB)
+### Outcome SLP-1 (2026-10-14 ~16:22 UTC, Broad LB)
 - κ 50: **0.70366** (+0.0115; pred −0.015..+0.010: above band) → new Broad best. κ 200: 0.68910 (−0.003; pred ±0.005: HIT). Not monotone in prior strength. The paired-difference SE on ~11k public rows is ~0.004, so κ 50 is ~2.5 SE and κ 200 is noise.
 - **SLP-2 (pre-registered now):** κ 20 Broad (trend test: if κ 20 ≥ κ 50 the self-learned prior is real and stronger is better; if κ 20 < 0.692 the κ 50 result was likely noise), and κ 50 on Deep (AdaBN raw `drift1_deep_bn.csv` → HMM → balT3; pred −0.02..+0.01, since text priors hurt strong evidence before).
-### Outcome SLP-2 (2026-10-14 ~17:20 UTC)
+### Outcome SLP-2 (2026-10-14 ~16:26 UTC)
 - Broad κ 20: **0.70958** (+0.0175 over 0.69213; above κ 50 0.70366) → trend confirmed. The self-learned within-subject grammar is a real lever and stronger is better so far. Deep κ 50 (on AdaBN): **0.71061** (+0.003 over 0.70767; noise-level, positive).
 - **SLP-3 (pre-registered now):** Broad κ 10 and κ 5 (pred: peak somewhere in κ 5–20, each within ±0.01 of κ 20); Deep κ 20 (pred 0.70–0.72).
-### Outcome SLP-3 (2026-10-14 ~17:30 UTC)
+### Outcome SLP-3 (2026-10-14 ~16:30 UTC)
 - Broad κ curve (FINAL-6c ens10, balT2): κ 5 0.68755 · κ 10 0.70481 · **κ 20 0.70958** · κ 50 0.70366 · κ 200 0.68910 · κ ∞ 0.69213. Interior optimum near κ 20 (κ 10 and 5 HIT/below the ±0.01 band). Deep (AdaBN, balT3): κ 50 0.71061 · **κ 20 0.71611** (pred 0.70–0.72: HIT) · κ ∞ 0.70767.
 - Bests now: Broad `submissions/slp2_broad_k20.csv` 0.70958; Deep `submissions/slp3_deep_bn_k20.csv` 0.71611.
 - Interpretation: the 156 holdout sentences of one subject share grammar (constructed from 50 words, each ~17×/subject). A bigram learned by EM from the subject's own posteriors carries real sequence information that a prose-trained prior did not (that prior: −0.11 at this evidence level). Every bit of it comes from the subject's own rows.
 
-## SLP-4 — strongest-version options for the self-learned prior (committed 2026-10-14 ~17:40 UTC, before the run)
+## SLP-4 — strongest-version options for the self-learned prior (committed 2026-10-14 ~16:32 UTC, before the run)
 - On Broad κ 20 (0.70958): (a) `--end 1` learned end-of-sentence distribution; (b) `--bal_em 1` class balance enforced inside EM (damped per-class emission weights; the holdout is class-balanced, so the E-step should not learn grammar from the decoder's Zipf skew); (c) `--base vocab` Dirichlet base = bigram of the 20k LLM-generated vocab-only sentences (text knowledge only as a prior that the subject's own data can override). Default-options regression reproduces slp2_broad_k20 exactly.
 - Predictions vs 0.70958: (a) ±0.005; (b) 0..+0.01; (c) −0.02..+0.01.
-### Outcome SLP-4 (2026-10-14 ~17:48 UTC, Broad LB): (a) end 0.69635 (−0.013; pred ±0.005: MISS); (b) bal_em 0.70120 (−0.008; pred 0..+0.01: MISS); (c) vocab base 0.66265 (−0.047; pred −0.02..+0.01: MISS low). The simplest form (uniform base, bigram + start only, balance after) is best. Text knowledge in the prior hurts again, even as an overridable Dirichlet base. Broad best stays slp2_broad_k20 (0.70958).
+### Outcome SLP-4 (2026-10-14 ~16:37 UTC, Broad LB): (a) end 0.69635 (−0.013; pred ±0.005: MISS); (b) bal_em 0.70120 (−0.008; pred 0..+0.01: MISS); (c) vocab base 0.66265 (−0.047; pred −0.02..+0.01: MISS low). The simplest form (uniform base, bigram + start only, balance after) is best. Text knowledge in the prior hurts again, even as an overridable Dirichlet base. Broad best stays slp2_broad_k20 (0.70958).
 - **SLP-5 Deep (pre-registered now):** κ 10 on AdaBN (pred: within ±0.01 of κ 20's 0.71611; Deep evidence is stronger, so its optimum may sit at stronger priors than Broad's).
-### Outcome SLP-5 (2026-10-14 ~17:55 UTC): Deep κ 10 **0.70711** (−0.009 vs κ 20; pred ±0.01: HIT). Deep κ curve: 10 0.70711 · **20 0.71611** · 50 0.71061 · ∞ 0.70767. Both tracks peak at κ≈20 (~14 expected transitions per source word per subject → prior ≈ data).
+### Outcome SLP-5 (2026-10-14 ~16:40 UTC): Deep κ 10 **0.70711** (−0.009 vs κ 20; pred ±0.01: HIT). Deep κ curve: 10 0.70711 · **20 0.71611** · 50 0.71061 · ∞ 0.70767. Both tracks peak at κ≈20 (~14 expected transitions per source word per subject → prior ≈ data).
 
-## SLP-T — trigram-backoff self-learned prior (committed 2026-10-14 ~18:15 UTC, before the run)
+## SLP-T — trigram-backoff self-learned prior (committed 2026-10-14 ~16:43 UTC, before the run)
 - `scripts/hmm3_prior.py`: pair states (prev, cur), P3(w|u,v) backs off to the κ2 = 20 bigram with strength κ3; all counts are EM expectations from the subject's own rows. Regression: κ3 → ∞ reproduces slp2_broad_k20 to 1e-6.
 - Arms: Deep κ3 20 (today's last Deep slot; on AdaBN raw), Broad κ3 50 and 10 (tomorrow). Predictions vs bigram κ20 (Broad 0.70958 / Deep 0.71611): κ3 50 −0.005..+0.01; κ3 20 −0.01..+0.01; κ3 10 −0.015..+0.01. Repeated 3-word chunks across a subject's 156 constructed sentences are needed for a gain; with ~700 trigrams per subject the counts are sparse.
-### Outcome SLP-T Deep (2026-10-14 ~18:25 UTC): κ3 20 **0.70711** vs bigram 0.71611 (−0.009; pred −0.01..+0.01: HIT, low). No trigram gain detected on Deep's 288 public rows. Broad κ3 50 / 10 files built for tomorrow's slots (submissions/slpt_broad_k3_{50,10}.csv).
+### Outcome SLP-T Deep (2026-10-14 ~16:46 UTC): κ3 20 **0.70711** vs bigram 0.71611 (−0.009; pred −0.01..+0.01: HIT, low). No trigram gain detected on Deep's 288 public rows. Broad κ3 50 / 10 files built for tomorrow's slots (submissions/slpt_broad_k3_{50,10}.csv).
 
-## SLP-ST — decoder ↔ grammar EM within subject (committed 2026-10-14 ~18:35 UTC, before the run)
+## SLP-ST — decoder ↔ grammar EM within subject (committed 2026-10-14 ~16:48 UTC, before the run)
 - Each subject's input layer A (Broad identity; Deep A0 after AdaBN) is self-trained 100 steps on its own holdout rows, KL toward the soft targets of the current best file (SLP κ20 + Sinkhorn), ridge to init. Then the decoder re-predicts and SLP κ20 + Sinkhorn re-run. `predict_holdout_v3.py --st_steps 100 --st_targets <best>`, 10 FINAL-6c models.
 - Predictions vs best (Broad 0.70958 / Deep 0.71611): Broad −0.01..+0.02; Deep −0.01..+0.015. Failure mode: confirmation bias (the targets are the model's own output), so a gain needs the grammar/balance information in the targets to flow back into better sensor weighting.
 
-## SLP-β — emission sharpness (committed 2026-10-14 ~18:55 UTC; LB slots after 00:00 UTC)
+## SLP-β — emission sharpness (committed 2026-10-14 ~16:50 UTC; LB slots after 00:00 UTC)
 - κ 20 with emissions (P / mean P)^β, β ∈ {0.7, 1.4}, both tracks. Files `submissions/slpb_{broad,deep_bn}_k20_b{0.7,1.4}.csv`. The decoder is over-confident (Sinkhorn prefers T 2–3), so flatter emissions may let the learned grammar act more.
 - Predictions vs κ20 β1 (Broad 0.70958 / Deep 0.71611): β 0.7 −0.005..+0.01; β 1.4 −0.015..+0.003.
