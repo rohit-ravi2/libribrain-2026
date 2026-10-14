@@ -18,11 +18,10 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-14 15:40 UTC)
+## PENDING (updated 2026-10-14 17:58 UTC)
 - **Deadline:** Kaggle close **2026-10-16 12:00 UTC**; new-submission hard stop ~10:00 UTC Oct 16.
-- **Best LB:** Deep **0.70767** `submissions/drift1_deep_bn_balT3.csv` (= `bnD_deep_a1.0_balT3.csv`; FINAL-6c ×10 + full per-subject AdaBN + Sinkhorn T3). Broad **0.69213** `submissions/final6_broad_ens10_balT2.csv`. **Rohit must SELECT on Kaggle.**
-- **GPU:** held by sister meta-emg 'E1 full' (30 ep, from ~14:40 UTC, ETA ~18:50 UTC). Urgent notify sent asking Rohit whether to pause it; no reply, so lock respected. Evaluations run on CPU (`LB_DEV=cpu`).
-- **In flight (CPU):** BN-α Broad LB arm: `submissions/bna05_broad_ens3*.csv` (ens3 + partial AdaBN α 0.5, dropout off) builds on CPU, self-submits; log `logs/bna05_broad.log`; compare against ens3_balT2 0.69134.
-- **Queued (GPU, `scripts/queue_gpu7.sh`, log `logs/queue_gpu7.log`):** INF-1b (BN α 0.5 + labelled fitA for SEEN) → SPB-1 train (`--pure_runs 1`) → BN-α maps on spb1 and deep_c (Q3+Q4) → DW-1.
-- **Findings today:** Deep discount = BN statistics on the new session (DRIFT-1 +0.044); full recal hurts new Broad brains on LB (−0.011) but partial α 0.5 gains +0.028 locally (6/7); Deep prefers α 1 (α 0.5 −0.029 LB). ABS-1 linear encoding-model fusion not detected.
-- **If BN-α Broad LB ≥ +0.01:** rebuild with all 10 models at α 0.5 (+ fitA for subjects 1–32 if INF-1b passes) on GPU, submit.
+- **Best LB (Rohit must SELECT):** Broad **0.70958** `submissions/slp2_broad_k20.csv` (FINAL-6c ens10 → self-learned within-subject HMM prior κ 20 → Sinkhorn T2). Deep **0.71611** `submissions/slp3_deep_bn_k20.csv` (ens10 + per-subject AdaBN → HMM κ 20 → Sinkhorn T3). Recipes: `predict_holdout_v3.py [--bnrecal 1]` → `hmm_prior.py --kappa 20 [--track deep --T 3]`.
+- **Submissions today:** Broad 10/10 used, Deep 9/10 used. They reset at 00:00 UTC.
+- **GPU:** sister meta-emg 'E1 full' until ~18:50 UTC. Then `scripts/queue_gpu8.sh` (log `logs/queue_gpu8.log`): T5-3B targets → LSO-1 (+ PX α map) → TX-1 (T5-3B targets) → INF-1b (labelled fitA, AdaBN α1) → SPB-LSO (+ PX α map) → DW-1.
+- **Closed today (LB):** BN recal on Broad (α1 −0.011, α0.5 −0.002); DIV-1 Deep diversity (−0.008); SLP end/bal_em/vocab-base options (all worse); ABS-1 linear encoding model (local, not detected).
+- **Next CPU idea:** trigram-backoff SLP (states = word pairs, κ3 backoff to the κ20 bigram), LB-tested tomorrow.
