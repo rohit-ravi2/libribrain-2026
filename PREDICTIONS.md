@@ -616,3 +616,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ## SLP-ST — decoder ↔ grammar EM within subject (committed 2026-10-14 ~18:35 UTC, before the run)
 - Each subject's input layer A (Broad identity; Deep A0 after AdaBN) is self-trained 100 steps on its own holdout rows, KL toward the soft targets of the current best file (SLP κ20 + Sinkhorn), ridge to init. Then the decoder re-predicts and SLP κ20 + Sinkhorn re-run. `predict_holdout_v3.py --st_steps 100 --st_targets <best>`, 10 FINAL-6c models.
 - Predictions vs best (Broad 0.70958 / Deep 0.71611): Broad −0.01..+0.02; Deep −0.01..+0.015. Failure mode: confirmation bias (the targets are the model's own output), so a gain needs the grammar/balance information in the targets to flow back into better sensor weighting.
+
+## SLP-β — emission sharpness (committed 2026-10-14 ~18:55 UTC; LB slots after 00:00 UTC)
+- κ 20 with emissions (P / mean P)^β, β ∈ {0.7, 1.4}, both tracks. Files `submissions/slpb_{broad,deep_bn}_k20_b{0.7,1.4}.csv`. The decoder is over-confident (Sinkhorn prefers T 2–3), so flatter emissions may let the learned grammar act more.
+- Predictions vs κ20 β1 (Broad 0.70958 / Deep 0.71611): β 0.7 −0.005..+0.01; β 1.4 −0.015..+0.003.
