@@ -565,3 +565,5 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 | raw | 0.632 | 0.652 | 0.659 | 0.667 | 0.650 |
 | +Sinkhorn T2 | 0.669 | 0.686 | **0.697** | 0.692 | 0.676 |
 - α 0.5 + Sinkhorn: **+0.028** over α 0 (pred +0.00..+0.02: beat; interior optimum HIT). 6/7 subjects positive, one +0.004. Full recalibration +0.008 (LB said −0.011). Mechanism: a new brain needs part of its own normalisation (amplitude/offset of the spatial-conv features) and part of subj0's reference scale. Q4 and the subj0 sanity column were not run.
+### Outcome BN-α Deep LB arms (2026-10-14 ~15:30 UTC)
+- α 1.0, dropout off: **0.70767** (= dropout-on, pred ±0.01: HIT). α 0.5: **0.67906** (−0.029; pred −0.03..+0.01: HIT, bottom edge). Subj0's new session wants full recalibration. New Broad brains locally want α≈0.5. Deep best unchanged (drift1_deep_bn_balT3 / bnD_deep_a1.0_balT3, 0.70767).
