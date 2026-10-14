@@ -52,16 +52,26 @@ def chdrop(seed):
     return f
 
 
+BN_ALPHA = float(os.environ.get("BN_ALPHA", "1.0"))   # partial AdaBN: (1-α)·training + α·subject; dropout held off when α != 1
+
+
 @torch.no_grad()
 def bn_recal(segs, A):
-    """Reset and re-estimate every BatchNorm's running stats from this subject's own rows (cumulative average)."""
-    saved = copy.deepcopy(M.enc.state_dict())
-    for mod in M.enc.modules():
-        if isinstance(mod, nn.BatchNorm1d): mod.reset_running_stats(); mod.momentum = None
+    """Re-estimate every BatchNorm's running stats from this subject's own rows (cumulative), blended with training by α."""
+    saved = copy.deepcopy(M.enc.state_dict()); bns = [m for m in M.enc.modules() if isinstance(m, nn.BatchNorm1d)]
+    tr = [(m.running_mean.clone(), m.running_var.clone()) for m in bns]
+    for mod in bns: mod.reset_running_stats(); mod.momentum = None
     M.enc.train()
+    if BN_ALPHA != 1.0:
+        for mod in M.enc.modules():
+            if isinstance(mod, nn.Dropout): mod.eval()
     for i in range(0, len(segs), 40):
         idx, gi, pad, rel = pack(W, segs[i:i + 40]); x, v = W.windows(idx); M.forward(x, v, A, gi, pad, rel)
-    M.enc.eval(); return saved
+    M.enc.eval()
+    if BN_ALPHA != 1.0:
+        for m, (mt, vt) in zip(bns, tr):
+            m.running_mean.copy_((1 - BN_ALPHA) * mt + BN_ALPHA * m.running_mean); m.running_var.copy_((1 - BN_ALPHA) * vt + BN_ALPHA * m.running_var)
+    return saved
 
 
 def fit_A(s, steps, lr=3e-4):
