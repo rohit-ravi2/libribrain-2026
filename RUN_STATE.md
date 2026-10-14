@@ -18,8 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-13 15:30 EDT)
-- **Best LB:** Broad **0.6913** (`submissions/final6_broad_ens3_balT2.csv`), Deep **0.6639** (`submissions/final6_deep_ens5_balT3.csv`). Both = subj0-only recipe + per-subject Sinkhorn class balance (T 2–3). **Rohit must select these on Kaggle before Oct 16 12:00 UTC.**
-- **GPU queue:** Bet C dose-response (ext0 control → ext20 → ext58, scripts/extmeg/queue_dose.sh, ~75–90 min each under load) → vr1 (vocab-run oversampling test, scripts/queue_vr1.sh). Results: logs/ext*.log, logs/vr1.log, logs/vr1_diag.log; `scripts/broad_protocol.py ext0 ext20 ext58 vr1`.
-- Today's findings: balance re-rank +0.03/+0.04 local, +0.036/+0.010 LB; prototype pooling NOT DETECTED (all spaces); read-sentence proxy (held-out TIMIT) 0.705 = prose → sentence form is not the holdout's difficulty; vocab-only runs locally 0.57 vs 0.65 → VR-1 tests oversampling them.
-- Next decisions: if VR-1 lifts the vocab-run subset ≥ 0.04 with overall intact → retrain finals (both tracks) with --vocab_runs 0.3, balance, submit. If ext20/ext58 ≥ +0.03 → multi-subject pretraining reopens (post-deadline scale-up).
+## PENDING (updated 2026-10-14 14:20 UTC, session resume after the usage cap + reboot)
+- **Deadline:** Kaggle close **2026-10-16 12:00 UTC**; new-submission hard stop ~10:00 UTC Oct 16.
+- **Best LB (fallbacks, Rohit to SELECT):** Broad **0.69213** `submissions/final6_broad_ens10_balT2.csv` (alt ens3_balT2 0.69134); Deep **0.66390** `submissions/final6_deep_ens10_balT3.csv` (ens5_balT3 ties; files differ, 92% top-1 agreement).
+- **Nothing running** (machine rebooted; GPU lock free). FINAL-6c, VR-1, ext20 all recorded. ext58 never ran (post-deadline, Rohit's call).
+- **Next (approved Oct 13 plan, untested items):** (c) inference-only: frozen-trunk adaptation at 0.66, Deep TTA / normalisation recalibration, small-β prior after balance; (a) analysis-by-synthesis gate (generative word-response model on subj0, fused with decoder, local Q3/Q4); Deep encoder-width map (subj0-only). Each pre-registered below in PREDICTIONS.md.

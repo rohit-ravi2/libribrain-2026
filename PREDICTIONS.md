@@ -491,3 +491,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ### Outcome EXT-1 / Bet C dose-response (2026-10-14 ~01:30 EDT, runs/ext20.json vs runs/deep_c.json)
 - +20 Le Petit Prince listeners (French, same helmet, T5-SigLIP-only stream, 6 of 38 segments per batch): subj0 0.731 (+0.026), **Broad deploy 0.481 (−0.151)** (pred ±0.02: MISS, far below). **Shallow external subjects HURT zero-shot transfer, confirmed on a second corpus**, and more strongly than LibriBrain's own Broad subjects did (−0.04 at bf 0.1). ext58 stopped to free the GPU for the finals; it is the third dose point for the paper, post-deadline.
 - Interpretation: anything added to subj0's stream slightly helps subj0 (VR-1 +0.024, ext20 +0.026) and hurts transfer; the trunk's generalisation to new brains comes from the depth and homogeneity of one subject's data, not from subject diversity at this scale (1–2 h per added subject).
+
+### Outcome FINAL-6c (self-submitted 2026-10-13 ~22:00 UTC after the session's usage cap; recorded 2026-10-14)
+- Broad `final6_broad_ens10_balT2.csv` **0.69213** (pred 0.69–0.70: HIT; +0.0008 over ens3_balT2 0.69134 = noise). Deep `final6_deep_ens10_balT3.csv` **0.66390** (pred 0.67–0.68: MISS, low by 0.006).
+- The Deep 10-model score equals the 5-model balT3 score to 5 decimals. The files differ (checked 2026-10-14): top-1 agreement 92.3% of 960 rows, mean top-10 set overlap 95.1%, max |Δp| 0.008. The tie comes from the ~290-row public split, not a duplicate upload. The 10-model files are the lower-variance choice for the private 70%.
