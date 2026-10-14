@@ -18,7 +18,7 @@ from src.split import parse, SHARED
 FS = 50; L = int(os.environ.get("ABS_L", 40)); K = int(os.environ.get("ABS_K", 60)); MAXT = 8 * FS
 NC = 53; GEN, OTHER, FIRST = 0, 51, 52                      # class index: 0 generic, 1..50 vocab, 51 other, 52 first word
 NF = NC * L
-t0 = time.time(); rng = np.random.default_rng(0)
+t0 = time.time(); rng = np.random.default_rng(0); torch.set_num_threads(4)
 
 
 def epochs_of(base):
