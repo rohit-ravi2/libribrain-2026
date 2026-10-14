@@ -71,3 +71,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-14 | ext20 | deep_c + 20 LPP subjects (ext_frac 0.2) | 0 | subj0 0.731 | Broad-protocol 0.481 | | | — | external subjects HURT (−0.15) |
 | 10-13 | LB FINAL-6c | subj0-only ×10 seeds + balance: Broad / Deep | 0-9 | — | — | — | — | 0.69213 0.66390  | |
 | 10-14 | LB DRIFT-1 Deep | FINAL-6c ×10, subj0 identA / BN-recal / both, balT3 | 0-9 | — | — | — | — | Deep 0.69228 / **0.70767** / 0.70650 | BN recalibration on own holdout rows: +0.044 |
+| 10-14 | LB BN-1 Broad | FINAL-6c ×10 + per-subject BN recal, balT2 | 0-9 | — | — | — | — | Broad 0.68076 | −0.011 vs 0.69213 |
