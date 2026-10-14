@@ -496,7 +496,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Broad `final6_broad_ens10_balT2.csv` **0.69213** (pred 0.69–0.70: HIT; +0.0008 over ens3_balT2 0.69134 = noise). Deep `final6_deep_ens10_balT3.csv` **0.66390** (pred 0.67–0.68: MISS, low by 0.006).
 - The Deep 10-model score equals the 5-model balT3 score to 5 decimals. The files differ (checked 2026-10-14): top-1 agreement 92.3% of 960 rows, mean top-10 set overlap 95.1%, max |Δp| 0.008. The tie comes from the ~290-row public split, not a duplicate upload. The 10-model files are the lower-variance choice for the private 70%.
 
-## INF-1 — inference-only map on the 0.66-regime model (committed 2026-10-14 ~14:35 UTC, before the run)
+## INF-1 — inference-only map on the 0.66-regime model (committed 2026-10-14 ~13:55 UTC, before the run)
 - Approved Oct 13 plan, item (c); HANDOFF §7-C/D. Checkpoint deep_c ep6 (subj0-only, ctx 4; Q3/Q4 held out). Rows: split-v2 Q3/Q4 vocab words; Broad = EVAL+VAL+SEEN subjects with identity A (the deploy condition of the FINAL-6 files); Deep = subj0 own A. Readout ce τ0.5, then per-subject Sinkhorn (Broad T 2, Deep T 3) with the present-class target, as in BAL-1. Script `scripts/infer_map.py`, output `runs/infer_map.json`.
 - Variants and predictions (Δ vs base+Sinkhorn, Broad mean over subject-blocks / Deep mean of 2 blocks):
   1. **jitter TTA** (onset shifts −2..+2 samples, 5 passes averaged): Broad ±0.01, Deep 0 to +0.02.
@@ -505,31 +505,31 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
   4. **frozen-trunk A fit** for SEEN subjects (A_s from identity, CE with the shared head, labelled Q1–Q2 + other words, 100/300 steps): SEEN +0.01 to +0.04. (At 0.46 this was ±0.01; the regime changed and the trunk is now never touched.)
 - Threshold to carry into a final file: ≥ +0.015 on the track's local mean. Labels if below: NOT DETECTED with that instrument.
 
-## ABS-1 — analysis-by-synthesis rescoring gate (committed 2026-10-14 ~14:50 UTC, before the run)
+## ABS-1 — analysis-by-synthesis rescoring gate (committed 2026-10-14 ~13:55 UTC, before the run)
 - Approved Oct 13 plan, item 4 (a). **Principle:** combine a discriminative decoder with a generative forward model of the whole epoch. MEG = Σ_words R_{class}(t − onset) + noise, with whitened residual noise, so candidate words in a slot are compared by epoch likelihood, and neighbours' expected responses are explained away (mean-field over slots, initialised from the decoder posterior). Timing is a fixed conditioning variable shared by all candidates, so it cannot itself favour a word. That keeps the `--rel 0` policy's intent.
 - **Stage 1 (`scripts/abs_fit.py`, CPU):** linear word-locked encoding model on subj0 sentence epochs, normalised like holdout epochs, K=60 PCA comps, lags 0–0.8 s, classes = generic + 50 vocab + other + first-word. Train = subj0 minus Sherlock1 ses-11/12. Ridge α chosen on 5% held-out epochs by the generative model's own oracle-neighbour top-10 bacc.
 - **Stage 2 (`scripts/abs_eval.py`):** on split-v2 Q3/Q4 (subj0 own A; Broad subjects identity A, zero-shot TRF), fused score log q_dec + λ·loglik_gen, 2 mean-field sweeps, λ chosen on the select block (fold A/B), then Sinkhorn. Non-vocab words are fixed at "other" locally (in the holdout every word is vocab).
 - **Predictions:** stage-1 oracle standalone 0.28–0.40 (chance ≈ 0.20; linear evoked word identity is weak). Stage-2 fused gain Deep +0.00 to +0.04, Broad +0.00 to +0.02. The +0.05–0.10 prior from Oct 13 needs the generative model to carry evidence the decoder lacks; I give that ≤ 25%.
 - **Gate:** if the stage-1 oracle is < 0.25, the linear form is uninformative, so the next step is a contextual (T5-feature) encoding model, not closure. Fused ≥ +0.02 on a track's local mean → holdout implementation + one LB submission per track.
 
-## DRIFT-1 — Deep session-drift hypothesis (committed 2026-10-14 ~14:05 UTC, before any run)
+## DRIFT-1 — Deep session-drift hypothesis (committed 2026-10-14 ~13:56 UTC, before any run)
 - **Observation:** locally subj0 beats the Broad subjects (0.705 vs 0.632, deep_c). On the LB it is the reverse: Deep 0.664 vs Broad 0.692, a ~0.10 swing, larger than the Deep public-split SE (~0.03 on ~290 rows). Broad subjects run with identity input layers; subj0 runs with its learned A0. Hypotheses: (i) subj0's holdout session drifted from the training sessions (head position, environment), so A0 and the BN statistics are miscalibrated there; (ii) A0 over-fits subj0's training sessions. The local proxy cannot see this, because subj0's Q3/Q4 sessions are partly in training and PROXY-1's held-out TIMIT sessions showed no penalty.
 - **Tests (Deep holdout, 10 FINAL-6c models, Sinkhorn T=3, LB as the instrument):** (a) identity A for subj0; (b) per-subject BN recalibration on subj0's own 960 holdout rows (with A0); (c) both.
 - **Predictions:** (a) −0.03 to +0.05; (b) 0 to +0.05; (c) 0 to +0.06. Local companion (INF-1 idA / idA_bn on Q3/Q4) expected −0.02 to 0, because there is no drift locally. A ≥ +0.03 LB gain on Deep is read as drift confirmed. The same BN recalibration then gets tried on Broad (its holdout sessions may also differ).
 
-## DW-1 — encoder width for subj0-only training (committed 2026-10-14 ~14:15 UTC, before the run)
+## DW-1 — encoder width for subj0-only training (committed 2026-10-14 ~13:58 UTC, before the run)
 - The "capacity hurts" result (v3e2, −0.036) was measured with 50% Broad-subject batches at the 0.46 regime. For subj0-only training, more model gave subj0 small gains (ctx 6 +0.015, 12 ep +0.016) and Broad small losses. Width was never tested in this regime.
 - Run: deep_c recipe (`--deep 1 --broad_frac 0 --ctx_layers 4 --epochs 8 --t5 1 --rel 0`) with `--d 192 --D 384` (the v3e2 size, known to fit), seed 0. Score: subj0 Q3/Q4 and Broad protocol.
 - Prediction: subj0 0.705 → 0.71–0.735; Broad 0.632 → 0.60–0.64. Threshold for a Deep-only retrain (seeds on all data): subj0 ≥ +0.02 over deep_c **and** over deep_g/deep_h (0.720). Below that it is labelled not detected at this width.
 ### Outcome ABS-1 stage 1 (2026-10-14, runs/abs_trf.npz, logs/abs_fit.log)
 - Linear word-locked encoding model, subj0, 38k training epochs, K=60 (99.1% var). Held-out oracle-neighbour standalone top-10 bacc: α 1e2 **0.282**, 1e3 0.281, 1e4 0.269, 1e5 0.275 (pred 0.28–0.40: HIT, bottom edge). Gate (≥ 0.25) passed → stage 2. The linear evoked word-identity signal is weak (+0.08 over chance with perfect neighbours), so a fused gain above +0.01 would need non-overlapping information.
 
-## INF-2 — within-subject self-training of the input layer (committed 2026-10-14 ~14:35 UTC, before the run)
+## INF-2 — within-subject self-training of the input layer (committed 2026-10-14 ~14:04 UTC, before the run)
 - Approved plan step 3 (per-subject EM), at the 0.66 regime. Per subject and block: A_s (identity; subj0 A0) is trained on soft pseudo-labels = Sinkhorn-balanced posteriors of the current model (T 2 Broad / 3 Deep), re-estimated every 25 steps. Loss KL + ridge to init, lr 3e-4, 50/150 steps; also BN recalibration and BN + 150 steps. Transductive, scored on the same unlabelled rows, as on the holdout. Script `scripts/tta_map.py` → `runs/tta_map.json`.
 - Predictions (Δ vs base+Sinkhorn): Broad st150 −0.01 to +0.03; Deep ±0.01. Confirmation bias is the failure mode, and a negative Δ measures it. Threshold +0.015 to carry into a holdout file.
 - DRIFT-1 side check (CPU, before the LB arms): spatial-covariance similarity (corr of normalised 306×306 covariances) of subj0 holdout vs subj0 training = 0.928. For comparison: training session vs session 0.944; Broad subjects' holdout vs their own training 0.926–0.950. No gross covariance drift in subj0's holdout session, which weakens hypothesis (i) before the LB test.
 - Caveat on the PROXY-1 reading: `ses-N` in LibriBrain counts sessions within each task (each book has its own ses-10), so whether the 5 held-out TIMIT runs shared recording days with training runs is unknown. PROXY-1 therefore may not have tested a held-out *recording day*, and the session-novelty discount is unmeasured locally. A leave-session-out run (all of subj0's runs on held-out session days excluded) is the instrument; it is queued conditionally on DRIFT-1.
-### Outcome DRIFT-1 (2026-10-14 ~14:20 UTC, Deep LB, 10 FINAL-6c models, balT3)
+### Outcome DRIFT-1 (2026-10-14 ~14:18 UTC, Deep LB, 10 FINAL-6c models, balT3)
 | arm | Deep LB | Δ vs 0.66390 | pred |
 |---|---|---|---|
 | (a) identity A for subj0 | 0.69228 | +0.028 | −0.03..+0.05: HIT |
@@ -539,13 +539,13 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - **BN-1 (pre-registered now):** the same BN recalibration per Broad subject (own holdout rows only), 10 models, balT2. Prediction: Broad 0.6921 → 0.70–0.74 (each Broad subject is a new brain *and* session; the BN statistics are subj0's).
 - INF-2 amended before its start: + `bnD` (BN recalibration with dropout held in eval, i.e. standard AdaBN) and `bnD+aff100` (TENT-style: BN affine params trained 100 steps on balanced pseudo-labels, running stats frozen). Predictions: bnD = bn ± 0.005; aff100 −0.01 to +0.02 over bnD.
 
-## SPB-1 — session-pure batches + per-subject AdaBN (committed 2026-10-14 ~14:45 UTC, before the run)
+## SPB-1 — session-pure batches + per-subject AdaBN (committed 2026-10-14 ~14:30 UTC, before the run)
 - **Principle (domain adaptation via normalisation statistics, AdaBN):** DRIFT-1 showed the Deep discount is BN statistics. If every training batch comes from one recording run, the encoder learns features normalised *within a session*, and per-subject recalibration at test then matches training exactly, for subj0's new session and for every Broad brain.
 - Run `spb1` = deep_c recipe + `--pure_runs 1`, seed 0, Q3/Q4 held out. Evaluation: `SLIM=1 infer_map.py runs/spb1_ep6.pt` (bn variant = per-subject-block AdaBN, + Sinkhorn), against the same on deep_c ep6 (INF-1b).
 - Prediction (AdaBN+Sinkhorn, spb1 vs deep_c): Broad +0.00 to +0.05; Deep +0.00 to +0.03. Risk: one-run batches are less diverse, so the running-stats (non-AdaBN) numbers may drop. Threshold: ≥ +0.02 on either track's AdaBN number → retrain final models with `--pure_runs 1` (10 seeds ≈ 3–5 h) and submit with AdaBN.
-### Outcome BN-1 (2026-10-14 ~15:05 UTC, Broad LB)
+### Outcome BN-1 (2026-10-14 ~14:38 UTC, Broad LB)
 - Broad `bn1_broad_ens10_balT2.csv` **0.68076** vs 0.69213 without (pred 0.70–0.74: **MISS, −0.011**). Per-subject BN recalibration helps subj0's new session (+0.044 Deep) and slightly hurts zero-shot Broad brains. Reading: for a different brain, subj0's training BN statistics are a better reference than the subject's own. Plausibly the encoder's features are calibrated to subj0's scale, and re-standardising per brain discards informative between-word variance structure that differs by brain. Broad best unchanged. SPB-1 tests whether training with session-pure normalisation turns AdaBN into a gain for new brains.
-### Outcome ABS-1 stage 2 (2026-10-14 ~15:25 UTC, runs/abs_eval.json; CPU inference, deep_c ep6; rows = vocab words of sentences ≤ 8 s)
+### Outcome ABS-1 stage 2 (2026-10-14 ~14:44 UTC, runs/abs_eval.json; CPU inference, deep_c ep6; rows = vocab words of sentences ≤ 8 s)
 | track | decoder+Sinkhorn (test, fold mean) | fused (λ chosen on select block) | gen alone Q3/Q4 | gen oracle-neighbour Q3/Q4 |
 |---|---|---|---|---|
 | Broad (13 subj, identity A) | 0.7535 | 0.7525 (−0.001) | 0.234 / 0.200 | 0.230 / 0.195 |
