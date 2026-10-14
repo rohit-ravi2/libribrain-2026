@@ -20,6 +20,8 @@ ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True, help="c
 ap.add_argument("--out", required=True); ap.add_argument("--track", default="broad")
 ap.add_argument("--readout", default="ce"); ap.add_argument("--tau", type=float, default=0.5)
 ap.add_argument("--pool_cov", default="runs/pool_cov.pt", help="(306,306) covariance of normalised Broad training windows, written by adapt_v3.py")
+ap.add_argument("--identA", type=int, default=0, help="1 = identity input layer for every subject (incl. subj0)")
+ap.add_argument("--bnrecal", type=int, default=0, help="1 = re-estimate encoder BatchNorm stats on each subject's own holdout rows (within-subject TTA)")
 ap.add_argument("--coral", type=float, default=0.0); ap.add_argument("--ent_steps", type=int, default=0); ap.add_argument("--ent_lr", type=float, default=1e-3)
 a = ap.parse_args(); torch.manual_seed(0); rng = np.random.default_rng(0)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname(HOLDOUT), download=False)
@@ -91,17 +93,30 @@ def subject_A(M, s, segs, Cp_half):
     return A
 
 
+@torch.no_grad()
+def bn_recal(M, segs, A):
+    import copy
+    saved = copy.deepcopy(M.enc.state_dict())
+    for mod in M.enc.modules():
+        if isinstance(mod, nn.BatchNorm1d): mod.reset_running_stats(); mod.momentum = None
+    M.enc.train()
+    for X, V, gi, pad, rel, _ in batches(segs): M.forward(X, V, A, gi, pad, rel)
+    M.enc.eval(); return saved
+
+
 probs = torch.zeros(len(md), 50); Cp = {}
 for s in sorted(md.subject.unique()):
     segs = load_subject(int(s)); P = torch.zeros(len(md), 50); cnt = 0
     for M in models:
         if a.coral > 0 and id(M) not in Cp:
             Cp[id(M)] = msqrt(torch.load(a.pool_cov, map_location=dev), 0.5)
-        A = subject_A(M, int(s), segs, Cp.get(id(M)))
+        A = torch.eye(306, device=dev) if a.identA else subject_A(M, int(s), segs, Cp.get(id(M)))
+        saved = bn_recal(M, segs, A) if a.bnrecal else None
         with torch.no_grad():
             for X, V, gi, pad, rel, rows in batches(segs):
                 _, ce, zt = M.forward(X, V, A, gi, pad, rel)
                 lo = M.readout(ce, zt, a.readout, a.tau); P[rows] += F.softmax(lo, 1).cpu()
+        if saved is not None: M.enc.load_state_dict(saved)
     probs += P / len(models); print(f"subj{int(s):02d} own_A={int(s) in models[0].sid} rows={int((P.sum(1) > 0).sum())}", flush=True)
 assert (probs.sum(1) > 0.99).all()
 os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
