@@ -81,7 +81,7 @@ for blk in (("PX",) if PX else ("Q3", "Q4")):
         segs, iso = proxy_segs((q == blk) & (W.sub == s))
         if len(segs) < 10: continue
         A = M.A[M.sid[0]] if s == 0 else I; T = 3.0 if s == 0 else 2.0; r = {}
-        p, y = forward_all(segs, iso, A); kb = balanced_rows(y); pb, yb = p[kb], y[kb]
+        p, y = forward_all(segs, iso, A); kb = balanced_rows(y) if os.environ.get("BAL", "1") == "1" else torch.arange(len(y)); pb, yb = p[kb], y[kb]
         tgt = torch.zeros(50); tgt[torch.unique(yb)] = 1 / len(torch.unique(yb))
         r["base"] = bacc_null(pb.log(), yb)[0]; r["base+sk"] = bacc_null(sinkhorn_p(pb, T, tgt).log(), yb)[0]
         adabn(segs, iso, A); p2, _ = forward_all(segs, iso, A); M.enc.load_state_dict(TRAIN)
@@ -95,4 +95,4 @@ for grp, members in (("broad", BROAD), ("deep", [0])):
         out[grp] = {k: round(float(np.mean([v[k] for v in rows])), 4) for k in rows[0] if k != "n_rows"}
         out[grp]["sinkhorn_effect"] = round(out[grp]["base+sk"] - out[grp]["base"], 4); out[grp]["adabn_effect"] = round(out[grp]["adabn+sk"] - out[grp]["base+sk"], 4)
         print("MEAN", grp, json.dumps(out[grp]), flush=True)
-json.dump({"per": res, "mean": out, "ckpt": sys.argv[1], "px": PX}, open("runs/proxy_calib" + ("_px" if PX else "") + ".json", "w"), indent=1)
+json.dump({"per": res, "mean": out, "ckpt": sys.argv[1], "px": PX}, open("runs/proxy_calib" + ("_px" if PX else "") + ("" if os.environ.get("BAL", "1") == "1" else "_nat") + ".json", "w"), indent=1)
