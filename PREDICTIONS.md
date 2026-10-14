@@ -545,3 +545,11 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Prediction (AdaBN+Sinkhorn, spb1 vs deep_c): Broad +0.00 to +0.05; Deep +0.00 to +0.03. Risk: one-run batches are less diverse, so the running-stats (non-AdaBN) numbers may drop. Threshold: ≥ +0.02 on either track's AdaBN number → retrain final models with `--pure_runs 1` (10 seeds ≈ 3–5 h) and submit with AdaBN.
 ### Outcome BN-1 (2026-10-14 ~15:05 UTC, Broad LB)
 - Broad `bn1_broad_ens10_balT2.csv` **0.68076** vs 0.69213 without (pred 0.70–0.74: **MISS, −0.011**). Per-subject BN recalibration helps subj0's new session (+0.044 Deep) and slightly hurts zero-shot Broad brains. Reading: for a different brain, subj0's training BN statistics are a better reference than the subject's own. Plausibly the encoder's features are calibrated to subj0's scale, and re-standardising per brain discards informative between-word variance structure that differs by brain. Broad best unchanged. SPB-1 tests whether training with session-pure normalisation turns AdaBN into a gain for new brains.
+### Outcome ABS-1 stage 2 (2026-10-14 ~15:25 UTC, runs/abs_eval.json; CPU inference, deep_c ep6; rows = vocab words of sentences ≤ 8 s)
+| track | decoder+Sinkhorn (test, fold mean) | fused (λ chosen on select block) | gen alone Q3/Q4 | gen oracle-neighbour Q3/Q4 |
+|---|---|---|---|---|
+| Broad (13 subj, identity A) | 0.7535 | 0.7525 (−0.001) | 0.234 / 0.200 | 0.230 / 0.195 |
+| Deep (subj0) | 0.8069 | 0.8026 (−0.004) | 0.260 / 0.310 | 0.261 / 0.287 |
+- **NOT DETECTED with instrument "linear one-hot word-locked TRF, K=60 whitened PCA, one mean-field step"** (pred Deep +0.00..+0.04, Broad +0.00..+0.02: MISS low). The subj0 TRF does not transfer to other brains (gen ≈ chance on Broad). On subj0 it carries +0.06–0.11 over chance, all of it already in the decoder.
+- Direction OPEN. Strongest next test: a nonlinear, contextual forward model (word-embedding sequence → whitened MEG, trained on subj0's 80 h with a temporal conv net), scored per candidate sentence. Needs ~3–4 GPU-hours; queued behind SPB-1 only if the GPU frees.
+- Side observation: on short sentences (≤ 8 s, holdout-like) decoder+Sinkhorn reaches 0.75 Broad / 0.81 Deep locally, against 0.69 / 0.71 on all rows. Short sentences are easier, as the LB levels suggest.
