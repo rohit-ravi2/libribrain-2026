@@ -27,6 +27,7 @@ ap.add_argument("--vocab_runs", type=float, default=0.0, help="fraction of subj0
 ap.add_argument("--exclude", default=None, help="regex over run base names: excluded from training AND scored as the PROXY block (vocab words, sentence segments, subj0 own A)")
 ap.add_argument("--deep", type=int, default=0, help="1 = Deep track: also score subj0 (own A) on Q3/Q4 and SELECT on subj0")
 ap.add_argument("--ctx_layers", type=int, default=2)
+ap.add_argument("--pure_runs", type=int, default=0, help="1 = every step draws all subj0 segments from ONE run (session-pure BatchNorm statistics; pairs with per-subject AdaBN at test)")
 ap.add_argument("--rel", type=int, default=0, help="1 = feed relative word-onset timing to the sentence transformer (stimulus metadata; OFF by default since 2026-10-10)")
 ap.add_argument("--final", type=int, default=0, help="1 = train on ALL subjects and ALL stimulus (no local eval blocks); saves per-epoch ckpts only")
 a = ap.parse_args(); torch.manual_seed(a.seed); rng = np.random.default_rng(a.seed); dev = "cuda"
@@ -65,6 +66,9 @@ def sentences(mask):
 
 
 S0 = [s for s in sentences(trainable & (W.sub == 0))]; SB = [s for s in sentences(trainable & (W.sub != 0))]
+S0_by_run = {}
+for j_, s_ in enumerate(S0): S0_by_run.setdefault(int(W.run[s_[0]]), []).append(j_)
+RUNS0 = np.array(sorted(S0_by_run)); RUNW = np.array([len(S0_by_run[r_]) for r_ in RUNS0], float); RUNW /= RUNW.sum()
 # holdout-like oversampling: (a) whole runs matching --upweight (e.g. TIMIT/MOCHA read sentences); (b) natural vocab-only runs
 if a.upweight:
     up = [s for s in S0 if _re.search(a.upweight, W.bases[int(W.run[s[0]])])]
@@ -235,7 +239,11 @@ for ep in range(a.epochs):
     tl = tce = tt5 = 0.0
     for k in range(a.steps):
         nv = int(round(n0 * a.vocab_runs)) if VR else 0
-        segs = [segment(S0[j], a.maxw)[0] for j in rng.integers(0, len(S0), n0 - nv)] + [segment(VR[j], a.maxw)[0] for j in rng.integers(0, len(VR), nv)] + ([segment(SB[j], a.maxw)[0] for j in rng.integers(0, len(SB), n1)] if n1 > 0 else [])
+        if a.pure_runs:
+            pool = S0_by_run[int(rng.choice(RUNS0, p=RUNW))]; jj = [pool[i_] for i_ in rng.integers(0, len(pool), n0 - nv)]
+        else:
+            jj = rng.integers(0, len(S0), n0 - nv)
+        segs = [segment(S0[j], a.maxw)[0] for j in jj] + [segment(VR[j], a.maxw)[0] for j in rng.integers(0, len(VR), nv)] + ([segment(SB[j], a.maxw)[0] for j in rng.integers(0, len(SB), n1)] if n1 > 0 else [])
         idx, gi, pad, rel = pack(segs); N = len(idx)
         iso = rng.random(N) < a.p_iso
         short = rng.random(N) < a.p_short

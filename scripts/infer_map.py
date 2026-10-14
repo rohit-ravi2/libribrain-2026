@@ -9,6 +9,7 @@ from src import split2 as S2
 from src.cont import Words, FS
 from src.v3lib import Model, segments, pack, predict, bacc_null, dev
 
+SLIM = os.environ.get("SLIM") == "1"; OUT = os.environ.get("OUT", "runs/infer_map.json")
 M = Model(sys.argv[1]); maxw = M.a["maxw"]; tau = 0.5; t0 = time.time()
 W = Words(load_meg=True); q = W.quarters(); I = torch.eye(306, device=dev); rng = np.random.default_rng(0); torch.manual_seed(0)
 BROAD = sorted(set(S2.EVAL + S2.VAL + S2.SEEN)); A0 = M.A[M.sid[0]]
@@ -85,14 +86,16 @@ for blk in ("Q3", "Q4"):
             pres = torch.unique(y); tgt = torch.zeros(50); tgt[pres] = 1 / len(pres)
             r[name] = bacc_null(lo, y)[0]; r[name + "+sk"] = bacc_null(sinkhorn(lo, T, tgt), y)[0]
         lo, y = logits(segs, A); add("base", lo, y)
-        add("jit", *logits(segs, A, [jitter(d) for d in (-2, -1, 0, 1, 2)]))
-        add("chd", *logits(segs, A, [chdrop(k) for k in range(8)]))
+        if not SLIM:
+            add("jit", *logits(segs, A, [jitter(d) for d in (-2, -1, 0, 1, 2)]))
+            add("chd", *logits(segs, A, [chdrop(k) for k in range(8)]))
         saved = bn_recal(segs, A); add("bn", *logits(segs, A)); M.enc.load_state_dict(saved)
         if s == 0:
             add("idA", *logits(segs, I)); saved = bn_recal(segs, I); add("idA_bn", *logits(segs, I)); M.enc.load_state_dict(saved)
         if s in S2.SEEN:
             for st in (100, 300):
-                add(f"fitA{st}", *logits(segs, fit_A(s, st)))
+                As = fit_A(s, st); add(f"fitA{st}", *logits(segs, As))
+            saved = bn_recal(segs, As); add("bn+fitA300", *logits(segs, As)); M.enc.load_state_dict(saved)
         res[f"{blk}/{s}"] = r; print(blk, s, json.dumps({k: round(v, 3) for k, v in r.items()}), round(time.time() - t0), "s", flush=True)
 
 out = {}
@@ -100,4 +103,4 @@ for grp, members in (("broad", BROAD), ("deep", [0]), ("seen", list(S2.SEEN))):
     rows = [v for k, v in res.items() if int(k.split("/")[1]) in members]
     keys = sorted({k for v in rows for k in v}); out[grp] = {k: round(float(np.mean([v[k] for v in rows if k in v])), 4) for k in keys}
     print("MEAN", grp, json.dumps(out[grp]), flush=True)
-json.dump({"per": res, "mean": out, "ckpt": sys.argv[1]}, open("runs/infer_map.json", "w"), indent=1)
+json.dump({"per": res, "mean": out, "ckpt": sys.argv[1]}, open(OUT, "w"), indent=1)
