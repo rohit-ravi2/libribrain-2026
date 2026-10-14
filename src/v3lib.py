@@ -5,7 +5,8 @@ from . import split2 as S2
 from .cont import Words, normalize, WIN
 from .models import CtxEncoder, SentCtx
 
-dev = "cuda"
+import os as _os
+dev = _os.environ.get("LB_DEV", "cuda")   # LB_DEV=cpu runs inference on the CPU when the GPU is held by another job
 
 
 class Model:
