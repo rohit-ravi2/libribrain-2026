@@ -596,3 +596,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ### Outcome SLP-2 (2026-10-14 ~17:20 UTC)
 - Broad κ 20: **0.70958** (+0.0175 over 0.69213; above κ 50 0.70366) → trend confirmed. The self-learned within-subject grammar is a real lever and stronger is better so far. Deep κ 50 (on AdaBN): **0.71061** (+0.003 over 0.70767; noise-level, positive).
 - **SLP-3 (pre-registered now):** Broad κ 10 and κ 5 (pred: peak somewhere in κ 5–20, each within ±0.01 of κ 20); Deep κ 20 (pred 0.70–0.72).
+### Outcome SLP-3 (2026-10-14 ~17:30 UTC)
+- Broad κ curve (FINAL-6c ens10, balT2): κ 5 0.68755 · κ 10 0.70481 · **κ 20 0.70958** · κ 50 0.70366 · κ 200 0.68910 · κ ∞ 0.69213. Interior optimum near κ 20 (κ 10 and 5 HIT/below the ±0.01 band). Deep (AdaBN, balT3): κ 50 0.71061 · **κ 20 0.71611** (pred 0.70–0.72: HIT) · κ ∞ 0.70767.
+- Bests now: Broad `submissions/slp2_broad_k20.csv` 0.70958; Deep `submissions/slp3_deep_bn_k20.csv` 0.71611.
+- Interpretation: the 156 holdout sentences of one subject share grammar (constructed from 50 words, each ~17×/subject). A bigram learned by EM from the subject's own posteriors carries real sequence information that a prose-trained prior did not (that prior: −0.11 at this evidence level). Every bit of it comes from the subject's own rows.
