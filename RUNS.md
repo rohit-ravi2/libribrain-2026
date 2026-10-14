@@ -69,3 +69,4 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-13 | proxy1 | deep_c recipe, TIMIT ses-10..14 excluded | 0 | subj0 0.701; PROXY (read sentences) 0.705 | Broad-protocol 0.598 | | | — | read sentences not harder |
 | 10-13 | vr1 | deep_c recipe + --vocab_runs 0.3 | 0 | subj0 0.729 | Broad-protocol 0.599; vocab-run subset 0.535 | | | — | worse for Broad; not used |
 | 10-14 | ext20 | deep_c + 20 LPP subjects (ext_frac 0.2) | 0 | subj0 0.731 | Broad-protocol 0.481 | | | — | external subjects HURT (−0.15) |
+| 10-13 | LB FINAL-6c | subj0-only ×10 seeds + balance: Broad / Deep | 0-9 | — | — | — | — | 0.69213 0.66390  | |
