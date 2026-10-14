@@ -37,7 +37,7 @@ class Words:
             cols["s0"].append(d["sent_start_s"]); cols["s1"].append(d["sent_end_s"]); cols["li"].append(np.arange(n))
             cols["ntimes"].append(np.full(n, int(d["n_times50"])))
             if load_meg: self.meg.append(np.load(f"{CONT}/{b}.npy", mmap_mode="r" if MMAP else None))
-            if load_t5: self.t5.append(np.load(f"{CACHE}/runs_t5/{b}.npy", mmap_mode="r"))
+            if load_t5: self.t5.append(np.load(f"{CACHE}/{_os.environ.get('LB_T5DIR', 'runs_t5')}/{b}.npy", mmap_mode="r"))
             if load_w2v: self.w2v.append(np.load(f"{CACHE}/runs_w2v/{b}.npy", mmap_mode="r"))
         for k, v in cols.items(): setattr(self, k, np.concatenate(v))
         self.n = len(self.label)
