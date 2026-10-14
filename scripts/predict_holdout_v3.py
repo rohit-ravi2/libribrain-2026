@@ -26,6 +26,9 @@ ap.add_argument("--bn_alpha", type=float, default=1.0, help="with --bnrecal: run
 ap.add_argument("--bn_dropout_off", type=int, default=0, help="with --bnrecal: hold dropout in eval while estimating subject stats (standard AdaBN)")
 ap.add_argument("--fitA_steps", type=int, default=0, help="N > 0: for subjects with labelled training data, fit A_s (from identity) on ALL their labelled words with the trunk frozen (CE, shared head)")
 ap.add_argument("--fitA_lr", type=float, default=3e-4)
+ap.add_argument("--st_steps", type=int, default=0, help="N > 0: self-train each subject's A on its OWN holdout rows toward --st_targets (soft labels)")
+ap.add_argument("--st_targets", default=None, help="submission CSV whose rows are the soft targets (e.g. the SLP + Sinkhorn file)")
+ap.add_argument("--st_lr", type=float, default=3e-4)
 ap.add_argument("--coral", type=float, default=0.0); ap.add_argument("--ent_steps", type=int, default=0); ap.add_argument("--ent_lr", type=float, default=1e-3)
 a = ap.parse_args(); torch.manual_seed(0); rng = np.random.default_rng(0)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname(HOLDOUT), download=False)
@@ -138,6 +141,23 @@ def fit_A_labelled(M, s, steps):
     return A_s.detach()
 
 
+ST_T = None
+if a.st_steps > 0:
+    import pandas as _pd
+    _d = _pd.read_csv(a.st_targets); ST_T = torch.tensor(_d.iloc[:, 1:].to_numpy(), dtype=torch.float32); ST_T = ST_T / ST_T.sum(1, keepdim=True)
+
+
+def self_train_A(M, segs, A_init):
+    """KL(target || model) on this subject's own holdout rows; only A is trained; ridge to the initial A."""
+    A_s = nn.Parameter(A_init.clone()); opt = torch.optim.Adam([A_s], lr=a.st_lr); bl = list(batches(segs, 24)); g = np.random.default_rng(1)
+    for k in range(a.st_steps):
+        X, V, gi, pad, rel, rows = bl[g.integers(len(bl))]
+        _, ce, _ = M.forward(X, V, A_s, gi, pad, rel); lo = ce - a.tau * M.log_prior
+        loss = F.kl_div(F.log_softmax(lo, 1), ST_T[rows].to(dev), reduction="batchmean") + 1e-2 * ((A_s - A_init) ** 2).sum()
+        opt.zero_grad(); loss.backward(); opt.step()
+    return A_s.detach()
+
+
 probs = torch.zeros(len(md), 50); Cp = {}
 for s in sorted(md.subject.unique()):
     segs = load_subject(int(s)); P = torch.zeros(len(md), 50); cnt = 0
@@ -149,6 +169,7 @@ for s in sorted(md.subject.unique()):
             Af = fit_A_labelled(M, int(s), a.fitA_steps)
             if Af is not None: A = Af
         saved = bn_recal(M, segs, A) if a.bnrecal else None
+        if a.st_steps > 0: A = self_train_A(M, segs, A)
         with torch.no_grad():
             for X, V, gi, pad, rel, rows in batches(segs):
                 _, ce, zt = M.forward(X, V, A, gi, pad, rel)
