@@ -78,3 +78,5 @@ Local metric = BAcc@10 on block B (src/split.py), mean over eval subjects (3, 6,
 | 10-14 | LB SLP-1 Broad | FINAL-6c ens10 + self-learned within-subject HMM prior κ 50 / κ 200, balT2 | 0-9 | — | — | — | — | Broad **0.70366** / 0.68910 | κ 50 new best (+0.0115) |
 | 10-14 | LB SLP-2 | Broad κ 20 / Deep κ 50 (on AdaBN) | 0-9 | — | — | — | — | Broad **0.70958** / Deep **0.71061** | prior strength trend real |
 | 10-14 | LB SLP-3 | Broad κ 10 / κ 5; Deep κ 20 (AdaBN) | 0-9 | — | — | — | — | Broad 0.70481 / 0.68755; Deep **0.71611** | Broad peak κ≈20; Deep new best |
+| 10-14 | LB SLP-4 Broad | κ20 + end / bal_em / vocab base | 0-9 | — | — | — | — | 0.69635 / 0.70120 / 0.66265 | all worse than plain κ20 |
+| 10-14 | LB SLP-5 Deep | AdaBN + HMM κ 10 | 0-9 | — | — | — | — | Deep 0.70711 | κ20 stays best |
