@@ -7,12 +7,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from transformers import AutoTokenizer, T5EncoderModel
 from src.common import CACHE
 dev = sys.argv[1] if len(sys.argv) > 1 else "cpu"; torch.set_num_threads(int(os.environ.get("NT", 8)))
-os.makedirs(f"{CACHE}/runs_t5", exist_ok=True)
-tok = AutoTokenizer.from_pretrained("t5-large")
-enc = T5EncoderModel.from_pretrained("t5-large", torch_dtype=torch.float32 if dev == "cpu" else torch.bfloat16).to(dev).eval()
-enc.encoder.block = enc.encoder.block[:12]                                  # only blocks 1..12 are needed
+MODEL = os.environ.get("T5_MODEL", "t5-large"); OUTD = os.environ.get("T5_OUT", "runs_t5"); LAYER = int(os.environ.get("T5_LAYER", 12))
+os.makedirs(f"{CACHE}/{OUTD}", exist_ok=True)
+tok = AutoTokenizer.from_pretrained(MODEL)
+enc = T5EncoderModel.from_pretrained(MODEL, torch_dtype=torch.float32 if dev == "cpu" else torch.bfloat16).to(dev).eval()
+enc.encoder.block = enc.encoder.block[:LAYER]                               # only blocks 1..LAYER are needed
 cap = {}
-enc.encoder.block[11].register_forward_hook(lambda m, i, o: cap.__setitem__("h", o[0]))   # raw block-12 output (pre final norm)
+enc.encoder.block[LAYER - 1].register_forward_hook(lambda m, i, o: cap.__setitem__("h", o[0]))   # raw block-LAYER output (pre final norm)
 memo = {}
 
 
@@ -35,11 +36,11 @@ def embed(sents):
 
 while True:
     files = sorted(glob.glob(f"{CACHE}/cont/*_ev.npz"))
-    todo = [f for f in files if not os.path.exists(f"{CACHE}/runs_t5/{os.path.basename(f)[:-7]}.npy")]
+    todo = [f for f in files if not os.path.exists(f"{CACHE}/{OUTD}/{os.path.basename(f)[:-7]}.npy")]
     if not todo:
         if len(files) >= 226: break
         import time; time.sleep(20); continue            # cache still being built
-    f = todo[0]; base = os.path.basename(f)[:-7]; dst = f"{CACHE}/runs_t5/{base}.npy"
+    f = todo[0]; base = os.path.basename(f)[:-7]; dst = f"{CACHE}/{OUTD}/{base}.npy"
     d = np.load(f, allow_pickle=True); words = [str(w) if str(w) else "." for w in d["word"]]; sidx = d["sentenceidx"]
     out = np.zeros((len(words), 1024), np.float32); sents, rows = [], []
     order = np.argsort(sidx, kind="stable"); cur = None
