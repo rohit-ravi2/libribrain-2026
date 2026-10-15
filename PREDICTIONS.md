@@ -717,3 +717,8 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 - Hard lead-field projection (template MNE-sample forward, top-k span, zero-shot): Broad k30 0.648 / k50 0.629 / k70 0.627 vs identity 0.644; Deep 0.716 / 0.750 / 0.741 vs 0.743. No k wins on both, max +0.007: noise. Exhausted (the soft version ANAT-1 also ≤ +0.01).
 - Sentence priors vs SLP (local vocab runs; the local instrument underrates SLP itself, which is +0.018 on LB): CA rule prior Broad 0.585 / Deep 0.704 (vs SLP 0.638 / 0.727); class-HMM K4/K8 0.592/0.609 and 0.674/0.696; beam K20 ≈ exact (0.641 / 0.746 vs none 0.642 / 0.742). **CA/rule-array/multiway: exhausted** (worse than or equal to the exact bigram they approximate).
 - Status vs targets (local Broad 0.80 / Deep 0.83): unchanged at ~0.687 / ~0.80. No tested moonshot moves either track.
+
+## FINAL-8 lock-in (Rohit 2026-10-15 ~4:30 PM ET: stop moonshots, stack every increment with signal)
+- Broad **FITA-2** = FINAL-6c seeds 0–4 → labelled per-subject A (full update if ≥ 30 labelled min, rank-16 update below: ANAT-1 +0.010 at 25%) → subjects without labels get the fixed temporal-lobe weighting (ANAT-1 zero-shot +0.016) → SLP κ20 → Sinkhorn T2. File `submissions/fita2_broad_ens5_k20.csv`. Expected vs FITA-1: +0.003..+0.008 (small, single-checkpoint evidence).
+- Deep = `final7_deep_bn_k20.csv` (width × 5, AdaBN, SLP, Sinkhorn) with `final7_deep_k20.csv` (no AdaBN) as the alternative.
+- Left out: more seeds (0.000), diversity ensembles (−0.008), acoustic fusion (Broad +0.004 / Deep −), T retunes (+0.002), any text/LLM prior (−0.05..−0.11 at this evidence level; LB-only test, gated).

@@ -26,6 +26,8 @@ ap.add_argument("--bn_alpha", type=float, default=1.0, help="with --bnrecal: run
 ap.add_argument("--bn_dropout_off", type=int, default=0, help="with --bnrecal: hold dropout in eval while estimating subject stats (standard AdaBN)")
 ap.add_argument("--fitA_steps", type=int, default=0, help="N > 0: for subjects with labelled training data, fit A_s (from identity) on ALL their labelled words with the trunk frozen (CE, shared head)")
 ap.add_argument("--fitA_lr", type=float, default=3e-4)
+ap.add_argument("--lowrank_below_min", type=float, default=0.0, help="subjects with fewer labelled minutes than this get a rank-16 A update instead of a full one (ANAT-1)")
+ap.add_argument("--temporal_base", type=int, default=0, help="1 = subjects without labelled data get the fixed lateral-inferior sensor up-weighting (ANAT-1)")
 ap.add_argument("--st_steps", type=int, default=0, help="N > 0: self-train each subject's A on its OWN holdout rows toward --st_targets (soft labels)")
 ap.add_argument("--st_targets", default=None, help="submission CSV whose rows are the soft targets (e.g. the SLP + Sinkhorn file)")
 ap.add_argument("--st_lr", type=float, default=3e-4)
@@ -130,15 +132,21 @@ def fit_A_labelled(M, s, steps):
         _FITW[s] = _Words(runs=runs, load_meg=True) if runs else None
     W = _FITW[s]
     if W is None: return None
-    segs = _segments(W, W.label > -2, M.a["maxw"]); I = torch.eye(306, device=dev); A_s = nn.Parameter(I.clone())
-    opt = torch.optim.Adam([A_s], lr=a.fitA_lr); g = np.random.default_rng(s)
+    segs = _segments(W, W.label > -2, M.a["maxw"]); I = torch.eye(306, device=dev); g = np.random.default_rng(s)
+    minutes = sum(m.shape[1] for m in W.meg) / 50 / 60; low = minutes < a.lowrank_below_min
+    if low:
+        U = nn.Parameter(1e-3 * torch.randn(306, 16, device=dev, generator=torch.Generator(device=dev).manual_seed(s))); Vv = nn.Parameter(1e-3 * torch.randn(16, 306, device=dev)); ps = [U, Vv]; mk = lambda: I + U @ Vv
+    else:
+        Dl = nn.Parameter(torch.zeros(306, 306, device=dev)); ps = [Dl]; mk = lambda: I + Dl
+    opt = torch.optim.Adam(ps, lr=a.fitA_lr)
     for _ in range(steps):
         b = [segs[j] for j in g.integers(0, len(segs), 24)]
         idx, gi, pad, rel = _pack(W, b); x, v = W.windows(idx)
-        _, ce, _ = M.forward(x, v, A_s, gi, pad, rel); y = torch.from_numpy(W.label[idx]).to(dev); h = y >= 0
+        A_s = mk(); _, ce, _ = M.forward(x, v, A_s, gi, pad, rel); y = torch.from_numpy(W.label[idx]).to(dev); h = y >= 0
         loss = F.cross_entropy(ce[h], y[h], label_smoothing=0.1) + 1e-3 * ((A_s - I) ** 2).sum()
         opt.zero_grad(); loss.backward(); opt.step()
-    return A_s.detach()
+    print(f"  subj{s} labelled {minutes:.1f} min -> {'low-rank' if low else 'full'} A", flush=True)
+    return mk().detach()
 
 
 ST_T = None
@@ -158,6 +166,9 @@ def self_train_A(M, segs, A_init):
     return A_s.detach()
 
 
+_XYZ = np.array(json.load(open("/mnt/ssd4tb/data/LibriBrain100/metadata/sensor_xyz.json")), float); _c = _XYZ - _XYZ.mean(0)
+_lat = np.abs(_c[:, 0]) / np.abs(_c[:, 0]).max(); _low = (_c[:, 2].max() - _c[:, 2]) / np.ptp(_c[:, 2])
+TEMPW = torch.tensor(1 + 0.5 * (_lat * _low) / (_lat * _low).max(), dtype=torch.float32, device=dev)
 probs = torch.zeros(len(md), 50); Cp = {}
 for s in sorted(md.subject.unique()):
     segs = load_subject(int(s)); P = torch.zeros(len(md), 50); cnt = 0
@@ -165,9 +176,9 @@ for s in sorted(md.subject.unique()):
         if a.coral > 0 and id(M) not in Cp:
             Cp[id(M)] = msqrt(torch.load(a.pool_cov, map_location=dev), 0.5)
         A = torch.eye(306, device=dev) if a.identA else subject_A(M, int(s), segs, Cp.get(id(M)))
-        if a.fitA_steps > 0 and 1 <= int(s) <= 32:
-            Af = fit_A_labelled(M, int(s), a.fitA_steps)
-            if Af is not None: A = Af
+        Af = fit_A_labelled(M, int(s), a.fitA_steps) if (a.fitA_steps > 0 and 1 <= int(s) <= 32) else None
+        if Af is not None: A = Af
+        elif a.temporal_base and int(s) != 0: A = torch.diag(TEMPW)
         saved = bn_recal(M, segs, A) if a.bnrecal else None
         if a.st_steps > 0: A = self_train_A(M, segs, A)
         with torch.no_grad():
