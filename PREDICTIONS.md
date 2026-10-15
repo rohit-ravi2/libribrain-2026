@@ -704,3 +704,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ## ENS-T — separate acoustic/phonetic-target model + late fusion (committed ~13:45 UTC / 9:45 AM ET)
 - Model B = subj0-only recipe with `--t5 0 --w2v 1.0` (CE + SigLIP to wav2vec2 L8; strongly phonetic), seed 0, 8 ep. Fusion with deep_c ep6 at w ∈ {0, .2, .35, .5, 1} (`scripts/fuse_eval.py`). Differs from MV1 (a second head inside one trunk, +0.005): separate trunks can make different errors.
 - Pred: B alone 0.05–0.12 below A; best fusion +0.00..+0.02. Promote (as an extra ensemble member in the finals) if ≥ +0.01 on a track with Sinkhorn.
+### Outcome ANAT-1 + ENS-T (2026-10-15, finished by 19:27 UTC / 3:27 PM ET)
+- ANAT-1 (Broad local + Sinkhorn, fraction 0.25 / 1.0): plain 0.676 / 0.687; Laplacian 0.671 / 0.676 (worse); low-rank 16 **0.686** / 0.680 (+0.010 small-data, −0.007 full); temporal under fit 0.679 / 0.688; temporal-weighting zero-shot (no fit) 0.658 vs 0.642 (+0.016). Overall Broad effect ≈ +0.005 (low-rank for the 25/50% groups) and +0.003 (temporal for the 7 no-data subjects). Below the ≥ 0.01 bar, single checkpoint → not folded into the final.
+- ENS-T: wav2vec-only model fused with deep_c: Broad best +0.004 (w 0.2), Deep negative. Not promoted.
+- Finals built and held: Broad `fita1_broad_ens5_k20.csv`; Deep `final7_deep_bn_k20.csv` / `final7_deep_k20.csv` (width × 5 seeds, ± AdaBN). Rohit's local-0.8 gate is unmet on Broad (~0.69 local), so no submissions without his explicit go.
