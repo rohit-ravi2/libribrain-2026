@@ -17,7 +17,7 @@ from src.split import SHARED
 from src.cont import Words, ON, FS
 from src.common import CACHE, IS_MAG
 from src.v3lib import Model, segments, predict, bacc_null, dev
-MODE = sys.argv[1]; rng = np.random.default_rng(0); t0 = time.time(); GRAD = ~IS_MAG
+MODE = sys.argv[1] if len(sys.argv) > 1 and __name__ == "__main__" else ""; rng = np.random.default_rng(0); t0 = time.time(); GRAD = ~IS_MAG
 
 
 def band_feats(W, idx):
