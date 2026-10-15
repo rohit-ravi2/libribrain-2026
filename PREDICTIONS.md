@@ -689,3 +689,7 @@ Decision rule: the config with the best Broad deploy becomes FINAL-5 (Broad, 3 s
 ## STATE-1 / FIR-1 (committed ~12:20 UTC, before the runs)
 - STATE-1 (steelman of latent cognitive-state gating): k-means k=3 on band-power envelopes smoothed over ~10 s (HMM-like persistence) and per-epoch; best−worst state hit gap; state-specific Sinkhorn T (Q3 → Q4). Pred: smoothed gap 0.02–0.06, stateT gain ≤ +0.005 (Packard T1 found no single-window state effect).
 - FIR-1 (steelman of echo cancellation as a per-subject spatio-temporal input filter, extending promoted B): k = 1/3/5 taps, fraction 1.0/0.25, Broad local + Sinkhorn. Pred: k 3 ≥ k 1 by +0.00..+0.02; promote if ≥ +0.01 at both fractions.
+### Outcome STATE-1 / DWTX (2026-10-15 ~12:15 UTC)
+- STATE-1: best−worst latent-state hit gap 0.05 (Q3) / 0.07–0.08 (Q4), the same for smoothed (~10 s) and per-epoch states, about the spread 3 random clusters of ~200 noisy rows would show. State-specific T picked a uniform T 3 (+0.0015 vs global T2 = a global-T retune). **Cognitive-state gating: rejected** with this instrument.
+- DWTX (width + T5-3B, seed 0): subj0 0.731 vs width alone 0.742 (same seed), Broad 0.609. T5-3B adds nothing on top of width → **dropped from the Deep final**.
+- Queued: LSO-DW and LSO-DWSPB (leave-recording-day-out, width ± session-pure batches), scored with AdaBN on the held-out day (proxy_calib PX), to decide the Deep final recipe.
