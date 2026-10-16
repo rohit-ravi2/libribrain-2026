@@ -1,0 +1,9 @@
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+runs/final6_s0_ep7.pt rows 15744 71s
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+runs/final6_s1_ep7.pt rows 15744 70s
+runs/final6_s2_ep7.pt rows 15744 67s
+runs/final6_s3_ep7.pt rows 15744 67s
+runs/final6_s4_ep7.pt rows 15744 67s

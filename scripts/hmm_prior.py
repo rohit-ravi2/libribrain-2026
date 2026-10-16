@@ -14,6 +14,8 @@ from src.common import HOLDOUT, VOCAB
 
 ap = argparse.ArgumentParser(); ap.add_argument("--inp", required=True); ap.add_argument("--out", required=True)
 ap.add_argument("--track", default="broad"); ap.add_argument("--kappa", type=float, default=50.0); ap.add_argument("--beta", type=float, default=1.0)
+ap.add_argument("--iso_w", type=float, default=1.0, help="weight of isolated-word rows when estimating the Sinkhorn class offsets"); ap.add_argument("--gamma", type=float, default=1.0, help="strength of the Sinkhorn class offsets (1 = full Sinkhorn)")
+ap.add_argument("--agree", type=float, default=0.0, help="strength of soft non-adjacent agreement constraints (pronoun-verb person/number, modal->base form) applied to SLP marginals")
 ap.add_argument("--iters", type=int, default=10); ap.add_argument("--T", type=float, default=2.0)
 ap.add_argument("--end", type=int, default=0, help="1 = also learn an end-of-sentence word distribution (smoothed like the start)")
 ap.add_argument("--bal_em", type=int, default=0, help="1 = enforce class balance inside EM (damped per-class emission weights)")
@@ -52,6 +54,25 @@ if a.base == "vocab":
 else:
     BASE_A = np.full((V, V), 1.0 / V); BASE_PI = np.full(V, 1.0 / V); BASE_ETA = np.full(V, 1.0 / V)
 
+VI_ = {w: i for i, w in enumerate(VOCAB)}
+FEAT_P = {"i": "1s", "we": "pl", "they": "pl", "people": "pl", "he": "3s", "she": "3s", "it": "3s"}
+FEAT_V = {"am": {"1s"}, "is": {"3s"}, "are": {"pl"}, "was": {"1s", "3s"}, "were": {"pl"}, "has": {"3s"}, "have": {"1s", "pl"}, "do": {"1s", "pl"}}
+PSI_PV = np.ones((V, V)); PSI_MB = np.ones((V, V))
+for pw, f in FEAT_P.items():
+    for vw, fs in FEAT_V.items():
+        if pw in VI_ and vw in VI_: PSI_PV[VI_[pw], VI_[vw]] = PSI_PV[VI_[vw], VI_[pw]] = np.e if f in fs else np.exp(-1)
+for mw in ("will", "can"):
+    for bw in ("be", "have", "do", "think"): PSI_MB[VI_[mw], VI_[bw]] = np.e
+    for fw in ("is", "are", "was", "were", "has", "am"): PSI_MB[VI_[mw], VI_[fw]] = np.exp(-1)
+def agree_pass(gm, lam):
+    n = len(gm); L = np.zeros_like(gm)
+    for j in range(n):
+        for i in range(max(0, j - 3), min(n, j + 4)):
+            if i == j: continue
+            L[j] += np.log(gm[i] @ PSI_PV)
+            if i < j: L[j] += np.log(gm[i] @ PSI_MB)
+    out = gm * np.exp(lam * L); return out / out.sum(1, keepdims=True)
+
 for s, g in md.groupby("subject"):
     sent = g[g.source == "sentence"].sort_values(["epoch", "word"])
     groups = [grp["index"].values for _, grp in sent.groupby("epoch")]
@@ -67,12 +88,14 @@ for s, g in md.groupby("subject"):
         if a.bal_em: wcls = wcls * np.clip(nrows / V / np.clip(GT, 1e-9, None), 0.2, 5.0) ** 0.5
     for r in groups:
         gm, _ = fb(E_all[tuple(r)] * wcls[None], A, pi, eta)
+        if a.agree > 0: gm = agree_pass(gm, a.agree)
         OUT[r] = gm * marg[None] / (gm * marg[None]).sum(1, keepdims=True)   # back to posterior scale (re-attach the marginal)
     # Sinkhorn balance over all the subject's rows (as balance_submission.py)
-    Q = np.clip(OUT[rows], 1e-12, None) ** (1.0 / a.T); Q /= Q.sum(1, keepdims=True); n = len(rows)
+    Q0 = np.clip(OUT[rows], 1e-12, None) ** (1.0 / a.T); Q0 /= Q0.sum(1, keepdims=True)
+    wr = np.where(g["source"].values == "word", a.iso_w, 1.0); c = np.ones(V)
     for _ in range(10):
-        Q = Q / np.clip(Q.sum(0, keepdims=True), 1e-12, None) * (n / 50.0); Q = Q / Q.sum(1, keepdims=True)
-    OUT[rows] = Q
+        Q = Q0 * c[None]; Q = Q / Q.sum(1, keepdims=True); c = c * (wr.sum() / 50.0) / np.clip((wr[:, None] * Q).sum(0), 1e-12, None)
+    Q = Q0 * (c[None] ** a.gamma); OUT[rows] = Q / Q.sum(1, keepdims=True)
 write_submission(a.out, df.iloc[:, 0].values, OUT)
 t0, t1 = P.argmax(1), OUT.argmax(1)
 print(f"{a.track} kappa {a.kappa} beta {a.beta} end {a.end} bal_em {a.bal_em} base {a.base}: top-1 changed on {np.mean(t0 != t1):.3f} of rows; max top-1 share {np.bincount(t1, minlength=50).max() / len(OUT):.3f}")

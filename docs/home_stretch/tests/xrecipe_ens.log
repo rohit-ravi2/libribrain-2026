@@ -1,0 +1,51 @@
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+pred deep_c
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+pred deepc_s1
+pred dw_s0
+pred dw_s1
+pred stretch_s0
+pred stretch_s1
+pred dwstr_s0
+{
+ "single": {
+  "deep_c": 0.7447,
+  "deepc_s1": 0.7516,
+  "dw_s0": 0.7457,
+  "dw_s1": 0.7142,
+  "stretch_s0": 0.7469,
+  "stretch_s1": 0.7407,
+  "dwstr_s0": 0.7325
+ },
+ "pairs": {
+  "deep_c+deepc_s1": 0.7328,
+  "deep_c+dw_s0": 0.7358,
+  "deep_c+dw_s1": 0.7361,
+  "deep_c+stretch_s0": 0.7478,
+  "deep_c+stretch_s1": 0.7247,
+  "deepc_s1+dw_s0": 0.7478,
+  "deepc_s1+dw_s1": 0.7336,
+  "deepc_s1+stretch_s0": 0.7498,
+  "deepc_s1+stretch_s1": 0.7406,
+  "dw_s0+dw_s1": 0.7313,
+  "dw_s0+stretch_s0": 0.7491,
+  "dw_s0+stretch_s1": 0.7554,
+  "dw_s1+stretch_s0": 0.7365,
+  "dw_s1+stretch_s1": 0.745,
+  "stretch_s0+stretch_s1": 0.7546
+ },
+ "same_recipe_pairs": {
+  "c": 0.7328,
+  "w": 0.7313,
+  "s": 0.7546
+ },
+ "w+s_cross_pair_mean": 0.7465,
+ "four": {
+  "w2+s2": 0.7622,
+  "c2+w2": 0.7412,
+  "c2+s2": 0.753,
+  "c2+w2+s2": 0.7562
+ }
+}

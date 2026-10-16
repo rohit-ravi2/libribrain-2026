@@ -8,3 +8,10 @@ runs/
 submissions/*.csv
 ext/
 results/*.npy
+# large artefacts (posterior banks, submission variants, caches)
+*.npz
+*.pkl
+*.pt
+docs/home_stretch/files/*.csv
+docs/home_stretch/tuning/*.csv
+ref/lb_*/

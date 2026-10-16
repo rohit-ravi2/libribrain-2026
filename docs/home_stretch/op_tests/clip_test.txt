@@ -1,0 +1,7 @@
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+meg shapes [(306, 67500), (306, 71550)] float16
+base {(0, 'Q3'): 0.7102, (0, 'Q4'): 0.7734, (1, 'Q3'): 0.6836, (1, 'Q4'): 0.6141, (2, 'Q3'): 0.6134, (2, 'Q4'): 0.6097, (3, 'Q3'): 0.6542, (3, 'Q4'): 0.6468, (4, 'Q3'): 0.67, (4, 'Q4'): 0.6732, (5, 'Q3'): 0.6755, (5, 'Q4'): 0.6277, (6, 'Q3'): 0.6764, (6, 'Q4'): 0.6176}
+k=3.0: subj0 -0.0006  broad -0.0017 (6/12 up)
+k=5.0: subj0 +0.0013  broad +0.0022 (5/12 up)
+k=8.0: subj0 +0.0000  broad -0.0001 (1/12 up)

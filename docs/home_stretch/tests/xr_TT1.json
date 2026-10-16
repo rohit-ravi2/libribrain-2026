@@ -1,0 +1,40 @@
+{
+ "single": {
+  "deep_c": 0.7343,
+  "deepc_s1": 0.7329,
+  "dw_s0": 0.747,
+  "dw_s1": 0.7061,
+  "stretch_s0": 0.7337,
+  "stretch_s1": 0.7416,
+  "dwstr_s0": 0.7303
+ },
+ "pairs": {
+  "deep_c+deepc_s1": 0.749,
+  "deep_c+dw_s0": 0.7424,
+  "deep_c+dw_s1": 0.743,
+  "deep_c+stretch_s0": 0.7452,
+  "deep_c+stretch_s1": 0.7232,
+  "deepc_s1+dw_s0": 0.7522,
+  "deepc_s1+dw_s1": 0.7245,
+  "deepc_s1+stretch_s0": 0.751,
+  "deepc_s1+stretch_s1": 0.7385,
+  "dw_s0+dw_s1": 0.7486,
+  "dw_s0+stretch_s0": 0.7356,
+  "dw_s0+stretch_s1": 0.7459,
+  "dw_s1+stretch_s0": 0.7364,
+  "dw_s1+stretch_s1": 0.735,
+  "stretch_s0+stretch_s1": 0.7266
+ },
+ "same_recipe_pairs": {
+  "c": 0.749,
+  "w": 0.7486,
+  "s": 0.7266
+ },
+ "w+s_cross_pair_mean": 0.7382,
+ "four": {
+  "w2+s2": 0.7496,
+  "c2+w2": 0.7481,
+  "c2+s2": 0.7358,
+  "c2+w2+s2": 0.7509
+ }
+}
