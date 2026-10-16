@@ -1,0 +1,19 @@
+identity: {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+7 func-repeat | thr0.3 x0.95 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+7 func-repeat | thr0.3 x0.85 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+7 func-repeat | thr0.3 x0.7 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+10 far-repeat top3 | -0.02 | {'base': np.float64(0.6778), 'new': np.float64(0.6767), 'delta': np.float64(-0.0011), 'se': np.float64(0.0005), 'wins': 6, 'n': 24}
+10 far-repeat top3 | -0.05 | {'base': np.float64(0.6778), 'new': np.float64(0.6747), 'delta': np.float64(-0.0031), 'se': np.float64(0.0011), 'wins': 5, 'n': 24}
+10 far-repeat top3 | -0.08 | {'base': np.float64(0.6778), 'new': np.float64(0.6726), 'delta': np.float64(-0.0053), 'se': np.float64(0.001), 'wins': 4, 'n': 24}
+11 article->noun | thr0.35 +0.02 | {'base': np.float64(0.6778), 'new': np.float64(0.6779), 'delta': np.float64(0.0001), 'se': np.float64(0.0004), 'wins': 12, 'n': 24}
+11 article->noun | thr0.35 +0.04 | {'base': np.float64(0.6778), 'new': np.float64(0.6776), 'delta': np.float64(-0.0002), 'se': np.float64(0.0005), 'wins': 10, 'n': 24}
+11 article->noun | thr0.35 +0.07 | {'base': np.float64(0.6778), 'new': np.float64(0.678), 'delta': np.float64(0.0002), 'se': np.float64(0.0007), 'wins': 11, 'n': 24}
+13 there->be | +0.03 | {'base': np.float64(0.6778), 'new': np.float64(0.6779), 'delta': np.float64(0.0), 'se': np.float64(0.0003), 'wins': 4, 'n': 24}
+13 there->be | +0.06 | {'base': np.float64(0.6778), 'new': np.float64(0.6775), 'delta': np.float64(-0.0003), 'se': np.float64(0.0003), 'wins': 4, 'n': 24}
+13 there->be | +0.1 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(-0.0), 'se': np.float64(0.0005), 'wins': 5, 'n': 24}
+14 coord copy | thr0.4 0.1 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+14 coord copy | thr0.4 0.2 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+14 coord copy | thr0.4 0.3 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(0.0), 'se': np.float64(0.0), 'wins': 0, 'n': 24}
+adj top1 repeat penalty | x0.9 | {'base': np.float64(0.6778), 'new': np.float64(0.6778), 'delta': np.float64(-0.0), 'se': np.float64(0.0001), 'wins': 3, 'n': 24}
+adj top1 repeat penalty | x0.7 | {'base': np.float64(0.6778), 'new': np.float64(0.6776), 'delta': np.float64(-0.0002), 'se': np.float64(0.0002), 'wins': 7, 'n': 24}
+adj top1 repeat penalty | x0.5 | {'base': np.float64(0.6778), 'new': np.float64(0.6773), 'delta': np.float64(-0.0006), 'se': np.float64(0.0003), 'wins': 7, 'n': 24}

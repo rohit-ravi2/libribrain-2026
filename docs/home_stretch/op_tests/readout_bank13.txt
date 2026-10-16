@@ -1,0 +1,20 @@
+== subj0 mean delta vs base (n blocks 2; wins/blocks)
+  IB             -0.2707  0/2
+  T2             -0.0049  0/2
+  T4             -0.0004  1/2
+  UOT0.5         +0.0009  1/2
+  UOT0.8         +0.0000  0/2
+  VS             -0.0044  1/2
+  VS_la_only     -0.0044  1/2
+  base           +0.0000  0/2
+== broad mean delta vs base (n blocks 24; wins/blocks)
+  IB             -0.1909  0/24
+  T1             -0.0146  4/24
+  T3             +0.0018  18/24
+  UOT0.5         -0.0001  7/24
+  UOT0.8         +0.0000  0/24
+  VS             +0.0007  12/24
+  VSP_pop_only   +0.0002  15/24
+  VSP_shrunk     +0.0004  10/24
+  VS_la_only     +0.0007  12/24
+  base           +0.0000  0/24

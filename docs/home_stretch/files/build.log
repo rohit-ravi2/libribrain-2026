@@ -1,0 +1,50 @@
+start Thu Oct 15 09:40:59 PM EDT 2026
+broad kappa 20.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.434 of rows; max top-1 share 0.079
+broad kappa 15.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.466 of rows; max top-1 share 0.060
+broad kappa 30.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.422 of rows; max top-1 share 0.066
+start Thu Oct 15 09:45:16 PM EDT 2026
+broad kappa 20.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.434 of rows; max top-1 share 0.079
+broad kappa 15.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.466 of rows; max top-1 share 0.060
+broad kappa 30.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.422 of rows; max top-1 share 0.066
+FINAL-9 raw: submissions/final9str_deep_bn.csv
+top-1 agreement 0.775
+deep kappa 20.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.428 of rows; max top-1 share 0.081
+done Thu Oct 15 11:22:34 PM EDT 2026
+total 120576
+drwxrwxr-x 2 rohit rohit     4096 Oct 15 23:22 .
+drwxrwxr-x 6 rohit rohit     4096 Oct 15 21:44 ..
+-rw-rw-r-- 1 rohit rohit      944 Oct 15 23:22 build.log
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:40 fita2_broad_ens5_k20_T3.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:46 fita3_broad_ens5_k15.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:45 fita3_broad_ens5_k20_T3.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:46 fita3_broad_ens5_k30.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 21:06 iso1_final7_deep_bn_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:06 iso1_fita2_broad_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:06 iso1_fita2_broad_k20_T2.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:06 iso1_slp2_broad_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 21:06 iso1_slp3_deep_bn_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit   997562 Oct 15 23:22 xr1_deep_bn_w5s5.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 23:22 xr1_deep_bn_w5s5_k20.csv
+-rw-rw-r-- 1 rohit rohit   995479 Oct 15 21:04 xr_deep_bn_6c10_f7w5.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 21:04 xr_deep_bn_6c10_f7w5_k20.csv
+FINAL-9 raw: submissions/final9str_deep_bn.csv
+top-1 agreement 0.775
+deep kappa 20.0 beta 1.0 end 0 bal_em 0 base uniform: top-1 changed on 0.428 of rows; max top-1 share 0.081
+done Thu Oct 15 11:22:50 PM EDT 2026
+total 120576
+drwxrwxr-x 2 rohit rohit     4096 Oct 15 23:22 .
+drwxrwxr-x 6 rohit rohit     4096 Oct 15 21:44 ..
+-rw-rw-r-- 1 rohit rohit     2287 Oct 15 23:22 build.log
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:40 fita2_broad_ens5_k20_T3.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:46 fita3_broad_ens5_k15.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:45 fita3_broad_ens5_k20_T3.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:46 fita3_broad_ens5_k30.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 21:06 iso1_final7_deep_bn_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:06 iso1_fita2_broad_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:06 iso1_fita2_broad_k20_T2.csv
+-rw-rw-r-- 1 rohit rohit 17098725 Oct 15 21:06 iso1_slp2_broad_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 21:06 iso1_slp3_deep_bn_k20_T1.csv
+-rw-rw-r-- 1 rohit rohit   997562 Oct 15 23:22 xr1_deep_bn_w5s5.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 23:22 xr1_deep_bn_w5s5_k20.csv
+-rw-rw-r-- 1 rohit rohit   995479 Oct 15 21:04 xr_deep_bn_6c10_f7w5.csv
+-rw-rw-r-- 1 rohit rohit   436902 Oct 15 21:04 xr_deep_bn_6c10_f7w5_k20.csv

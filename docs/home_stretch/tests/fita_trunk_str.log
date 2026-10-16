@@ -1,0 +1,7 @@
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+stretch_s0_ep7.pt 3 {"Q3": {"base": [0.5521, 0.5755], "fita": [0.697, 0.6702]}, "Q4": {"base": [0.5926, 0.5546], "fita": [0.6982, 0.667]}} 270s
+stretch_s0_ep7.pt 6 {"Q3": {"base": [0.5985, 0.627], "fita": [0.7008, 0.6937]}, "Q4": {"base": [0.6167, 0.5982], "fita": [0.6959, 0.6487]}} 182s
+stretch_s0_ep7.pt MEAN {'base': [0.59, 0.5888], 'fita': [0.698, 0.6699]}
+/home/rohit/venvs/libribrain/lib/python3.12/site-packages/torch/nn/modules/transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
