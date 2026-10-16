@@ -26,7 +26,10 @@ ap.add_argument("--bn_alpha", type=float, default=1.0, help="with --bnrecal: run
 ap.add_argument("--bn_dropout_off", type=int, default=0, help="with --bnrecal: hold dropout in eval while estimating subject stats (standard AdaBN)")
 ap.add_argument("--fitA_steps", type=int, default=0, help="N > 0: for subjects with labelled training data, fit A_s (from identity) on ALL their labelled words with the trunk frozen (CE, shared head)")
 ap.add_argument("--fitA_lr", type=float, default=3e-4)
+ap.add_argument("--only_subs", default="", help="comma list: predict only these subjects (other rows get uniform)")
+ap.add_argument("--zs_donors", default="", help="comma list of labelled subjects: subjects without labels average predictions over the donors' own-data A fits (applied to their own MEG)")
 ap.add_argument("--lowrank_below_min", type=float, default=0.0, help="subjects with fewer labelled minutes than this get a rank-16 A update instead of a full one (ANAT-1)")
+ap.add_argument("--mc_drop", type=int, default=0, help="N > 0: MC-dropout TTA, average logits over N passes with dropout on (BN in eval)")
 ap.add_argument("--temporal_k", type=float, default=0.5, help="strength of the lateral-inferior up-weighting (1 + k*w); TEMP-1 map peaks at k=3")
 ap.add_argument("--temporal_base", type=int, default=0, help="1 = subjects without labelled data get the fixed lateral-inferior sensor up-weighting (ANAT-1)")
 ap.add_argument("--st_steps", type=int, default=0, help="N > 0: self-train each subject's A on its OWN holdout rows toward --st_targets (soft labels)")
@@ -170,8 +173,9 @@ def self_train_A(M, segs, A_init):
 _XYZ = np.array(json.load(open("/mnt/ssd4tb/data/LibriBrain100/metadata/sensor_xyz.json")), float); _c = _XYZ - _XYZ.mean(0)
 _lat = np.abs(_c[:, 0]) / np.abs(_c[:, 0]).max(); _low = (_c[:, 2].max() - _c[:, 2]) / np.ptp(_c[:, 2])
 TEMPW = torch.tensor(1 + a.temporal_k * (_lat * _low) / (_lat * _low).max(), dtype=torch.float32, device=dev)
-probs = torch.zeros(len(md), 50); Cp = {}
+probs = torch.zeros(len(md), 50); Cp = {}; _DON = {}
 for s in sorted(md.subject.unique()):
+    if a.only_subs and str(int(s)) not in a.only_subs.split(","): probs[torch.from_numpy(np.flatnonzero(md.subject.values == s))] = 1 / 50; continue
     segs = load_subject(int(s)); P = torch.zeros(len(md), 50); cnt = 0
     for M in models:
         if a.coral > 0 and id(M) not in Cp:
@@ -180,12 +184,23 @@ for s in sorted(md.subject.unique()):
         Af = fit_A_labelled(M, int(s), a.fitA_steps) if (a.fitA_steps > 0 and 1 <= int(s) <= 32) else None
         if Af is not None: A = Af
         elif a.temporal_base and int(s) != 0: A = torch.diag(TEMPW)
+        As = [A]
+        if a.zs_donors and Af is None and int(s) >= 33:
+            As += [_DON.setdefault((id(M), d), fit_A_labelled(M, int(d), a.fitA_steps).detach()) if (id(M), d) not in _DON else _DON[(id(M), d)] for d in a.zs_donors.split(",")]
         saved = bn_recal(M, segs, A) if a.bnrecal else None
         if a.st_steps > 0: A = self_train_A(M, segs, A)
         with torch.no_grad():
+            npass = max(1, a.mc_drop)
+            for mod in (x for m_ in M.mods for x in m_.modules()):
+                if isinstance(mod, nn.Dropout): mod.train(a.mc_drop > 0)
             for X, V, gi, pad, rel, rows in batches(segs):
-                _, ce, zt = M.forward(X, V, A, gi, pad, rel)
-                lo = M.readout(ce, zt, a.readout, a.tau); P[rows] += F.softmax(lo, 1).cpu()
+                acc = 0
+                for A_ in As:
+                    acc = 0
+                    for _ in range(npass):
+                        _, ce, zt = M.forward(X, V, A_, gi, pad, rel); acc = acc + M.readout(ce, zt, a.readout, a.tau)
+                    P[rows] += F.softmax(acc / npass, 1).cpu() / len(As)
+            M.eval()
         if saved is not None: M.enc.load_state_dict(saved)
     _FITW.pop(int(s), None)
     probs += P / len(models); print(f"subj{int(s):02d} own_A={int(s) in models[0].sid} rows={int((P.sum(1) > 0).sum())}", flush=True)
