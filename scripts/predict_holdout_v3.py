@@ -27,6 +27,7 @@ ap.add_argument("--bn_dropout_off", type=int, default=0, help="with --bnrecal: h
 ap.add_argument("--fitA_steps", type=int, default=0, help="N > 0: for subjects with labelled training data, fit A_s (from identity) on ALL their labelled words with the trunk frozen (CE, shared head)")
 ap.add_argument("--fitA_lr", type=float, default=3e-4)
 ap.add_argument("--lowrank_below_min", type=float, default=0.0, help="subjects with fewer labelled minutes than this get a rank-16 A update instead of a full one (ANAT-1)")
+ap.add_argument("--temporal_k", type=float, default=0.5, help="strength of the lateral-inferior up-weighting (1 + k*w); TEMP-1 map peaks at k=3")
 ap.add_argument("--temporal_base", type=int, default=0, help="1 = subjects without labelled data get the fixed lateral-inferior sensor up-weighting (ANAT-1)")
 ap.add_argument("--st_steps", type=int, default=0, help="N > 0: self-train each subject's A on its OWN holdout rows toward --st_targets (soft labels)")
 ap.add_argument("--st_targets", default=None, help="submission CSV whose rows are the soft targets (e.g. the SLP + Sinkhorn file)")
@@ -168,7 +169,7 @@ def self_train_A(M, segs, A_init):
 
 _XYZ = np.array(json.load(open("/mnt/ssd4tb/data/LibriBrain100/metadata/sensor_xyz.json")), float); _c = _XYZ - _XYZ.mean(0)
 _lat = np.abs(_c[:, 0]) / np.abs(_c[:, 0]).max(); _low = (_c[:, 2].max() - _c[:, 2]) / np.ptp(_c[:, 2])
-TEMPW = torch.tensor(1 + 0.5 * (_lat * _low) / (_lat * _low).max(), dtype=torch.float32, device=dev)
+TEMPW = torch.tensor(1 + a.temporal_k * (_lat * _low) / (_lat * _low).max(), dtype=torch.float32, device=dev)
 probs = torch.zeros(len(md), 50); Cp = {}
 for s in sorted(md.subject.unique()):
     segs = load_subject(int(s)); P = torch.zeros(len(md), 50); cnt = 0
