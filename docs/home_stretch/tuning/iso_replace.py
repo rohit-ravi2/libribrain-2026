@@ -2,7 +2,7 @@
 w * B0 + (1 - w) * original (B0 = dedicated 1 s subj0 decoder, docs/home_stretch/tuning/b0_deep_raw.csv). Sentence rows untouched.
 Then run hmm_prior.py --track deep --T 3 --kappa 20 on the output as usual. Usage: iso_replace.py raw.csv b0.csv out.csv w"""
 import os, sys, numpy as np, pandas as pd
-sys.path.insert(0, os.path.expanduser("~/projects/libribrain-2026"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
 from pnpl.competition import LibriBrainCompetitionHoldout, write_submission
 from src.common import HOLDOUT, VOCAB
 raw, b0, out, w = sys.argv[1], sys.argv[2], sys.argv[3], float(sys.argv[4])

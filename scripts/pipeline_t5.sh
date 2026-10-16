@@ -1,7 +1,7 @@
 #!/bin/bash
 # CPU prep (cache -> T5 targets -> memmap), then GPU: smoke (1% of an epoch) and the main T5-1 run.
 cd ~/projects/libribrain-2026; PY=~/venvs/libribrain/bin/python
-while pgrep -f "^/home/rohit/venvs/libribrain/bin/python scripts/build_cache.py" > /dev/null; do sleep 30; done
+while pgrep -f "python scripts/build_cache.py" > /dev/null; do sleep 30; done
 NT=8 nice $PY scripts/text_targets.py cpu > logs/text_targets.log 2>&1
 nice $PY scripts/make_memmap.py > logs/make_memmap.log 2>&1
 ~/bin/notify "LibriBrain: T5 targets + memmap ready ($(tail -1 logs/make_memmap.log))" "LibriBrain"

@@ -3,8 +3,8 @@ Order: holdout -> broad subjects (sub-1..32) -> sub-0. Resumable (re-run to cont
 import os
 from huggingface_hub import snapshot_download
 
-D = "/mnt/ssd4tb/data/LibriBrain100"
-H = "/mnt/ssd4tb/data/LibriBrain-Competition-2026"
+D = os.environ.get("LIBRIBRAIN_DATA", "/mnt/ssd4tb/data/LibriBrain100")
+H = os.path.dirname(os.environ.get("LIBRIBRAIN_HOLDOUT", "/mnt/ssd4tb/data/LibriBrain-Competition-2026/COMPETITION_HOLDOUT"))
 common = dict(repo_type="dataset", max_workers=8)
 steps = [
     ("holdout", dict(repo_id="pnpl/LibriBrain-Competition-2026", local_dir=H, **common)),
