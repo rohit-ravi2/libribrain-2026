@@ -1,12 +1,15 @@
 """Shared constants and helpers: vocabulary, sensor scaling, window downsampling."""
+import os
 import numpy as np
 
-DATA = "/mnt/ssd4tb/data/LibriBrain100"
-HOLDOUT = "/mnt/ssd4tb/data/LibriBrain-Competition-2026/COMPETITION_HOLDOUT"
-CACHE = "/mnt/ssd4tb/data/libribrain_cache"
+# Data locations (override with environment variables; see README "Data")
+DATA = os.environ.get("LIBRIBRAIN_DATA", "/mnt/ssd4tb/data/LibriBrain100")
+HOLDOUT = os.environ.get("LIBRIBRAIN_HOLDOUT", "/mnt/ssd4tb/data/LibriBrain-Competition-2026/COMPETITION_HOLDOUT")
+CACHE = os.environ.get("LIBRIBRAIN_CACHE", "/mnt/ssd4tb/data/libribrain_cache")
 SFREQ, WIN, POOL = 250, 250, 5          # 1 s window at 250 Hz, mean-pooled by 5 -> 50 Hz
 
-VOCAB_FILE = "/home/rohit/venvs/libribrain/lib/python3.12/site-packages/pnpl/competition/data/vocabulary.csv"
+import pnpl.competition as _pc
+VOCAB_FILE = os.path.join(os.path.dirname(_pc.__file__), "data", "vocabulary.csv")
 VOCAB = open(VOCAB_FILE, encoding="utf-8").read().strip().split(",")
 
 

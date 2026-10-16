@@ -3,8 +3,8 @@
 # ext0 = deep_c recipe through train_v3_ext.py (control, --ext_frac 0); ext20 / ext58 = +0.2*32 = 6 LPP segments per batch
 # from the first 20 / all 58 LPP subjects. Each run waits for the GPU lock via scripts/gpu_run.sh (never bypass it).
 # Usage: nohup scripts/extmeg/queue_dose.sh > logs/extmeg_queue_dose.log 2>&1 &
-cd /home/rohit/projects/libribrain-2026
-PY=/home/rohit/venvs/libribrain/bin/python
+cd "$(dirname "$0")/../.."
+PY=${PY:-python}
 COMMON="--win 3s --ctx 1 --rel 0 --t5 1.0 --epochs 8 --seed 0 --deep 1 --broad_frac 0.0 --ctx_layers 4"
 N_T5=$(ls /mnt/ssd4tb/data/libribrain_cache/ext_lpp_listen/t5/*.npy 2>/dev/null | wc -l)
 if [ "$N_T5" -lt 521 ]; then ~/bin/notify "EXT-1 queue ABORTED: only $N_T5/521 LPP T5 target files" "LibriBrain extmeg" "urgent"; exit 1; fi

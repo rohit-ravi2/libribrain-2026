@@ -1,0 +1,12 @@
+# Core (tested versions in requirements-lock.txt; Python 3.12, CUDA 12.8)
+torch>=2.9
+numpy>=2.5
+scipy>=1.18
+pandas>=3.0
+h5py>=3.16
+transformers>=5.19
+pnpl==0.2.0
+mne>=1.13
+scikit-learn>=1.9
+matplotlib>=3.11
+kaggle>=2.2

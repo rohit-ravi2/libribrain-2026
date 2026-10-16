@@ -1,5 +1,6 @@
+import os
 import sys, json, numpy as np
-sys.path.insert(0, "/home/rohit/projects/libribrain-2026/docs/home_stretch/tuning")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from simrule import load, score
 D = load()
 def per(f):
@@ -27,4 +28,4 @@ T={
 res=[]
 for k,f in T.items():
     s=score(per(f),D); s["idea"]=k; res.append(s); print(json.dumps(s),flush=True)
-json.dump(res,open("/home/rohit/projects/libribrain-2026/docs/home_stretch/tuning/rules100/theme6_results.json","w"),indent=1)
+json.dump(res,open(os.path.dirname(os.path.abspath(__file__)) + "/theme6_results.json","w"),indent=1)

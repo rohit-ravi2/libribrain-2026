@@ -1,5 +1,6 @@
+import os
 import sys, json, numpy as np
-sys.path.insert(0, "/home/rohit/projects/libribrain-2026/docs/home_stretch/tuning")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from simrule import load, score
 D = load()
 def cooc(block, src):

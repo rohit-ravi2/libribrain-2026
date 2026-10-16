@@ -15,3 +15,4 @@ results/*.npy
 docs/home_stretch/files/*.csv
 docs/home_stretch/tuning/*.csv
 ref/lb_*/
+ref/kaggle_*/
