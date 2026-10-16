@@ -1,0 +1,82 @@
+{
+ "vec_power_slp_s1": {
+  "base": 0.6778,
+  "new": 0.6788,
+  "delta": 0.001,
+  "se": 0.0007,
+  "wins": 16,
+  "n": 24
+ },
+ "vec_power_slp_s0.5": {
+  "base": 0.6778,
+  "new": 0.6783,
+  "delta": 0.0005,
+  "se": 0.0005,
+  "wins": 13,
+  "n": 24
+ },
+ "ent_power_slp_s1": {
+  "base": 0.6778,
+  "new": 0.6763,
+  "delta": -0.0015,
+  "se": 0.0011,
+  "wins": 12,
+  "n": 24
+ },
+ "ent_power_slp_s0.5": {
+  "base": 0.6778,
+  "new": 0.6766,
+  "delta": -0.0012,
+  "se": 0.0007,
+  "wins": 9,
+  "n": 24
+ },
+ "mass_eq_power_slp": {
+  "base": 0.6778,
+  "new": 0.6794,
+  "delta": 0.0016,
+  "se": 0.0012,
+  "wins": 13,
+  "n": 24
+ },
+ "vec_power_raw_then_slp": {
+  "base": 0.6778,
+  "new": 0.6776,
+  "delta": -0.0002,
+  "se": 0.0004,
+  "wins": 11,
+  "n": 24
+ },
+ "saerens_raw_uniform_then_slp": {
+  "base": 0.6778,
+  "new": 0.5011,
+  "delta": -0.1767,
+  "se": 0.0075,
+  "wins": 0,
+  "n": 24
+ },
+ "bcts_saerens_T1.25_raw_then_slp": {
+  "base": 0.6778,
+  "new": 0.6501,
+  "delta": -0.0277,
+  "se": 0.0029,
+  "wins": 0,
+  "n": 24
+ },
+ "dirichlet_diag_slp": {
+  "base": 0.6778,
+  "new": 0.6707,
+  "delta": -0.0072,
+  "se": 0.0025,
+  "wins": 7,
+  "n": 24
+ },
+ "ent_power_raw_then_slp": {
+  "base": 0.6778,
+  "new": 0.6772,
+  "delta": -0.0006,
+  "se": 0.0004,
+  "wins": 7,
+  "n": 24
+ }
+}

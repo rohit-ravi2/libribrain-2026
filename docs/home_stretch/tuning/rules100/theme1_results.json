@@ -1,0 +1,72 @@
+[
+ {
+  "idea": "sk it=1",
+  "delta": 0.001,
+  "se": 0.0009,
+  "wins": 13,
+  "promising": false
+ },
+ {
+  "idea": "sk it=3",
+  "delta": 0.0,
+  "se": 0.0001,
+  "wins": 4,
+  "promising": false
+ },
+ {
+  "idea": "sk it=30",
+  "delta": 0.0,
+  "se": 0.0,
+  "wins": 0,
+  "promising": false
+ },
+ {
+  "idea": "partial offsets gamma=0.75",
+  "delta": 0.0011,
+  "se": 0.0014,
+  "wins": 11,
+  "promising": false
+ },
+ {
+  "idea": "over offsets gamma=1.25",
+  "delta": -0.0067,
+  "se": 0.0011,
+  "wins": 3,
+  "promising": false
+ },
+ {
+  "idea": "log-space column-mean balancing",
+  "delta": -0.0031,
+  "se": 0.0024,
+  "wins": 8,
+  "promising": false
+ },
+ {
+  "idea": "balance on top-20 mass only",
+  "delta": -0.0935,
+  "se": 0.005,
+  "wins": 0,
+  "promising": false
+ },
+ {
+  "idea": "two-stage (raw sk T1 -> SLP -> sk)",
+  "delta": -0.0002,
+  "se": 0.0006,
+  "wins": 12,
+  "promising": false
+ },
+ {
+  "idea": "per-sentence-length groups",
+  "delta": -0.0001,
+  "se": 0.0014,
+  "wins": 12,
+  "promising": false
+ },
+ {
+  "idea": "per-position groups (first/mid/last)",
+  "delta": -0.0242,
+  "se": 0.0022,
+  "wins": 0,
+  "promising": false
+ }
+]
