@@ -18,8 +18,8 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## PENDING (updated 2026-10-15 3:30 PM ET)
-- **Deadline:** Kaggle closes 2026-10-16 8:00 AM ET (12:00 UTC). Suggested last submission ~6:00 AM ET.
-- **Public bests (auto-selected if nothing is chosen):** Broad 0.70958 `slp2_broad_k20.csv`; Deep 0.71611 `slp3_deep_bn_k20.csv`.
-- **Held finals (NOT submitted; Rohit's gate = local > 0.8 on both, unmet on Broad):** Broad `fita1_broad_ens5_k20.csv` (labelled per-subject A + SLP + Sinkhorn); Deep `final7_deep_bn_k20.csv` / `final7_deep_k20.csv` (width × 5 seeds ± AdaBN + SLP + Sinkhorn).
-- Nothing running. Screens closed today: see PREDICTIONS.md (FITA-2 promoted; width promoted for Deep; T5-3B, SPB, DTW, Riemannian, state gating, FIR taps, MEG-XL, neural fields, ENS-T, ANAT priors not promoted).
+## STATE (updated 2026-10-18 5:55 PM ET) — competition closed, post-competition phase
+- Kaggle closed 2026-10-16 8:00 AM ET. Final public: **Broad 0.72230** (`zsens_fita3_k20_iso0_T1.75.csv`, 8th public), **Deep 0.72929** (`final7_deep_bn_isoB0bn_k20_isog085.csv`). Private scores not yet released (code review). All 35 Broad / 26 Deep submissions in `results/lb_history/`.
+- Unsubmitted artefacts: `submissions/zsens12_broad_raw.csv` (12-donor zero-shot ensemble, finished 10-16 7:25 AM, never scored); `docs/home_stretch/files/zsens_fita3_k20_flatconf0.3_iso0_T1.75.csv` (confident-row flattening, sim +0.0036, no slot left).
+- Post-competition plan (Rohit, 10-16): public repo (README/license/repro done, not pushed) -> blog (`docs/writeups/blog_post.md`, draft, two [ROHIT] gaps) -> website page -> leakage/evaluation paper -> main ML paper -> philosophy paper -> neuroscience note -> JOSS toolkit -> Kaggle write-ups for all competitions.
+- Open (Rohit): history rewrite for 4 old commits with third-party Kaggle files; repo name/push timing; blog review.
