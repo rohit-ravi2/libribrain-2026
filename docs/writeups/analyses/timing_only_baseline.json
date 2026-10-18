@@ -1,0 +1,7 @@
+{
+ "n_train": 311307,
+ "n_test": 1318,
+ "timing_only_bacc10": 0.632,
+ "gap_only": 0.4679,
+ "position_only": 0.3605
+}
