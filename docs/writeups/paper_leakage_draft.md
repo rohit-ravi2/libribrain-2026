@@ -88,7 +88,14 @@ random windows from the same subject) confirmed that its context gain came from 
 segment structure.
 
 The mechanism is simple. Inter-word intervals encode word durations, and durations identify short function words
-well. The model learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
+well. To measure how well, we trained a gradient-boosted classifier on timing metadata alone, with no MEG input. Its
+features were each word's onset relative to its sentence, the gap to the next word's onset (or to the sentence end),
+its position, the number of words and the sentence duration, all of which a test row exposes. Trained on the Deep
+subject's training sentences and scored on the same held-out blocks as the MEG decoder, it reached 0.632 top-10
+balanced accuracy. The duration proxy alone gave 0.468 and position alone 0.361 (chance 0.20). For comparison, the
+timing-free MEG decoder scored about 0.70 to 0.78 on the Deep subject's blocks and 0.64 to 0.69 on new subjects. A
+metadata model with no access to the brain thus comes within a few points of a brain decoder on this benchmark's
+format. [Exploratory, run after the competition; `docs/writeups/analyses/timing_only_baseline.py`.] The model learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
 competition rules forbade within-subject use of relative timing, and on the leaderboard it would very likely have been
 worth about 0.2. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
 the stimulus.
@@ -201,7 +208,8 @@ to it.
 1. **Do not share test stimuli across subjects or tracks when metadata allows alignment.** If shared stimuli are
    needed for scientific reasons, release no absolute timing or ordering information that links rows.
 2. **Report a timing-only baseline.** A model given only the stimulus metadata a decoder can see (onsets, durations,
-   epoch lengths) sets the floor that any brain-based claim must clear.
+   epoch lengths) sets the floor that any brain-based claim must clear. On this benchmark's format that floor is about
+   0.63, not 0.20.
 3. **Hold out recording days, not just stimuli.** Publish acquisition dates and require validation splits disjoint
    in day as well as in subject and stimulus.
 4. **Score held-out data in the test set's own format.** If test sentences are constructed and short, validation
@@ -234,6 +242,6 @@ leaderboard scores were not yet released at the time of writing. [UPDATE when re
 
 - Seeded confidence intervals for the timing ablation and the transfer failures (at least three seeds each).
 - Private-leaderboard numbers for Section 4.4.
-- A timing-only baseline model (metadata features alone), to quantify recommendation 2 on this dataset.
+- Timing-only baseline: done (0.632 locally). Still to do: the same model on holdout-format constructed sentences, and timing + MEG combined.
 - One figure: local versus leaderboard effect for every intervention with both measurements.
 - Decide venue: bioRxiv (no endorsement needed) now; arXiv cs.LG / q-bio.NC once an endorser is available.
