@@ -22,4 +22,5 @@
 - Kaggle closed 2026-10-16 8:00 AM ET. Final public: **Broad 0.72230** (`zsens_fita3_k20_iso0_T1.75.csv`, 8th public), **Deep 0.72929** (`final7_deep_bn_isoB0bn_k20_isog085.csv`). Private scores not yet released (code review). All 35 Broad / 26 Deep submissions in `results/lb_history/`.
 - Unsubmitted artefacts: `submissions/zsens12_broad_raw.csv` (12-donor zero-shot ensemble, finished 10-16 7:25 AM, never scored); `docs/home_stretch/files/zsens_fita3_k20_flatconf0.3_iso0_T1.75.csv` (confident-row flattening, sim +0.0036, no slot left).
 - Post-competition plan (Rohit, 10-16): public repo (README/license/repro done, not pushed) -> blog (`docs/writeups/blog_post.md`, draft, two [ROHIT] gaps) -> website page -> leakage/evaluation paper -> main ML paper -> philosophy paper -> neuroscience note -> JOSS toolkit -> Kaggle write-ups for all competitions.
-- Open (Rohit): history rewrite for 4 old commits with third-party Kaggle files; repo name/push timing; blog review.
+- 2026-10-21: repo PUBLIC at github.com/rohit-ravi2/libribrain-2026 (history as-is; no vendor names in current files; public commits carry no trailer). Website page LIVE: rohitravi.com/projects/libribrain-2026 (personalwebsite b7c2d1d, Vercel). PNPL contact: not yet (Rohit).
+- Next: blog post with Rohit (two [ROHIT] gaps), then the leakage paper's seeded CIs (GPU, needs his go).
