@@ -159,8 +159,7 @@ reproduction is a matter of hours rather than days.
 
 Each idea was entered in `PREDICTIONS.md` with an expected effect and a decision threshold before compute was spent on it,
 and the outcome was added afterwards, so misses sit in the log beside hits. The git history is left as it happened. The
-experiments were carried out with AI coding agents (Claude Code) working under my direction, and the commit trailers record
-that.
+experiments were carried out with AI coding agents working under my direction.
 
 ## License
 
