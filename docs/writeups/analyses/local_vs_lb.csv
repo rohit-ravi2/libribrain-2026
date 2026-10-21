@@ -1,0 +1,13 @@
+intervention,track,instrument,local_delta,lb_delta,source
+Sinkhorn balancing T2,Broad,split-v2 prose,0.030,0.036,BAL-1 / BAL-2 (PREDICTIONS.md)
+Sinkhorn balancing T3,Deep,day-novel (LSO),0.0105,0.010,PROXY-2b px / BAL-2b
+AdaBN full,Deep,day-novel (LSO),-0.010,0.044,PROXY-2b px / DRIFT-1
+AdaBN full,Broad,split-v2 prose,0.008,-0.011,BN-alpha map / BN-1
+AdaBN alpha 0.5,Broad,split-v2 prose,0.028,-0.002,BN-alpha map / BN-alpha LB
+Labelled per-subject input layer,Broad,split-v2 prose,0.041,0.0014,ORACLE-1 O6 / FITA-3
+Time-stretch augmentation,Deep,split-v2 prose,0.034,-0.004,STRETCH paired / FINAL-9 vs SLP-3
+Wider encoder,Deep,day-novel (LSO),0.041,0.008,LSO-DW / FINAL-7 vs SLP-3
+Self-learned sentence prior k20,Broad,simulator,0.016,0.018,SIM-1 / SLP-2
+Self-learned sentence prior k20,Deep,simulator,0.007,0.008,SIM-1 / SLP-3
+Sentence prior k5 vs k20,Broad,simulator,0.003,-0.022,novel4c / SLP-3
+Sinkhorn offsets sentence-rows-only + gamma 0.85,Broad,simulator,0.0079,0.0085,SIM pp sweep / isog085
