@@ -23,4 +23,4 @@
 - Unsubmitted artefacts: `submissions/zsens12_broad_raw.csv` (12-donor zero-shot ensemble, finished 10-16 7:25 AM, never scored); `docs/home_stretch/files/zsens_fita3_k20_flatconf0.3_iso0_T1.75.csv` (confident-row flattening, sim +0.0036, no slot left).
 - Post-competition plan (Rohit, 10-16): public repo (README/license/repro done, not pushed) -> blog (`docs/writeups/blog_post.md`, draft, two [ROHIT] gaps) -> website page -> leakage/evaluation paper -> main ML paper -> philosophy paper -> neuroscience note -> JOSS toolkit -> Kaggle write-ups for all competitions.
 - 2026-10-21: repo PUBLIC at github.com/rohit-ravi2/libribrain-2026 (history as-is; no vendor names in current files; public commits carry no trailer). Website page LIVE: rohitravi.com/projects/libribrain-2026 (personalwebsite b7c2d1d, Vercel). PNPL contact: not yet (Rohit).
-- Next: blog post with Rohit (two [ROHIT] gaps), then the leakage paper's seeded CIs (GPU, needs his go).
+- 2026-10-21: blog series LIVE: rohitravi.com/posts/libribrain/ (A "The margin above 0.63", B "Arguing with the stopping points"; site 7b57f1c). Next: leakage paper seeded CIs (GPU, needs his go).
