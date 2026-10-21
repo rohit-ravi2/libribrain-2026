@@ -18,7 +18,7 @@
 2. Whether to email the organisers about TTA → draft at `drafts/email_tta.md`, NOT sent.
 3. Join the Kaggle Broad competition (identity-bound click).
 
-## STATE (updated 2026-10-18 5:55 PM ET) — competition closed, post-competition phase
+## STATE (updated 2026-10-20 8:55 PM ET; leakage paper Figure 1 added) — competition closed, post-competition phase
 - Kaggle closed 2026-10-16 8:00 AM ET. Final public: **Broad 0.72230** (`zsens_fita3_k20_iso0_T1.75.csv`, 8th public), **Deep 0.72929** (`final7_deep_bn_isoB0bn_k20_isog085.csv`). Private scores not yet released (code review). All 35 Broad / 26 Deep submissions in `results/lb_history/`.
 - Unsubmitted artefacts: `submissions/zsens12_broad_raw.csv` (12-donor zero-shot ensemble, finished 10-16 7:25 AM, never scored); `docs/home_stretch/files/zsens_fita3_k20_flatconf0.3_iso0_T1.75.csv` (confident-row flattening, sim +0.0036, no slot left).
 - Post-competition plan (Rohit, 10-16): public repo (README/license/repro done, not pushed) -> blog (`docs/writeups/blog_post.md`, draft, two [ROHIT] gaps) -> website page -> leakage/evaluation paper -> main ML paper -> philosophy paper -> neuroscience note -> JOSS toolkit -> Kaggle write-ups for all competitions.

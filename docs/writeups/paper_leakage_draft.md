@@ -150,6 +150,12 @@ Three changes passed strict local tests and failed on the leaderboard.
   against 0.716 without it.
 - **Partial batch-normalisation re-estimation (Broad):** +0.028 locally, −0.002 on the leaderboard (Section 4.3).
 
+Figure 1 (`docs/figures/local_vs_lb.png`, data in `docs/writeups/analyses/local_vs_lb.csv`) plots every intervention we
+measured both locally and on the leaderboard. Estimates from the calibrated simulator (Section 5) lie near the
+diagonal, apart from one smoothing setting; estimates from same-session prose validation fall below it for every
+per-subject or training-time change; the day-novel instrument is right for class balancing and wrong in sign for
+batch-normalisation re-estimation.
+
 The common factor is that all three local estimates were made on held-out quarters of the same recording sessions
 used for fitting, in long prose sentences with mostly fully valid windows. The leaderboard rows came from a different
 session, in short constructed sentences with heavy masking and isolated one-second words. Each change could learn
@@ -243,5 +249,5 @@ leaderboard scores were not yet released at the time of writing. [UPDATE when re
 - Seeded confidence intervals for the timing ablation and the transfer failures (at least three seeds each).
 - Private-leaderboard numbers for Section 4.4.
 - Timing-only baseline: done (0.632 locally). Still to do: the same model on holdout-format constructed sentences, and timing + MEG combined.
-- One figure: local versus leaderboard effect for every intervention with both measurements.
+- Figure 1 (local vs leaderboard): done.
 - Decide venue: bioRxiv (no endorsement needed) now; arXiv cs.LG / q-bio.NC once an endorser is available.
