@@ -27,3 +27,11 @@
 
 ### Job 5 — build: pipeline in place (~08:35 EST), final build waits on job 2/3 numbers
 - docs/writeups/paper/build.py (+ header.tex, repro_appendix.md) → leakage_paper.pdf via pandoc 3.1.3 + xelatex; 9 pages, Figures 1–2 embedded. Fig 2 labels crowd; fix at final build.
+
+### Job 3 — holdout-format timing + timing×MEG: IN PROGRESS
+- 08:40 EST: STOPPED my cross-subject consensus-label analysis (it infers held-out labels; PNPL paper discourages this). No outputs kept; script parked in private/ (gitignored) as HELD_FOR_ROHIT. Rohit notified.
+- Label-free substitute running: `docs/writeups/analyses/timing_holdout_format.py` (subj0 runs of ≥5 vocab words framed as holdout epochs; Q3/Q4 test; 3 seeds) and `timing_meg_fusion.py runs/deep_c_ep6.pt` (CPU; MEG × timing^w, w cross-fit Q3↔Q4).
+- Checked: no orphan words (sentenceidx<0) in subj0 cache, so the 0.632 baseline's sentence grouping is sound.
+
+### Job 6 — venue packet: DONE (~08:45 EST)
+- `docs/writeups/paper/SUBMISSION_CHECKLIST.md`. Flags for Rohit: courtesy note to PNPL; consensus analysis; "8th place" wording on public pages; bioRxiv generative-AI disclosure vs the no-vendor rule; bioRxiv must precede arXiv; arXiv endorsement needs a personal endorser (no prior papers).
