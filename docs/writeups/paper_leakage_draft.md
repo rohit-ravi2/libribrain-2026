@@ -19,8 +19,9 @@ heard the same 156 sentences, rows could be aligned across subjects through stim
 leaderboard filled with scores close to the single-subject Deep ceiling. Third, a validation split that shared a
 recording day with training hid a 0.044 effect of recording-day drift that only the leaderboard revealed. Fourth,
 method changes with local gains transferred to the public leaderboard as +0.001 or as a loss: a per-subject input
-layer gained 0.03 to 0.07 locally in every one of 18 configurations, and a time-stretch augmentation gained 0.034 in
-two seeds, a gain that a third seed reduced to 0.017, indistinguishable from zero. Fifth, the public leaderboard itself
+layer gained 0.03 to 0.07 locally in every one of 36 configurations on four checkpoints, and a time-stretch
+augmentation gained 0.034 in two seeds, a gain that a third seed reduced to 0.017, indistinguishable from zero. The
+private split later confirmed the robust gain and not the fragile one. Fifth, the public leaderboard itself
 disagreed with the private split released after the close: a self-learned sentence prior that gained 0.017 on the
 public Broad split lost 0.036 on the private one, ranking six prior strengths in reverse order, while class balancing
 agreed to within 0.001 on both. We describe how each was detected, a simulator of the test set calibrated against
@@ -172,13 +173,16 @@ brain is better served by the reference subject's statistics.
 
 ### 4.4 Local gains that did not transfer
 
-Three changes passed strict local tests and failed on the leaderboard.
+Three changes passed strict local tests and failed on the public leaderboard. Seeds added after the competition
+(`docs/writeups/analyses/seeded_cis.py`) separate them.
 
 - **Per-subject input layers fitted on labelled data (Broad).** Fitting a 306 × 306 input map for each Broad subject on
   that subject's labelled recordings, with the network frozen, improved local accuracy by 0.03 to 0.07 in all 18
   configurations tested (two checkpoints, three data fractions, three step counts). On the public leaderboard it added
   0.001. A variant initialised from a temporal-lobe sensor weighting lost 0.003. On the private split the same pair of
-  files differs by +0.030, close to the local estimate (Section 4.7).
+  files differs by +0.030, close to the local estimate (Section 4.7). Repeated on two further checkpoints trained with
+  new seeds, all 18 new configurations gained again (0.036 to 0.065); across the four checkpoints and 36
+  configurations the gain ranges from 0.030 to 0.068 with no exception.
 - **Time-stretch augmentation (Deep).** Training with windows stretched by 0.8 to 1.25 around the onset improved the
   Deep subject's local accuracy by 0.032 and 0.036 in two seeds, the estimate we acted on (and the one Figure 1
   plots). On the public leaderboard the same pipeline with it scored 0.712, against 0.716 without it; on the private
@@ -199,10 +203,13 @@ class balancing and wrong in sign for batch-normalisation re-estimation.
 All three local estimates were made on held-out quarters of the same recording sessions used for fitting, in long
 prose sentences with mostly fully valid windows. The leaderboard rows came from a different session, in short
 constructed sentences with heavy masking and isolated one-second words. Each change could learn something specific to
-the validation session, and our split could not tell. That reading has to be qualified by the private split, which
-restores most of the per-subject fit's local gain and leaves the time-stretch loss in place (Section 4.7). Against the
-public split alone, a same-session local gain was uninformative about transfer; against the private split it was right
-in sign for one of the three.
+the validation session, and our split could not tell. That reading has to be qualified twice. The private split
+restores most of the per-subject fit's local gain and leaves the time-stretch loss in place (Section 4.7). And the
+seeds show that the time-stretch gain, like the wider encoder's day-novel gain (Section 4.7), was never established
+locally: each rested on one or two seeds and shrank toward zero with a third. The one local gain that was robust
+across seeds and configurations is also the one the private split confirmed. Against the public split alone, a
+same-session local gain was uninformative about transfer. Against the private split, with enough seeds to separate
+a gain from training noise, it was right in the one case where it was solid.
 
 ### 4.5 A pocket of predictability, and the word confound
 
@@ -259,7 +266,9 @@ The private split also reverses the reading of two interventions in Section 4.4.
 which we reported as a transfer failure on the public split (+0.001), gained 0.030 on the private one, close to its
 local estimate of 0.041; this pair is confounded with the sentence prior, which both files carry, so the honest reading
 is that the per-subject fit helped once the prior's damage is held fixed. The Deep wider encoder, promoted on a
-day-novel local gain of 0.041 and a public gain of 0.008, lost 0.017 on the private split. Deep class balancing, +0.010
+day-novel local gain of 0.041 and a public gain of 0.008, lost 0.017 on the private split. Its local gain was one seed
+on a 141-row block; two further seeds gave −0.019 and +0.035, a paired mean of 0.019 ± 0.033 (95% interval −0.064 to
+0.102), so the local instrument never separated it from zero. Deep class balancing, +0.010
 on the public split, gained 0.051 on the private one, about five times as much. Deep comparisons rest on about 290
 public and 670 private rows and differences below about 0.03 there remain uninterpretable on either split.
 
@@ -353,7 +362,7 @@ Every entry was checked by direct fetch; URLs in `docs/writeups/references_verif
 
 ## To finish before posting
 
-- Seeded confidence intervals: timing ladder and ablation done (`seeded_cis.py`); transfer failures (Section 4.4) running.
+- Seeded confidence intervals: done (`seeded_cis.py`), Sections 4.1, 4.4, 4.7.
 - Private-leaderboard numbers for Section 4.4.
 - Timing-only baseline: done, including holdout epoch format (0.572) and timing + MEG fusion (+0.01).
 - Figure 1 (local vs leaderboard): done.

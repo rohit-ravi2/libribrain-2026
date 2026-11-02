@@ -347,6 +347,76 @@
      -0.0158
     ]
    }
+  },
+  "wider_encoder_px": {
+   "metric": "Deep subject, day-novel PX block, base+sk",
+   "n_rows": 141,
+   "base": {
+    "mean": 0.7219,
+    "sd": 0.0257,
+    "ci95": [
+     0.658,
+     0.7858
+    ],
+    "seeds": [
+     0.7048,
+     0.7515,
+     0.7094
+    ]
+   },
+   "treated": {
+    "mean": 0.7408,
+    "sd": 0.0076,
+    "ci95": [
+     0.722,
+     0.7596
+    ],
+    "seeds": [
+     0.7459,
+     0.7321,
+     0.7444
+    ]
+   },
+   "paired_diff": {
+    "mean": 0.0189,
+    "sd": 0.0333,
+    "ci95": [
+     -0.0639,
+     0.1017
+    ],
+    "seeds": [
+     0.0411,
+     -0.0194,
+     0.035
+    ]
+   }
+  },
+  "per_subject_input_layer": {
+   "metric": "d_sk over 9 configs (3 fractions x 3 step counts) per checkpoint",
+   "per_ckpt_min_max": {
+    "deepc": [
+     0.0304,
+     0.0443
+    ],
+    "lso1": [
+     0.0508,
+     0.0676
+    ],
+    "ci_deepc_s1_plain": [
+     0.0444,
+     0.0649
+    ],
+    "ci_deepc_s2_plain": [
+     0.0363,
+     0.0543
+    ]
+   },
+   "all_positive": true,
+   "n_configs": 36,
+   "range": [
+    0.0304,
+    0.0676
+   ]
   }
  }
 }

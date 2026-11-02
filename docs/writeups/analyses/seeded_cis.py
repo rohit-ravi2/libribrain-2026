@@ -39,5 +39,19 @@ tr = {}
 base, trt = [dep_of(t) for t in ("deep_c", "ci_deepc_s1", "ci_deepc_s2")], [dep_of(t) for t in ("stretch_s0", "stretch_s1", "ci_stretch_s2")]
 if None not in base + trt:
     tr["time_stretch_deep"] = {"metric": "Deep subject, local same-session blocks (deploy)", "base": ci(base), "treated": ci(trt), "paired_diff": ci(np.subtract(trt, base))}
+# wider encoder (d 192 / D 384) vs plain, day-novel PX block (141 rows), with Sinkhorn ("base+sk"), checkpoints ep6.
+# seed 0 from logs/proxy_calib_px.log (runs/lso1_ep6.pt) and logs/proxy_calib_px_lso_dw.log (runs/lso_dw_ep6.pt).
+px = lambda t: json.load(open(f"{R}/runs/ci_px_{t}.json"))["mean"]["deep"]["base+sk"]
+if all(os.path.exists(f"{R}/runs/ci_px_{t}.json") for t in ("ci_lso1_s1", "ci_lso1_s2", "ci_lsodw_s1", "ci_lsodw_s2")):
+    pl, wd = [0.7048, px("ci_lso1_s1"), px("ci_lso1_s2")], [0.7459, px("ci_lsodw_s1"), px("ci_lsodw_s2")]
+    tr["wider_encoder_px"] = {"metric": "Deep subject, day-novel PX block, base+sk", "n_rows": 141, "base": ci(pl), "treated": ci(wd), "paired_diff": ci(np.subtract(wd, pl))}
+# labelled per-subject input layer: gain with Sinkhorn (d_sk) over 9 configurations per checkpoint
+fm = {t: f"{R}/runs/fita_map_{t}.json" for t in ("deepc", "lso1", "ci_deepc_s1_plain", "ci_deepc_s2_plain")}
+if all(os.path.exists(f) for f in fm.values()):
+    g = {t: [v[2] for k, v in json.load(open(f))["mean"].items() if k.startswith("f")] for t, f in fm.items()}
+    tr["per_subject_input_layer"] = {"metric": "d_sk over 9 configs (3 fractions x 3 step counts) per checkpoint",
+        "per_ckpt_min_max": {t: [round(min(v), 4), round(max(v), 4)] for t, v in g.items()},
+        "all_positive": bool(all(x > 0 for v in g.values() for x in v)), "n_configs": sum(len(v) for v in g.values()),
+        "range": [round(min(min(v) for v in g.values()), 4), round(max(max(v) for v in g.values()), 4)]}
 out["transfer"] = tr
 json.dump(out, open(f"{R}/docs/writeups/analyses/seeded_cis.json", "w"), indent=1); print(json.dumps(out, indent=1))
