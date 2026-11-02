@@ -21,3 +21,5 @@
 ### Job 2b — §4.4 transfer seeds: PENDING (queued ~08:00 EST, starts when 2a ends)
 - `scripts/queue_ci_transfer.sh`: deep_c s1,s2 + stretch s2 (same-day; s0/s1 exist) · lso1/lso_dw s1,s2 + PX eval · fita_map on deep_c s1/s2. Outputs runs/ci_*.json, logs/ci/.
 - Caveat already visible: the day-novel PX block behind "width +0.041" has only 141 rows (logs/proxy_calib_px_lso_dw.log); SE of a single score ~0.03.
+- 08:20 EST: first ci_v3b_s0 attempt stalled ~30 min in epoch-0 eval at load ~42 (torch/OpenMP default 16 threads, oversubscribed by other sessions). Killed (log kept as logs/ci/ci_v3b_s0.stalled_omp16.log); both queues relaunched sequentially with OMP_NUM_THREADS=4.
+- Rohit's binding rule received 08:15 EST: no Co-Authored-By trailers, no AI-vendor/tool names anywhere. Checked bd9c50b, a3c8c13, fe3607b: clean, nothing to amend.

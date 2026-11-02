@@ -4,7 +4,7 @@
 #  wider encoder (Deep, day-novel PX): lso1 vs lso_dw seeds 1,2 (seed 0 exists), scored with proxy_calib PX
 #  per-subject input layer (Broad): fita_map on the deep_c seed-1/2 checkpoints (seed 0: runs/fita_map_deepc_plain.json)
 # Usage: queue_ci_transfer.sh [wait_pid]. One GPU job at a time via flock /tmp/gpu-8gb.lock.
-cd ~/projects/libribrain-2026; PY=~/venvs/libribrain/bin/python; export LB_MMAP=1; mkdir -p logs/ci
+cd ~/projects/libribrain-2026; PY=~/venvs/libribrain/bin/python; export LB_MMAP=1 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4; mkdir -p logs/ci
 [ -n "$1" ] && while kill -0 "$1" 2>/dev/null; do sleep 60; done
 PXR="sub-0_ses-1[12]_task-Sherlock1"
 DC="--win 3s --ctx 1 --rel 0 --t5 1.0 --epochs 8 --deep 1 --broad_frac 0.0 --ctx_layers 4"
