@@ -41,3 +41,6 @@
 - 08:50 EST: timing_only_cv sent59 = 0.5724 ± 0.0022 (3 seeds, session-grouped 5-fold); prose format and lso1 fusion still running (fusion log currently stale from the masked-session bug run).
 - 09:00 EST: timing_only_cv done → §4.1 updated (prose 0.593, holdout-epoch 0.572; recommendation 2 floor 0.63→0.57). lso1 fusion running.
 - 09:10 EST: lso1 fusion (sent59) n=107+52 rows: MEG 0.774, fused 0.787±0.010, timing 0.656 — UNINFORMATIVE at that n. Added 'epochall' format (all sentences ≥2 words, epoch framing) for ~15x rows; rerunning lso1 and deep_c fusion.
+
+### Job 3 — DONE (09:35 EST)
+- epochall fusion (≈1300 rows/block, 3 seeds, cross-fit w): day-novel lso1 MEG 0.693 → fused 0.705±0.011; same-day deep_c 0.757 → 0.770±0.012. Timing alone 0.59–0.63. Gain ≈+0.01, positive in 10/12 cells, ≈1 seed SD: timing is largely redundant with a strong MEG decoder. §4.1 updated. sent59/runs5 formats too small (≤160 rows), reported in JSON only.

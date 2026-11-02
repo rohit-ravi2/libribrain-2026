@@ -107,8 +107,16 @@ alone 0.441, position alone 0.433; `docs/writeups/analyses/timing_only_cv.py`). 
 timing-free MEG decoder scored about 0.70 to 0.78 on the Deep subject's blocks and 0.64 to 0.69 on new subjects. A
 metadata model with no access to the brain thus recovers most of the margin above chance that a brain decoder reaches
 on this benchmark's format: timing alone clears chance by 0.37, against 0.50 to 0.58 for the MEG decoder on the
-Deep subject's blocks and 0.44 to 0.49 on new subjects. (All timing-only analyses were run after the competition;
-`docs/writeups/analyses/timing_only_baseline.py` and `timing_only_cv.py`.) The transformer learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
+Deep subject's blocks and 0.44 to 0.49 on new subjects. Combining the two adds little, though. We
+fused the timing model's posteriors with those of a timing-free Deep decoder (log-linear weight chosen on one block and
+scored on the other, all sentences framed as holdout epochs, about 1,300 scored words per block). On a checkpoint that
+never saw either evaluation session, MEG alone scored 0.693 and the fusion 0.705 ± 0.011 over three timing-model seeds;
+on a same-day checkpoint, 0.757 and 0.770 ± 0.012. The gain of about 0.01 was positive in 10 of 12 cross-fitted
+comparisons and is about one seed standard deviation. A strong decoder already carries most of what the timing carries,
+plausibly because the evoked response itself reflects word duration. The shortcut is therefore largest where brain
+evidence is weakest, as for the transformer above, which was scored on held-out subjects; a timing gain reported on a
+weak decoder says little about a strong one. (All timing analyses were run after the competition;
+`docs/writeups/analyses/timing_only_baseline.py`, `timing_only_cv.py` and `timing_meg_fusion.py`.) The transformer learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
 competition rules forbade within-subject use of relative timing, and on the leaderboard it would very likely have been
 worth about 0.2. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
 the stimulus.
