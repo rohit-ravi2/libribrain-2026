@@ -17,3 +17,7 @@
 ### Job 4 — reference verification: DONE (~07:55 EST)
 - `docs/writeups/references_verified.md`: 13 entries, each fetched (arXiv API / Crossref / publisher). Fixes: Cuturi title; PNPL = Mantegna et al. 2026a (arXiv:2609.03231); MEG-XL = Jayalath & Parker Jones 2026 (arXiv:2602.02494); Packard page range dropped (not on publisher page). Added LibriBrain, LibriBrain100, Roelofs 2019, Blum & Hardt 2015, Dwork 2015 (for §4.7).
 - Job 2a note: machine load ~42 (other sessions), training step rate fell ~20x after warm-up; CPU/data bound. Re-projecting after first run.
+
+### Job 2b — §4.4 transfer seeds: PENDING (queued ~08:00 EST, starts when 2a ends)
+- `scripts/queue_ci_transfer.sh`: deep_c s1,s2 + stretch s2 (same-day; s0/s1 exist) · lso1/lso_dw s1,s2 + PX eval · fita_map on deep_c s1/s2. Outputs runs/ci_*.json, logs/ci/.
+- Caveat already visible: the day-novel PX block behind "width +0.041" has only 141 rows (logs/proxy_calib_px_lso_dw.log); SE of a single score ~0.03.
