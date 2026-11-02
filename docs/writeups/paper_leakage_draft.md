@@ -106,8 +106,8 @@ to sentences of 5 to 9 words and framing each as a holdout epoch, the timing mod
 alone 0.441, position alone 0.433; `docs/writeups/analyses/timing_only_cv.py`). For comparison, the
 timing-free MEG decoder scored about 0.70 to 0.78 on the Deep subject's blocks and 0.64 to 0.69 on new subjects. A
 metadata model with no access to the brain thus recovers most of the margin above chance that a brain decoder reaches
-on this benchmark's format: 0.37 of the 0.44 to 0.58 by which the MEG decoder clears 0.20 on the Deep subject's
-blocks, and nearly all of it for new subjects. (All timing-only analyses were run after the competition;
+on this benchmark's format: timing alone clears chance by 0.37, against 0.50 to 0.58 for the MEG decoder on the
+Deep subject's blocks and 0.44 to 0.49 on new subjects. (All timing-only analyses were run after the competition;
 `docs/writeups/analyses/timing_only_baseline.py` and `timing_only_cv.py`.) The transformer learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
 competition rules forbade within-subject use of relative timing, and on the leaderboard it would very likely have been
 worth about 0.2. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
