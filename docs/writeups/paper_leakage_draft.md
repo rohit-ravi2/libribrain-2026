@@ -18,8 +18,9 @@ no sentence context at all. Second, because every test subject
 heard the same 156 sentences, rows could be aligned across subjects through stimulus metadata, and the public Broad
 leaderboard filled with scores close to the single-subject Deep ceiling. Third, a validation split that shared a
 recording day with training hid a 0.044 effect of recording-day drift that only the leaderboard revealed. Fourth,
-several method changes with consistent local gains (+0.03 to +0.07 in every one of 18 configurations, or +0.034 in
-both of two seeds) transferred to the public leaderboard as +0.001 or as a loss. Fifth, the public leaderboard itself
+method changes with local gains transferred to the public leaderboard as +0.001 or as a loss: a per-subject input
+layer gained 0.03 to 0.07 locally in every one of 18 configurations, and a time-stretch augmentation gained 0.034 in
+two seeds, a gain that a third seed reduced to 0.017, indistinguishable from zero. Fifth, the public leaderboard itself
 disagreed with the private split released after the close: a self-learned sentence prior that gained 0.017 on the
 public Broad split lost 0.036 on the private one, ranking six prior strengths in reverse order, while class balancing
 agreed to within 0.001 on both. We describe how each was detected, a simulator of the test set calibrated against
@@ -179,8 +180,12 @@ Three changes passed strict local tests and failed on the leaderboard.
   0.001. A variant initialised from a temporal-lobe sensor weighting lost 0.003. On the private split the same pair of
   files differs by +0.030, close to the local estimate (Section 4.7).
 - **Time-stretch augmentation (Deep).** Training with windows stretched by 0.8 to 1.25 around the onset improved the
-  Deep subject's local accuracy by 0.034 in both of two seeds. On the public leaderboard the same pipeline with it
-  scored 0.712, against 0.716 without it; on the private split, 0.663 against 0.689 (−0.025).
+  Deep subject's local accuracy by 0.032 and 0.036 in two seeds, the estimate we acted on (and the one Figure 1
+  plots). On the public leaderboard the same pipeline with it scored 0.712, against 0.716 without it; on the private
+  split, 0.663 against 0.689 (−0.025). A third seed of both arms, trained after the competition, reversed the local
+  sign (−0.016): over three seeds the paired gain is 0.017 ± 0.029 (95% interval −0.054 to 0.089), and the baseline
+  alone varied from 0.703 to 0.735 across seeds. Part of this failure was therefore local. Two seeds were too few to
+  establish a gain of this size, and the leaderboard loss is consistent with an effect near zero.
 - **Partial batch-normalisation re-estimation (Broad):** +0.028 locally, −0.002 on the public leaderboard, +0.007 on the
   private split (Section 4.3).
 

@@ -1,6 +1,7 @@
 """Seeded confidence intervals for the timing ladder (leakage paper, Section 4.1).
 Inputs: runs/ci_v3{b,c0,c_rel,d0,d_rel}_s{0,1,2}.json (scripts/queue_ci_timing.sh) and the inference-time ablations
-logs/ci/ablate_ci_v3{c_rel,d_rel}_s*.log (scripts/queue_ci_transfer.sh, first loop). Mean, sample sd and a two-sided
+logs/ci/ablate_ci_v3{c_rel,d_rel}_s*.log (scripts/queue_ci_transfer.sh, first loop), and the Section 4.4
+transfer seeds (runs/deep_c, ci_deepc_s*, stretch_s*, ci_stretch_s2; PX and FITA arms added when present). Mean, sample sd and a two-sided
 95% t interval over seeds (n = 3, t = 4.303); contrasts are paired by seed. Output: seeded_cis.json"""
 import os, json, ast, re
 import numpy as np
@@ -31,4 +32,12 @@ for a in ("c_rel", "d_rel"):
     abl[a] = {"readout": "cos" if a == "d_rel" else "ce", "group": "seen subjects",
               **{f"{b}_{c}": ci(v) for (b, c), v in sorted(rows.items())}}
 out["ablation"] = abl
+# Section 4.4 transfer arms (scripts/queue_ci_transfer.sh), paired by seed; arms with missing runs are skipped.
+def dep_of(t):
+    f = f"{R}/runs/{t}.json"; return json.load(open(f))["summary"]["deploy"] if os.path.exists(f) else None
+tr = {}
+base, trt = [dep_of(t) for t in ("deep_c", "ci_deepc_s1", "ci_deepc_s2")], [dep_of(t) for t in ("stretch_s0", "stretch_s1", "ci_stretch_s2")]
+if None not in base + trt:
+    tr["time_stretch_deep"] = {"metric": "Deep subject, local same-session blocks (deploy)", "base": ci(base), "treated": ci(trt), "paired_diff": ci(np.subtract(trt, base))}
+out["transfer"] = tr
 json.dump(out, open(f"{R}/docs/writeups/analyses/seeded_cis.json", "w"), indent=1); print(json.dumps(out, indent=1))
