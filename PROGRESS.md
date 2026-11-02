@@ -44,3 +44,12 @@
 
 ### Job 3 — DONE (09:35 EST)
 - epochall fusion (≈1300 rows/block, 3 seeds, cross-fit w): day-novel lso1 MEG 0.693 → fused 0.705±0.011; same-day deep_c 0.757 → 0.770±0.012. Timing alone 0.59–0.63. Gain ≈+0.01, positive in 10/12 cells, ≈1 seed SD: timing is largely redundant with a strong MEG decoder. §4.1 updated. sent59/runs5 formats too small (≤160 rows), reported in JSON only.
+
+## 2026-11-02 11:25 EST — Job 2a done (timing ladder, 3 seeds)
+15 runs (5 arms × seeds 0-2) plus inference-time ablations on the six timing checkpoints. `docs/writeups/analyses/seeded_cis.py` → `seeded_cis.json`.
+- no context 0.309±0.015; 2-layer no timing 0.300±0.009; 2-layer + timing 0.325±0.022; T5 no timing 0.374±0.014; T5 + timing 0.493±0.014.
+- Holds: transformer without timing adds nothing (−0.009, CI −0.032..0.014). Timing at T5 rung +0.119 (CI 0.073..0.166, ≥0.106 every seed).
+- Weakened: timing gain at the 2-layer rung +0.025, CI −0.047..0.097; the single-run 0.29→0.33 was the favourable seed. §4.1 and abstract rewritten to say so.
+- Zeroing timing at inference (T5 ckpts, seen subjects, cos readout): 0.500→0.308, 0.520→0.290; single-word 0.260/0.267.
+- Fixed a wrong clause: the ladder was scored mostly on seen subjects (32+7), not held-out ones.
+Commit cb248d9. Job 2b (transfer seeds) now training on the GPU.
