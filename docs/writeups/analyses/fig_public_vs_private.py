@@ -11,6 +11,10 @@ SHORT = {"Sinkhorn balancing T2": "Sinkhorn", "Sinkhorn balancing T3": "Sinkhorn
          "Self-learned sentence prior k20": "sentence prior", "Sentence prior k5 vs k20": "prior k5",
          "Sinkhorn offsets sentence-rows-only + gamma 0.85": "offset fix", "Prose/vocab trigram rerank": "trigram LM",
          "Per-subject fit + prior k20 vs FINAL-6c": "per-subject fit+prior", "Time-stretch vs width (same pipeline)": "stretch vs width"}
+# label offsets (points) where labels would collide in panel (b)
+OFF = {("public_delta", "AdaBN a0.5 (B)"): (-5, 4, "right"), ("public_delta", "AdaBN (B)"): (-5, -2, "right"),
+       ("public_delta", "stretch vs width (D)"): (-5, -9, "right"), ("public_delta", "offset fix (B)"): (5, 2, "left"),
+       ("public_delta", "per-subject fit+prior (B)"): (5, -9, "left")}
 fig, axes = plt.subplots(1, 2, figsize=(11, 5.0))
 for ax, (xcol, xlab, sub) in zip(axes, [("local_delta", "Local estimate of the effect", d[d.instrument != "none"]),
                                          ("public_delta", "Effect on the public split (~30% of rows)", d)]):
@@ -20,8 +24,8 @@ for ax, (xcol, xlab, sub) in zip(axes, [("local_delta", "Local estimate of the e
         s = sub[sub.instrument == inst]
         if len(s): ax.scatter(s[xcol], s.private_delta, marker=m, color=c, s=46, label=inst if inst != "none" else "no local estimate", zorder=3)
     for _, r in sub.iterrows():
-        ax.annotate(f"{SHORT.get(r.intervention, r.intervention)} ({r.track[0]})", (r[xcol], r.private_delta), fontsize=6.5,
-                    xytext=(4, 3), textcoords="offset points")
+        lab = f"{SHORT.get(r.intervention, r.intervention)} ({r.track[0]})"; dx, dy, ha = OFF.get((xcol, lab), (4, 3, "left"))
+        ax.annotate(lab, (r[xcol], r.private_delta), fontsize=6.5, xytext=(dx, dy), textcoords="offset points", ha=ha)
     ax.set_xlim(lo, hi); ax.set_ylim(-0.10, 0.06); ax.set_xlabel(xlab); ax.set_ylabel("Effect on the private split (~70% of rows)")
     ax.spines[["top", "right"]].set_visible(False); ax.legend(frameon=False, fontsize=7.5, loc="lower right")
 axes[0].set_title("(a) Local validation vs private leaderboard", loc="left", fontsize=10)
