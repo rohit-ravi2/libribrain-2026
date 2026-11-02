@@ -4,6 +4,7 @@ Two local analogues of the holdout's sentence epochs, from the Deep subject's ow
   sent59  every sentence of 5 to 9 words (vocabulary and other words), framed as a holdout epoch: relative onsets,
           gap to the next onset, last word's gap = 1 s to the epoch end, position, length, epoch duration. Only
           vocabulary words are scored. The holdout's sentences are all-vocabulary; these are prose.
+  epochall every sentence of >= 2 words with the same epoch framing (largest n; length unlike the holdout's).
   runs5   maximal runs of >= 5 consecutive vocabulary words inside a sentence, cut to <= 9 words (closest in content,
           but rare in prose: tens of rows, reported for completeness).
 Test rows: the local evaluation blocks (Q3/Q4 of the shared stimulus). Timing model: gradient boosting on the same
@@ -37,8 +38,8 @@ def epochs(W, mask, fmt):
         for t in range(n):
             if score[t]: out_i.append(ch[t]); out_x.append([on[t] - on[0], nxt[t], t, n, n - 1 - t, end - on[0]])
     for s in np.split(idx, np.flatnonzero(np.diff(W.sent[idx])) + 1):
-        if fmt == "sent59":
-            if 5 <= len(s) <= 9: add(s, W.label[s] >= 0)
+        if fmt in ("sent59", "epochall"):
+            if (5 <= len(s) <= 9) if fmt == "sent59" else len(s) >= 2: add(s, W.label[s] >= 0)
             continue
         k = 0
         while k < len(s):
@@ -68,7 +69,7 @@ for blk in BK:
     lo = M.readout(P["ce"].to(dev), P["zt"].to(dev), "ce", 0.5).cpu()
     MEG[blk] = ({int(i): r for r, i in enumerate(P["idx"])}, np.log(np.clip(F.softmax(lo, 1).numpy(), 1e-9, None)))
 res = {"ckpt": CK, "blocks": BK}; W_GRID = [0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0]; SEEDS = (0, 1, 2)
-for fmt in ("sent59", "runs5"):
+for fmt in ("epochall", "sent59", "runs5"):
     ti, tx = epochs(Wt, np.ones(Wt.n, bool), fmt); ty = Wt.label[ti]; r = {"n_train_rows": int(len(ty))}
     clfs = [HistGradientBoostingClassifier(max_iter=300, learning_rate=0.1, class_weight="balanced", random_state=sd).fit(tx, ty) for sd in SEEDS]
     blocks = {}
