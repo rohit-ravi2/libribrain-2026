@@ -38,3 +38,4 @@
 - 08:43 EST: ci_v3b_s0 deploy 0.2924 (original v3b 0.292: reproduces under current code). 23 min/run at current load → ladder ~6 h.
 - Job 3 instrument problem: in holdout format the local Q3/Q4 blocks give only 74+27 scorable rows (sent59) and 6+21 (runs≥5 vocab); deep_c fusion result there (MEG 0.680, timing 0.642, fused 0.685) is UNINFORMATIVE at that n. timing_holdout_format.py removed (superseded).
   Re-run with real n: timing_meg_fusion.py on the leave-day-out checkpoint lso1 (both shared sessions MEG-novel → ~4x rows, day-novel), and timing_only_cv.py (session-grouped 5-fold CV over all subj0 data, sent59 + prose formats, 3 seeds). Running on CPU.
+- 08:50 EST: timing_only_cv sent59 = 0.5724 ± 0.0022 (3 seeds, session-grouped 5-fold); prose format and lso1 fusion still running (fusion log currently stale from the masked-session bug run).
