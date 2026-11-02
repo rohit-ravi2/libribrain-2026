@@ -91,7 +91,7 @@ deviation; intervals are 95% t intervals over seeds, and contrasts are paired by
 context scored 0.309 ± 0.015. The two-layer transformer scored 0.300 ± 0.009 without timing and 0.325 ± 0.022 with it.
 Without timing the transformer added nothing over the context-free model (paired difference −0.009, interval −0.032
 to 0.014). At this rung the timing gain itself (+0.025, interval −0.047 to 0.097) is not distinguishable from zero
-with three seeds, and the single run's 0.33 was the favourable end of the range. With T5 targets the picture is
+with three seeds; the single run's 0.33 sat in the middle of a 0.30 to 0.35 range. With T5 targets the picture is
 unambiguous. The timing-free model scored 0.374 ± 0.014 and the model with timing 0.493 ± 0.014. Timing added 0.119
 (interval 0.073 to 0.166, at least 0.106 on every seed), more than the 0.065 (interval 0.025 to 0.105) that the T5
 targets and neighbouring MEG added over the context-free model.
@@ -116,12 +116,14 @@ alone 0.380. The holdout exposes less than prose does: its epochs end one second
 word's gap and the sentence duration carry no information about where the sentence really ended. Restricting the data
 to sentences of 5 to 9 words and framing each as a holdout epoch, the timing model still reached 0.572 ± 0.002 (gap
 alone 0.441, position alone 0.433; `docs/writeups/analyses/timing_only_cv.py`). For comparison, the
-timing-free MEG decoder scored about 0.70 to 0.78 on the Deep subject's blocks and 0.64 to 0.69 on new subjects. A
-metadata model with no access to the brain thus recovers most of the margin above chance that a brain decoder reaches
-on this benchmark's format: timing alone clears chance by 0.37, against 0.50 to 0.58 for the MEG decoder on the
-Deep subject's blocks and 0.44 to 0.49 on new subjects. Combining the two adds little, though. We
+timing-free MEG decoder scored 0.69 on the Deep subject's recording days it never saw and 0.76 on same-day blocks
+(the fusion analysis below, same framing), and 0.64 to 0.69 on new subjects. A metadata model with no access to the
+brain thus recovers most of the margin above chance that a brain decoder reaches on this benchmark's format: timing
+alone clears chance by 0.37, against 0.49 to 0.56 for the MEG decoder on the Deep subject and 0.44 to 0.49 on new
+subjects. Combining the two adds little, though. We
 fused the timing model's posteriors with those of a timing-free Deep decoder (log-linear weight chosen on one block and
-scored on the other, all sentences framed as holdout epochs, about 1,300 scored words per block). On a checkpoint that
+scored on the other, all sentences framed as holdout epochs; about 1,300 scored words per block for the day-novel
+checkpoint and 650 for the same-day one). On a checkpoint that
 never saw either evaluation session, MEG alone scored 0.693 and the fusion 0.705 ± 0.011 over three timing-model seeds;
 on a same-day checkpoint, 0.757 and 0.770 ± 0.012. The gain of about 0.01 was positive in 10 of 12 cross-fitted
 comparisons and is about one seed standard deviation. A strong decoder already carries most of what the timing carries,
@@ -129,8 +131,8 @@ plausibly because the evoked response itself reflects word duration. The shortcu
 evidence is weakest, as for the cross-subject transformer above, which scored 0.374 without timing and gained 0.119
 from it; a timing gain measured on a weak decoder says little about a strong one. (All timing analyses were run after the competition;
 `docs/writeups/analyses/timing_only_baseline.py`, `timing_only_cv.py` and `timing_meg_fusion.py`.) The transformer learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
-competition rules forbade within-subject use of relative timing, and on the leaderboard it would very likely have been
-worth about 0.2. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
+competition rules forbade within-subject use of relative timing. Locally it was worth 0.119 to the cross-subject
+transformer, and the fusion analysis puts its value to a strong single-subject decoder near 0.01. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
 the stimulus.
 
 ### 4.2 Cross-subject correspondence of the test set
@@ -140,9 +142,10 @@ make it possible to align a row for one subject with the same word position for 
 single-subject Deep track. A strong Deep model can then be copied onto every Broad subject. The organisers identified
 this channel during the competition, prohibited it, and announced that prize-eligible code would be reviewed.
 
-The signature on the public leaderboard was visible before the notice was widely understood. On 8 October the top
+The signature on the public leaderboard was visible before the notice was widely understood. By 13 October the top
 Broad score (0.729, for subjects with at most 40 minutes of data) nearly matched the top Deep score (0.765, for one
-subject with 80 hours), and twenty teams sat between 0.60 and 0.73 while the clean published reference was 0.43.
+subject with 80 hours), while the clean published reference was 0.43; at the close, 22 Broad teams sat between 0.60
+and 0.73 on the public split.
 Few-shot cross-subject decoding matching deep single-subject decoding is not a result anyone has reported. We read the
 pattern as leakage and treated the public Broad ranking as uninformative about method quality.
 
@@ -185,7 +188,8 @@ Three changes passed strict local tests and failed on the public leaderboard. Se
   configurations the gain ranges from 0.030 to 0.068 with no exception.
 - **Time-stretch augmentation (Deep).** Training with windows stretched by 0.8 to 1.25 around the onset improved the
   Deep subject's local accuracy by 0.032 and 0.036 in two seeds, the estimate we acted on (and the one Figure 1
-  plots). On the public leaderboard the same pipeline with it scored 0.712, against 0.716 without it; on the private
+  plots). On the public leaderboard the same post-processing with it (a five-model ensemble) scored 0.712, against
+  0.716 for the ten-model ensemble without it; on the private
   split, 0.663 against 0.689 (−0.025). A third seed of both arms, trained after the competition, reversed the local
   sign (−0.016): over three seeds the paired gain is 0.017 ± 0.029 (95% interval −0.054 to 0.089), and the baseline
   alone varied from 0.703 to 0.735 across seeds. Part of this failure was therefore local. Two seeds were too few to
@@ -232,7 +236,7 @@ each condition before it can be read as a statement about neural signal.
 
 A trigram language model over vocabulary words, applied by exact forward-backward marginals within each sentence,
 improved the public Broad score by 0.006 to 0.012 when the decoder scored about 0.43. Applied to a decoder scoring
-0.66, the same prior lowered it by 0.11, and on the Deep track by 0.047. On the private split those losses were 0.090 and 0.022. A prior learned without labels from each subject's own 156
+0.66 on Broad and 0.57 on Deep, a variant fitted to vocabulary-only sentences lowered them by 0.11 and 0.047. On the private split those losses were 0.090 and 0.022. A prior learned without labels from each subject's own 156
 decoded sentences, by contrast, appeared to help at the higher level on the public split (+0.017 Broad, +0.008 Deep),
 and it is the clearest casualty of Section 4.7: on the private split it lost 0.036 and 0.029. Text priors substitute
 for evidence rather than complementing it: when brain evidence is strong, a mismatched prior overrides it.
@@ -243,13 +247,14 @@ Results reported for language-model rescoring on weak decoders need not hold for
 The private scores, released after the close, cover the roughly 70% of rows the public leaderboard did not. Every
 submission was scored on both, so each leaderboard comparison in this paper can be read twice (Figure 2;
 `results/lb_private_20261102/`, built by `docs/writeups/analyses/private_lb_table.py`). Several readings agree.
-Sinkhorn class balancing gained 0.036 on the public Broad split and 0.037 on the private one, the prose trigram prior
+Sinkhorn class balancing gained 0.036 on the public Broad split and 0.037 on the private one, the vocabulary trigram prior
 lost 0.111 and 0.090, and restricting the Sinkhorn offsets to sentence rows gained 0.0085 and 0.0087. The family we
 tuned hardest on the public split does not agree. The self-learned sentence prior traced an interior optimum on the
 public Broad split over its smoothing strength κ (0.688, 0.705, 0.710, 0.704, 0.689, 0.692 for κ = 5, 10, 20, 50, 200,
 ∞), and the private split ranks the same six files in strictly reverse order of prior strength (0.590, 0.616, 0.634,
 0.646, 0.665, 0.671). On Broad the public split holds about 11,000 rows and the private split about 26,000, so the
-paired standard error of a difference is near 0.004 and 0.003; a sign reversal of 0.05 is not sampling noise under a
+paired standard error of a difference is near 0.004 (measured on the public split) and, scaled by row count, 0.003
+on the private one; a sign reversal of 0.05 is not sampling noise under a
 row-random split. The two splits are measuring different populations of rows, in a way the prior is sensitive to and
 class balancing is not.
 
@@ -257,14 +262,15 @@ We can say where the prior acts, though not yet which rows are private. The hidd
 rows, but the Sinkhorn balancing that follows it is fitted jointly over each subject's sentence and isolated-word rows.
 Measured as the number of words entering or leaving a row's top ten relative to the prior-free file, the prior at κ =
 20 changes isolated-word rows more than sentence rows (3.1 against 1.4 words per row) and at κ = 5 more again (4.8
-against 2.3). A split that weights the two row types differently would therefore see the prior differently. The
+against 2.3; `docs/writeups/analyses/prior_topk_churn.py`). A split that weights the two row types differently would therefore see the prior differently. The
 direction of the private result implies that the prior's indirect effect on isolated-word rows, or its effect on some
 subset of subjects or sentences, is harmful and the public split under-sampled it. Resolving this needs the row-level
 public/private assignment, which only the organisers hold.
 
 The private split also reverses the reading of two interventions in Section 4.4. The labelled per-subject input layer,
 which we reported as a transfer failure on the public split (+0.001), gained 0.030 on the private one, close to its
-local estimate of 0.041; this pair is confounded with the sentence prior, which both files carry, so the honest reading
+local estimates (0.041 in the oracle analysis of Section 6, 0.03 to 0.07 in the configuration map of
+Section 4.4); this pair is confounded with the sentence prior, which both files carry, so the honest reading
 is that the per-subject fit helped once the prior's damage is held fixed. The Deep wider encoder, promoted on a
 day-novel local gain of 0.041 and a public gain of 0.008, lost 0.017 on the private split. Its local gain was one seed
 on a 141-row block; two further seeds gave −0.019 and +0.035, a paired mean of 0.019 ± 0.033 (95% interval −0.064 to
@@ -291,7 +297,7 @@ Because local prose was a poor proxy for the constructed test sentences, we buil
 from the same subject. The substitution is valid to the extent that per-word evidence is conditionally independent
 given the word, which our same-word similarity tests support (Section 6). The simulator reproduced the public
 leaderboard effect of the self-learned sentence prior (+0.016 against +0.017 on Broad, +0.007 against +0.008 on Deep),
-and we used it to screen 164 post-processing ideas in the final two days. It still misranked one setting badly: it
+and we used it to screen about 160 post-processing ideas in the final two days. It still misranked one setting badly: it
 preferred a weaker smoothing strength for the sentence prior that cost 0.022 on the public split. Worse, the private
 split shows that the effect it was calibrated to was itself a property of the public rows: the prior lost 0.036 (Broad)
 and 0.029 (Deep) on the private split (Section 4.7). The simulator was faithful to the public split, which was
@@ -315,7 +321,7 @@ to it.
    needed for scientific reasons, release no absolute timing or ordering information that links rows.
 2. **Report a timing-only baseline.** A model given only the stimulus metadata a decoder can see (onsets, durations,
    epoch lengths) sets the floor that any brain-based claim must clear. On this benchmark's epoch format that floor is
-   about 0.57 for a single listener's prose, not 0.20.
+   about 0.57 for a single listener's 5- to 9-word sentences in the holdout's epoch framing (0.59 in prose), not 0.20.
 3. **Hold out recording days, not just stimuli.** Publish acquisition dates and require validation splits disjoint
    in day as well as in subject and stimulus.
 4. **Score held-out data in the test set's own format.** If test sentences are constructed and short, validation

@@ -1,0 +1,17 @@
+{
+ "base": "final6_broad_ens10_balT2.csv",
+ "n_rows": {
+  "sentence": 33852,
+  "word": 3587
+ },
+ "k20": {
+  "file": "slp2_broad_k20.csv",
+  "sentence": 1.42,
+  "word": 3.14
+ },
+ "k5": {
+  "file": "slp3_broad_k5.csv",
+  "sentence": 2.28,
+  "word": 4.77
+ }
+}

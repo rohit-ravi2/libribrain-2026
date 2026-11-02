@@ -1,8 +1,9 @@
 ## Appendix A: Reproducibility
 
 All code is in the public repository github.com/rohit-ravi2/libribrain-2026. Paths are relative to its root; the
-commit is the last one that changed the script. LibriBrain data are not redistributed. Every experiment was logged
-with its prediction before it ran in `PREDICTIONS.md`, and every run with its scores in `RUNS.md`.
+commit is the last one that changed the script. LibriBrain data are not redistributed. Experiments were logged with
+their predictions in `PREDICTIONS.md` (to 15 October) and then in `docs/XSESSION_TESTS_2026-10-15.md` and
+`docs/home_stretch/LEDGER.md`; runs and their scores are in `RUNS.md`.
 
 | Claim (section) | Script | Output / data | Commit |
 |---|---|---|---|
@@ -16,9 +17,10 @@ with its prediction before it ran in `PREDICTIONS.md`, and every run with its sc
 | Transfer seeds (4.4, 4.7) | `scripts/queue_ci_transfer.sh`, `docs/writeups/analyses/seeded_cis.py` | `runs/ci_*.json`, `runs/ci_px_*.json`, `runs/fita_map_ci_*.json`, `seeded_cis.json` | abc8e79 |
 | Conditional predictability and word control (4.5) | `scripts/packard_tests.py`, `docs/xsession/packard_strong.py` | `PREDICTIONS.md` (PACKARD entries) | d03adbf |
 | Self-learned sentence prior (4.6, 4.7) | `scripts/hmm_prior.py`; class balancing `scripts/balance_submission.py` | `submissions/slp*.csv` | de10a30, a70cdfa |
+| Where the sentence prior acts (4.7) | `docs/writeups/analyses/prior_topk_churn.py` | `prior_topk_churn.json` | PRIOR_COMMIT |
 | Public and private scores of all 61 submissions (4.4, 4.7) | `docs/writeups/analyses/private_lb_table.py` | `results/lb_private_20261102/` | bd9c50b |
 | Figures 1 and 2 | `docs/writeups/analyses/fig_local_vs_lb.py`, `fig_public_vs_private.py` | `docs/figures/` | c27ef29, bd9c50b |
-| Simulator (5) | `scripts/sim_lm2.py` | `PREDICTIONS.md` (SIM entries) | 8bc80cb |
+| Simulator (5) | `docs/home_stretch/tuning/sim_sweep.py` | `docs/XSESSION_TESTS_2026-10-15.md` (SIM-1), `LEDGER.md` | de10a30 |
 | Oracle pooling and label-free purity (6) | `scripts/oracle_scan.py`, `scripts/purity_scan.py` | `runs/oracle_scan.json` | c9fdc9c, 5976b01 |
 
 Hardware: one NVIDIA RTX 4060 Ti (8 GB), 64 GB RAM. Python environment: `requirements-lock.txt`.
