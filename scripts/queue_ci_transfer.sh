@@ -11,6 +11,12 @@ DC="--win 3s --ctx 1 --rel 0 --t5 1.0 --epochs 8 --deep 1 --broad_frac 0.0 --ctx
 [ -f runs/proxy_calib_px.json ] && [ ! -f runs/proxy_calib_px.orig_20261102.json ] && cp runs/proxy_calib_px.json runs/proxy_calib_px.orig_20261102.json
 log() { echo "$(date -u +%FT%TZ) $*" >> logs/ci/queue_ci_transfer.log; }
 train() { t=$1; shift; [ -f runs/$t.json ] && return; flock /tmp/gpu-8gb.lock "$@" --tag $t > logs/ci/$t.log 2>&1; log "$t $(grep -o '"deploy": [0-9.]*' logs/ci/$t.log | tail -1)"; }
+# timing zeroed at inference on the seeded timing-ON checkpoints (section 4.1 ablation, 3 seeds per rung)
+for t in ci_v3c_rel_s0 ci_v3c_rel_s1 ci_v3c_rel_s2 ci_v3d_rel_s0 ci_v3d_rel_s1 ci_v3d_rel_s2; do
+  grep -q neighbour_random logs/ci/ablate_$t.log 2>/dev/null && continue
+  e=$($PY -c "import json;print(json.load(open('runs/$t.json'))['folds']['A']['epoch'])")   # epoch selected on Q3 (fold A)
+  flock /tmp/gpu-8gb.lock $PY scripts/ablate_v3.py runs/${t}_ep$e.pt > logs/ci/ablate_$t.log 2>&1; log "ablate $t ep$e done"
+done
 for s in 1 2; do train ci_deepc_s$s $PY scripts/train_v3.py $DC --seed $s; done
 P_STRETCH=0.5 train ci_stretch_s2 $PY docs/xsession/train_stretch.py $DC --seed 2
 ~/bin/notify "LibriBrain CI: stretch arm seeds done" "LibriBrain paper"

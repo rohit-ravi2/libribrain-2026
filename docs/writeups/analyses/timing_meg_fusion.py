@@ -60,7 +60,7 @@ M = Model(CK); assert not M.a.get("rel", 0), "checkpoint must be timing-free"
 # blocks: Q3/Q4 for a same-day checkpoint; for a leave-day-out checkpoint (args.exclude covers both shared sessions)
 # every word of each held-out session is MEG-novel, so each session is a block
 DAY = bool(M.a.get("exclude")) and all(__import__("re").search(M.a["exclude"], b) for b in W.bases)
-BM = ({"ses11": W.ses == "ses-11_task-Sherlock1", "ses12": W.ses == "ses-12_task-Sherlock1"} if DAY else {"Q3": q == "Q3", "Q4": q == "Q4"})
+BM = ({"ses11": W.ses[W.run] == "ses-11_task-Sherlock1", "ses12": W.ses[W.run] == "ses-12_task-Sherlock1"} if DAY else {"Q3": q == "Q3", "Q4": q == "Q4"})
 BK = list(BM)
 MEG = {}
 for blk in BK:
