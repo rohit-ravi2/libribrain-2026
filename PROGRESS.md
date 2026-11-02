@@ -75,3 +75,7 @@ Independent audit of every number in the draft against repo files: ~170 verified
 - Unsourced "worth about 0.2" replaced by measured 0.119 local / ~0.01 fusion. Rec. 2 floor labelled as 5–9-word epoch framing (0.59 prose).
 - New script prior_topk_churn.py reproduces 3.14/1.42 (κ20) and 4.77/2.28 (κ5) row churn.
 - Appendix: simulator row → sim_sweep.py (de10a30), experiment logs beyond PREDICTIONS.md named; "164 ideas" → "about 160".
+
+## 2026-11-02 16:30 EST — All six jobs done
+Appendix table reflowed (bf63048), checklist updated. PDF: docs/writeups/paper/leakage_paper.pdf, 10 pages, builds clean.
+Open for Rohit (DECIDE items in SUBMISSION_CHECKLIST.md): PNPL courtesy note, consensus analysis (held), "8th place" wording, bioRxiv AI-disclosure vs no-vendor rule, venue order, pushing the scripts. Nothing pushed, posted or submitted.

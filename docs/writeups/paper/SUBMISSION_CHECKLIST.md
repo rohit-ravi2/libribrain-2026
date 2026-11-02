@@ -1,15 +1,17 @@
 # Submission checklist: leakage / evaluation paper
 
-Prepared 2026-11-02. Nothing here has been submitted, posted or emailed. Rohit posts.
+Prepared 2026-11-02, updated 16:30 EST. Nothing here has been submitted, posted or emailed. Rohit posts.
 Sources: bioRxiv FAQ (biorxiv.org/about/FAQ) and arXiv endorsement help (info.arxiv.org/help/endorsement.html), both
 fetched 2026-11-02. Items marked DECIDE are Rohit's call.
 
 ## Before either venue
 
-- [ ] Final numbers in: seeded CIs (job 2), holdout-format timing and timing + MEG (job 3). Rebuild with
-      `python docs/writeups/paper/build.py` and read the PDF end to end.
-- [ ] Every number in the PDF traces to a file named in Appendix A (repro table).
-- [ ] References: all 13 checked by fetch (`docs/writeups/references_verified.md`).
+- [x] Final numbers in: seeded CIs (job 2), holdout-format timing and timing + MEG (job 3). PDF rebuilt 2026-11-02
+      (10 pages). Still to do by Rohit: read the PDF end to end.
+- [x] Every number in the PDF traces to a file named in Appendix A or in the text (independent audit 2026-11-02, ~170
+      numbers checked; mismatches fixed in 15b6eaf). Remaining soft source: "0.64 to 0.69 on new subjects" (4.1) spans
+      two logged results rather than one file.
+- [x] References: all 13 checked by fetch (`docs/writeups/references_verified.md`).
 - [ ] DECIDE: courtesy note to the PNPL organisers before posting. The paper reports a non-exchangeable public/private
       split and the cross-subject channel in their benchmark; they hold the row-level split that would explain
       Section 4.7, and the competition paper "discourage[s] any attempt to infer held-out labels outside of the official
