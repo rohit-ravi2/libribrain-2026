@@ -66,3 +66,12 @@ Transfer queue finished 15:09 EST. `seeded_cis.py` → `seeded_cis.json` now cov
 - Time-stretch: +0.017 ± 0.029 (earlier entry).
 - New reading in §4.4/§4.7 and abstract: the one local gain robust across seeds is the one the private split confirmed; the two fragile ones (stretch, width) were never established.
 Commits abc8e79, 8aed9a5. Job 5: Figure 2 labels fixed (17c56d7), appendix placeholders filled, draft note updated, PDF rebuilt (9 pp). Independent number-trace audit running.
+
+## 2026-11-02 16:10 EST — Job 5: number-trace audit and fixes
+Independent audit of every number in the draft against repo files: ~170 verified. Fixed (commit 15b6eaf):
+- Correction to the 15:30 and 11:25 entries: the single-run 0.33 (v3c) equals seed 0, the middle of 0.30–0.35, not the favourable seed.
+- Fusion row counts (1,300 day-novel / 650 same-day); MEG comparison range now from the fusion files (0.69 / 0.76; margins 0.49–0.56).
+- "Prose trigram" → vocabulary-only trigram; Deep base 0.57 not 0.66; "8 October / twenty teams" → by 13 Oct (PREDICTIONS) and 22 teams at close (public CSV).
+- Unsourced "worth about 0.2" replaced by measured 0.119 local / ~0.01 fusion. Rec. 2 floor labelled as 5–9-word epoch framing (0.59 prose).
+- New script prior_topk_churn.py reproduces 3.14/1.42 (κ20) and 4.77/2.28 (κ5) row churn.
+- Appendix: simulator row → sim_sweep.py (de10a30), experiment logs beyond PREDICTIONS.md named; "164 ideas" → "about 160".

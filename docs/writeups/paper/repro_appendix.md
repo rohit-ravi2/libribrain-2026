@@ -17,7 +17,7 @@ their predictions in `PREDICTIONS.md` (to 15 October) and then in `docs/XSESSION
 | Transfer seeds (4.4, 4.7) | `scripts/queue_ci_transfer.sh`, `docs/writeups/analyses/seeded_cis.py` | `runs/ci_*.json`, `runs/ci_px_*.json`, `runs/fita_map_ci_*.json`, `seeded_cis.json` | abc8e79 |
 | Conditional predictability and word control (4.5) | `scripts/packard_tests.py`, `docs/xsession/packard_strong.py` | `PREDICTIONS.md` (PACKARD entries) | d03adbf |
 | Self-learned sentence prior (4.6, 4.7) | `scripts/hmm_prior.py`; class balancing `scripts/balance_submission.py` | `submissions/slp*.csv` | de10a30, a70cdfa |
-| Where the sentence prior acts (4.7) | `docs/writeups/analyses/prior_topk_churn.py` | `prior_topk_churn.json` | PRIOR_COMMIT |
+| Where the sentence prior acts (4.7) | `docs/writeups/analyses/prior_topk_churn.py` | `prior_topk_churn.json` | 15b6eaf |
 | Public and private scores of all 61 submissions (4.4, 4.7) | `docs/writeups/analyses/private_lb_table.py` | `results/lb_private_20261102/` | bd9c50b |
 | Figures 1 and 2 | `docs/writeups/analyses/fig_local_vs_lb.py`, `fig_public_vs_private.py` | `docs/figures/` | c27ef29, bd9c50b |
 | Simulator (5) | `docs/home_stretch/tuning/sim_sweep.py` | `docs/XSESSION_TESTS_2026-10-15.md` (SIM-1), `LEDGER.md` | de10a30 |
