@@ -53,3 +53,8 @@
 - Zeroing timing at inference (T5 ckpts, seen subjects, cos readout): 0.500→0.308, 0.520→0.290; single-word 0.260/0.267.
 - Fixed a wrong clause: the ladder was scored mostly on seen subjects (32+7), not held-out ones.
 Commit cb248d9. Job 2b (transfer seeds) now training on the GPU.
+
+## 2026-11-02 12:55 EST — Job 2b partial: time-stretch seeds
+deep_c seeds 0/1/2: 0.705, 0.703, 0.735; stretch: 0.737, 0.739, 0.719. Paired gain +0.017 ± 0.029 (CI −0.054..0.089); seed 2 reversed sign.
+The "+0.034 in both of two seeds" claim is weakened: the local gain itself is not established. §4.4 bullet and abstract rewritten (f1b8e00).
+Width (PX) and FITA arms still training.
