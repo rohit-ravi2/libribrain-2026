@@ -58,3 +58,11 @@ Commit cb248d9. Job 2b (transfer seeds) now training on the GPU.
 deep_c seeds 0/1/2: 0.705, 0.703, 0.735; stretch: 0.737, 0.739, 0.719. Paired gain +0.017 ± 0.029 (CI −0.054..0.089); seed 2 reversed sign.
 The "+0.034 in both of two seeds" claim is weakened: the local gain itself is not established. §4.4 bullet and abstract rewritten (f1b8e00).
 Width (PX) and FITA arms still training.
+
+## 2026-11-02 15:30 EST — Job 2 done (all seeded CIs)
+Transfer queue finished 15:09 EST. `seeded_cis.py` → `seeded_cis.json` now covers all arms.
+- Wider encoder, day-novel PX (base+sk, 141 rows): seeds 0/1/2 paired +0.041, −0.019, +0.035 → +0.019 ± 0.033 (CI −0.064..0.102). Weakened: never established locally.
+- Per-subject input layer: 36/36 configurations positive over 4 checkpoints, +0.030..+0.068. Holds; private split +0.030 agrees.
+- Time-stretch: +0.017 ± 0.029 (earlier entry).
+- New reading in §4.4/§4.7 and abstract: the one local gain robust across seeds is the one the private split confirmed; the two fragile ones (stretch, width) were never established.
+Commits abc8e79, 8aed9a5. Job 5: Figure 2 labels fixed (17c56d7), appendix placeholders filled, draft note updated, PDF rebuilt (9 pp). Independent number-trace audit running.
