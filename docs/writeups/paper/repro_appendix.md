@@ -7,9 +7,9 @@ with its prediction before it ran in `PREDICTIONS.md`, and every run with its sc
 | Claim (section) | Script | Output / data | Commit |
 |---|---|---|---|
 | Timing ladder and its ablation, one seed (4.1) | `scripts/train_v3.py` (`--rel 0/1`), `scripts/ablate_v3.py` | `runs/v3{b,c,c0,d,d0}.json` | 57a4d05, 22e21ed |
-| Timing ladder, three seeds (4.1) | `scripts/queue_ci_timing.sh` | `runs/ci_v3*_s{0,1,2}.json`, `docs/writeups/analyses/seeded_cis.json` | see text |
+| Timing ladder and ablation, three seeds (4.1) | `scripts/queue_ci_timing.sh`, `docs/writeups/analyses/seeded_cis.py` | `runs/ci_v3*_s{0,1,2}.json`, `logs/ci/ablate_ci_v3*.log`, `seeded_cis.json` | COMMIT_SEEDED |
 | Timing-only baseline, local blocks (4.1) | `docs/writeups/analyses/timing_only_baseline.py` | `timing_only_baseline.json` | e2adffb |
-| Timing-only and timing + MEG on holdout sentences (4.1) | `docs/writeups/analyses/holdout_consensus_timing.py` | `holdout_consensus_timing.json` | see text |
+| Timing-only in holdout epoch format; timing + MEG fusion (4.1) | `docs/writeups/analyses/timing_only_cv.py`, `timing_meg_fusion.py` | `timing_only_cv.json`, `timing_meg_fusion_{lso1,deep_c}.json` | 9dc85b4, 3d5858c |
 | Recording-day drift, day-novel instrument (4.3) | `scripts/proxy_calib.py` (`PX=`) | `runs/proxy_calib*.json`, `logs/proxy_calib_px*.log` | 5bb2556 |
 | Per-subject input layer map (4.4) | `scripts/fita_map.py` | `runs/fita_map_*.json` | 10d8d48 |
 | Time-stretch augmentation (4.4) | `docs/xsession/train_stretch.py` | `runs/stretch_s{0,1}.json`, `runs/ci_stretch_s2.json` | 14e10da |

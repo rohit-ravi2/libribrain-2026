@@ -1,0 +1,34 @@
+"""Seeded confidence intervals for the timing ladder (leakage paper, Section 4.1).
+Inputs: runs/ci_v3{b,c0,c_rel,d0,d_rel}_s{0,1,2}.json (scripts/queue_ci_timing.sh) and the inference-time ablations
+logs/ci/ablate_ci_v3{c_rel,d_rel}_s*.log (scripts/queue_ci_transfer.sh, first loop). Mean, sample sd and a two-sided
+95% t interval over seeds (n = 3, t = 4.303); contrasts are paired by seed. Output: seeded_cis.json"""
+import os, json, ast, re
+import numpy as np
+R = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
+ARMS = {"b": "no context", "c0": "2-layer transformer, no timing", "c_rel": "2-layer transformer + timing",
+        "d0": "+ T5 targets, no timing", "d_rel": "+ T5 targets + timing"}
+SEEDS = (0, 1, 2); T95 = 4.303
+
+
+def ci(v):
+    v = np.asarray(v, float); m, sd = v.mean(), v.std(ddof=1)
+    return {"mean": round(m, 4), "sd": round(sd, 4), "ci95": [round(m - T95 * sd / np.sqrt(len(v)), 4), round(m + T95 * sd / np.sqrt(len(v)), 4)], "seeds": [round(x, 4) for x in v]}
+
+
+dep = {a: [json.load(open(f"{R}/runs/ci_v3{a}_s{s}.json"))["summary"]["deploy"] for s in SEEDS] for a in ARMS}
+out = {"metric": "deploy (top-10 balanced accuracy, 32 seen + 7 new subjects, local blocks), chance 0.20",
+       "arms": {a: {"desc": ARMS[a], **ci(dep[a])} for a in ARMS},
+       "contrasts": {f"{x}-{y}": ci(np.subtract(dep[x], dep[y])) for x, y in (("c_rel", "c0"), ("d_rel", "d0"), ("c0", "b"), ("d0", "b"), ("c_rel", "b"))}}
+abl = {}
+for a in ("c_rel", "d_rel"):
+    rows = {}
+    for s in SEEDS:
+        for ln in open(f"{R}/logs/ci/ablate_ci_v3{a}_s{s}.log"):
+            m = re.match(r"(Q[34]) (full|rel_zero|single_word) (\{.*\})$", ln.strip())
+            if m:
+                d = ast.literal_eval(m.group(3)); ro = "cos" if "cos" in d else "ce"
+                rows.setdefault((m.group(1), m.group(2)), []).append(d[ro]["seen"][0])
+    abl[a] = {"readout": "cos" if a == "d_rel" else "ce", "group": "seen subjects",
+              **{f"{b}_{c}": ci(v) for (b, c), v in sorted(rows.items())}}
+out["ablation"] = abl
+json.dump(out, open(f"{R}/docs/writeups/analyses/seeded_cis.json", "w"), indent=1); print(json.dumps(out, indent=1))

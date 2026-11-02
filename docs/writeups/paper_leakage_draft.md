@@ -12,8 +12,9 @@ and the figure is easy to inflate without decoding anything from the brain. We r
 entry for the LibriBrain 2026 competition, in which a 50-word vocabulary is decoded from 306-channel MEG and scored by
 top-10 balanced accuracy (chance 0.20). Five distinct mechanisms produced accuracy that did not come from neural
 evidence, or produced validation estimates that did not hold on the leaderboard. First, a sentence-level transformer
-given the relative onset times of the words in a sentence reached 0.51 locally; with timing withheld the same
-architecture scored 0.29, no better than a model without sentence context at all. Second, because every test subject
+given the relative onset times of the words in a sentence scored 0.493 ± 0.014 locally over three seeds; retrained
+with timing withheld it scored 0.374 ± 0.014, and a smaller transformer without timing was no better than a model with
+no sentence context at all. Second, because every test subject
 heard the same 156 sentences, rows could be aligned across subjects through stimulus metadata, and the public Broad
 leaderboard filled with scores close to the single-subject Deep ceiling. Third, a validation split that shared a
 recording day with training hid a 0.044 effect of recording-day drift that only the leaderboard revealed. Fourth,
@@ -80,17 +81,26 @@ computation ever combines rows from different subjects.
 
 The first version of the sentence-level transformer received, alongside each word's MEG embedding, the word's onset
 time relative to the first word of its sentence. These offsets are part of the test-set metadata, which is required
-to cut each word's window from its sentence epoch. With this input, local validation accuracy rose from 0.29 (no
-sentence context) to 0.33 with a two-layer transformer and to 0.51 once the T5 targets were added.
+to cut each word's window from its sentence epoch. In the first single runs, local validation accuracy rose from
+0.29 (no sentence context) to 0.33 with a two-layer transformer and to 0.51 once the T5 targets were added.
 
-We tested the source of the gain by zeroing the timing input at inference on the trained checkpoint. Accuracy fell
-from 0.49 to 0.31 and from 0.54 to 0.29 on the two validation blocks, close to the 0.26 and 0.25 obtained with no
-sentence context at all. Because zeroing an input the model was trained with is out of distribution, we then retrained
-both rungs without timing. The two-layer transformer without timing scored 0.293, identical to the model without a
-transformer (0.292): its whole apparent contribution had been timing. With T5 targets, the timing-free model scored
-0.365, and with longer training 0.463; ablations of that model (single-word segments, or neighbouring words replaced by
-random windows from the same subject) confirmed that its context gain came from neighbouring MEG rather than from
-segment structure.
+We repeated every rung of this ladder, with and without the timing input, over three training seeds (mean ± standard
+deviation; intervals are 95% t intervals over seeds, and contrasts are paired by seed). The model without sentence
+context scored 0.309 ± 0.015. The two-layer transformer scored 0.300 ± 0.009 without timing and 0.325 ± 0.022 with it.
+Without timing the transformer added nothing over the context-free model (paired difference −0.009, interval −0.032
+to 0.014). At this rung the timing gain itself (+0.025, interval −0.047 to 0.097) is not distinguishable from zero
+with three seeds, and the single run's 0.33 was the favourable end of the range. With T5 targets the picture is
+unambiguous. The timing-free model scored 0.374 ± 0.014 and the model with timing 0.493 ± 0.014. Timing added 0.119
+(interval 0.073 to 0.166, at least 0.106 on every seed), more than the 0.065 (interval 0.025 to 0.105) that the T5
+targets and neighbouring MEG added over the context-free model.
+
+We tested the source of that gain by zeroing the timing input at inference on each of the three trained T5
+checkpoints. On the subjects seen in training, accuracy fell from 0.500 ± 0.033 to 0.308 ± 0.010 on one validation
+block and from 0.520 ± 0.018 to 0.290 ± 0.007 on the other. Breaking each sentence into single-word segments gave
+0.260 and 0.267. Zeroing an input the model was trained with is out of distribution, which is why the retrained
+timing-free rungs above are the primary evidence. A timing-free T5 model trained for longer reached 0.463 in a single
+run. Ablations of that model (single-word segments, or neighbouring words replaced by random windows from the same
+subject) confirmed that its context gain came from neighbouring MEG rather than from segment structure.
 
 The mechanism is simple. Inter-word intervals encode word durations, and durations identify short function words
 well. To measure how well, we trained a gradient-boosted classifier on timing metadata alone, with no MEG input. Its
@@ -114,8 +124,8 @@ never saw either evaluation session, MEG alone scored 0.693 and the fusion 0.705
 on a same-day checkpoint, 0.757 and 0.770 ± 0.012. The gain of about 0.01 was positive in 10 of 12 cross-fitted
 comparisons and is about one seed standard deviation. A strong decoder already carries most of what the timing carries,
 plausibly because the evoked response itself reflects word duration. The shortcut is therefore largest where brain
-evidence is weakest, as for the transformer above, which was scored on held-out subjects; a timing gain reported on a
-weak decoder says little about a strong one. (All timing analyses were run after the competition;
+evidence is weakest, as for the cross-subject transformer above, which scored 0.374 without timing and gained 0.119
+from it; a timing gain measured on a weak decoder says little about a strong one. (All timing analyses were run after the competition;
 `docs/writeups/analyses/timing_only_baseline.py`, `timing_only_cv.py` and `timing_meg_fusion.py`.) The transformer learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
 competition rules forbade within-subject use of relative timing, and on the leaderboard it would very likely have been
 worth about 0.2. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
@@ -338,8 +348,8 @@ Every entry was checked by direct fetch; URLs in `docs/writeups/references_verif
 
 ## To finish before posting
 
-- Seeded confidence intervals for the timing ablation and the transfer failures (at least three seeds each).
+- Seeded confidence intervals: timing ladder and ablation done (`seeded_cis.py`); transfer failures (Section 4.4) running.
 - Private-leaderboard numbers for Section 4.4.
-- Timing-only baseline: done (0.632 locally). Still to do: the same model on holdout-format constructed sentences, and timing + MEG combined.
+- Timing-only baseline: done, including holdout epoch format (0.572) and timing + MEG fusion (+0.01).
 - Figure 1 (local vs leaderboard): done.
 - Decide venue: bioRxiv (no endorsement needed) now; arXiv cs.LG / q-bio.NC once an endorser is available.
