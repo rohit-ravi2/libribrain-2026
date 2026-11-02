@@ -158,17 +158,20 @@ Three changes passed strict local tests and failed on the leaderboard.
 - **Partial batch-normalisation re-estimation (Broad):** +0.028 locally, −0.002 on the public leaderboard, +0.007 on the
   private split (Section 4.3).
 
-Figure 1 (`docs/figures/local_vs_lb.png`, data in `docs/writeups/analyses/local_vs_lb.csv`) plots every intervention we
-measured both locally and on the leaderboard. Estimates from the calibrated simulator (Section 5) lie near the
-diagonal, apart from one smoothing setting; estimates from same-session prose validation fall below it for every
-per-subject or training-time change; the day-novel instrument is right for class balancing and wrong in sign for
-batch-normalisation re-estimation.
-Figure 2 (`docs/figures/public_vs_private.png`) repeats the comparison against the private split (Section 4.7).
+Figure 1 plots every intervention we measured both locally and on the public leaderboard. Estimates from the
+calibrated simulator (Section 5) lie near the diagonal, apart from one smoothing setting; estimates from same-session
+prose validation fall below it for every per-subject or training-time change; the day-novel instrument is right for
+class balancing and wrong in sign for batch-normalisation re-estimation.
 
-The common factor is that all three local estimates were made on held-out quarters of the same recording sessions
-used for fitting, in long prose sentences with mostly fully valid windows. The leaderboard rows came from a different
-session, in short constructed sentences with heavy masking and isolated one-second words. Each change could learn
-something specific to the validation session, and our split could not tell.
+![Local estimate against public-leaderboard effect for every intervention measured both ways, by local instrument. Data: `docs/writeups/analyses/local_vs_lb.csv`; script: `docs/writeups/analyses/fig_local_vs_lb.py`.](../figures/local_vs_lb.png){#fig:local width=75%}
+
+All three local estimates were made on held-out quarters of the same recording sessions used for fitting, in long
+prose sentences with mostly fully valid windows. The leaderboard rows came from a different session, in short
+constructed sentences with heavy masking and isolated one-second words. Each change could learn something specific to
+the validation session, and our split could not tell. That reading has to be qualified by the private split, which
+restores most of the per-subject fit's local gain and leaves the time-stretch loss in place (Section 4.7). Against the
+public split alone, a same-session local gain was uninformative about transfer; against the private split it was right
+in sign for one of the three.
 
 ### 4.5 A pocket of predictability, and the word confound
 
@@ -228,6 +231,8 @@ is that the per-subject fit helped once the prior's damage is held fixed. The De
 day-novel local gain of 0.041 and a public gain of 0.008, lost 0.017 on the private split. Deep class balancing, +0.010
 on the public split, gained 0.051 on the private one, about five times as much. Deep comparisons rest on about 290
 public and 670 private rows and differences below about 0.03 there remain uninterpretable on either split.
+
+![The same interventions on the two leaderboard splits. (a) Local estimate against the private-split effect. (b) Public-split against private-split effect for the same pairs of submission files. Data: `results/lb_private_20261102/interventions_public_private.csv`; script: `docs/writeups/analyses/fig_public_vs_private.py`.](../figures/public_vs_private.png){#fig:pubpriv width=100%}
 
 For benchmark design the consequence is direct. A public leaderboard computed on a fixed subset of rows is itself a
 validation instrument, and it can be unfaithful in the same way as a same-session split when the subset is not

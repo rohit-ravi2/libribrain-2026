@@ -23,3 +23,7 @@
 - Caveat already visible: the day-novel PX block behind "width +0.041" has only 141 rows (logs/proxy_calib_px_lso_dw.log); SE of a single score ~0.03.
 - 08:20 EST: first ci_v3b_s0 attempt stalled ~30 min in epoch-0 eval at load ~42 (torch/OpenMP default 16 threads, oversubscribed by other sessions). Killed (log kept as logs/ci/ci_v3b_s0.stalled_omp16.log); both queues relaunched sequentially with OMP_NUM_THREADS=4.
 - Rohit's binding rule received 08:15 EST: no Co-Authored-By trailers, no AI-vendor/tool names anywhere. Checked bd9c50b, a3c8c13, fe3607b: clean, nothing to amend.
+- 08:28 EST: measured 741 s/epoch for v3b (eval 44 s). Projection: job 2a ~12.5 h (ends ~21:00 EST), job 2b ~11 h more. Overrun notify threshold: 2a not done by 2026-11-03 09:00 EST.
+
+### Job 5 — build: pipeline in place (~08:35 EST), final build waits on job 2/3 numbers
+- docs/writeups/paper/build.py (+ header.tex, repro_appendix.md) → leakage_paper.pdf via pandoc 3.1.3 + xelatex; 9 pages, Figures 1–2 embedded. Fig 2 labels crowd; fix at final build.
