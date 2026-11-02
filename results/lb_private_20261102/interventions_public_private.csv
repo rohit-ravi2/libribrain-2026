@@ -1,0 +1,17 @@
+intervention,track,instrument,local_delta,public_delta,private_delta,treatment,base
+Sinkhorn balancing T2,Broad,split-v2 prose,0.030,0.0358,0.0366,final6_broad_ens3_balT2.csv,final6_broad_ens3.csv
+Sinkhorn balancing T3,Deep,day-novel (LSO),0.0105,0.0104,0.0512,final6_deep_ens5_balT3.csv,final6_deep_ens5.csv
+AdaBN full,Deep,day-novel (LSO),-0.010,0.0438,0.0148,drift1_deep_bn_balT3.csv,final6_deep_ens10_balT3.csv
+AdaBN full,Broad,split-v2 prose,0.008,-0.0114,-0.0041,bn1_broad_ens10_balT2.csv,final6_broad_ens10_balT2.csv
+AdaBN alpha 0.5,Broad,split-v2 prose,0.028,-0.0023,0.0072,bna05_broad_ens3_balT2.csv,final6_broad_ens3_balT2.csv
+Labelled per-subject input layer,Broad,split-v2 prose,0.041,0.0013,0.0304,fita3_broad_ens5_k20.csv,slp2_broad_k20.csv
+Time-stretch augmentation,Deep,split-v2 prose,0.034,-0.0041,-0.0255,final9str_deep_bn_k20.csv,slp3_deep_bn_k20.csv
+Wider encoder,Deep,day-novel (LSO),0.041,0.0082,-0.0171,final7_deep_bn_k20.csv,slp3_deep_bn_k20.csv
+Self-learned sentence prior k20,Broad,simulator,0.016,0.0174,-0.0363,slp2_broad_k20.csv,final6_broad_ens10_balT2.csv
+Self-learned sentence prior k20,Deep,simulator,0.007,0.0084,-0.0291,slp3_deep_bn_k20.csv,drift1_deep_bn_balT3.csv
+Sentence prior k5 vs k20,Broad,simulator,0.003,-0.0220,-0.0443,slp3_broad_k5.csv,slp2_broad_k20.csv
+Sinkhorn offsets sentence-rows-only + gamma 0.85,Broad,simulator,0.0079,0.0085,0.0087,fita3_broad_ens5_k20_isog085.csv,fita3_broad_ens5_k20.csv
+Prose/vocab trigram rerank,Broad,none,,-0.1114,-0.0898,final6_broad_ens3_lmvocab.csv,final6_broad_ens3.csv
+Prose/vocab trigram rerank,Deep,none,,-0.0468,-0.0215,deep_v3_final2_lmvocab_b1.csv,deep_v3_final2_ens5.csv
+Per-subject fit + prior k20 vs FINAL-6c,Broad,none,,0.0188,-0.0059,fita3_broad_ens5_k20.csv,final6_broad_ens10_balT2.csv
+Time-stretch vs width (same pipeline),Deep,none,,-0.0123,-0.0084,final9str_deep_bn_k20.csv,final7_deep_bn_k20.csv

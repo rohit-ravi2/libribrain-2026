@@ -10,7 +10,7 @@ repository. Items marked [VERIFY] need a check before submission.*
 Benchmarks for decoding language from non-invasive brain recordings are usually judged by a single accuracy figure,
 and the figure is easy to inflate without decoding anything from the brain. We report what happened while building an
 entry for the LibriBrain 2026 competition, in which a 50-word vocabulary is decoded from 306-channel MEG and scored by
-top-10 balanced accuracy (chance 0.20). Four distinct mechanisms produced accuracy that did not come from neural
+top-10 balanced accuracy (chance 0.20). Five distinct mechanisms produced accuracy that did not come from neural
 evidence, or produced validation estimates that did not hold on the leaderboard. First, a sentence-level transformer
 given the relative onset times of the words in a sentence reached 0.51 locally; with timing withheld the same
 architecture scored 0.29, no better than a model without sentence context at all. Second, because every test subject
@@ -18,9 +18,12 @@ heard the same 156 sentences, rows could be aligned across subjects through stim
 leaderboard filled with scores close to the single-subject Deep ceiling. Third, a validation split that shared a
 recording day with training hid a 0.044 effect of recording-day drift that only the leaderboard revealed. Fourth,
 several method changes with consistent local gains (+0.03 to +0.07 in every one of 18 configurations, or +0.034 in
-both of two seeds) transferred as +0.001 or as a loss. We describe how each was detected, a simulator of the test set
-calibrated against leaderboard effects that recovered a usable instrument, and an oracle analysis showing that the
-remaining limit is single-trial evidence per word. We close with design recommendations for future decoding
+both of two seeds) transferred to the public leaderboard as +0.001 or as a loss. Fifth, the public leaderboard itself
+disagreed with the private split released after the close: a self-learned sentence prior that gained 0.017 on the
+public Broad split lost 0.036 on the private one, ranking six prior strengths in reverse order, while class balancing
+agreed to within 0.001 on both. We describe how each was detected, a simulator of the test set calibrated against
+public leaderboard effects that inherited the public split's bias, and an oracle analysis showing that the remaining
+limit is single-trial evidence per word. We close with design recommendations for future decoding
 benchmarks.
 
 ## 1 Introduction
@@ -36,8 +39,10 @@ accuracy.
 
 This paper is a case study. Over 26 days we built an entry for both tracks of the PNPL LibriBrain 2026 competition
 (PNPL, 2026) on a single 8 GB GPU, pre-registering each experiment with a predicted effect before running it. The
-final entry scored 0.722 on the Broad track (39 listeners with at most 40 minutes of labelled data each) and 0.729 on
-the Deep track (one listener with about 80 hours), against published references of 0.430 (MEG-XL) and 0.732 (d'Ascoli
+final entry scored 0.722 on the public Broad leaderboard (39 listeners with at most 40 minutes of labelled data each)
+and 0.729 on the public Deep leaderboard (one listener with about 80 hours); on the private split, released after the
+close, the same files scored 0.678 and 0.685 (the best-scoring of the selected Deep files, 0.697, is the one Kaggle
+ranked). These compare with published references of 0.430 (MEG-XL) and 0.732 (d'Ascoli
 et al., 2024) respectively. Those results are reported elsewhere. Here we document the ways the evaluation, ours and
 the benchmark's, could have misled us, because each of them would generalise to other decoding benchmarks.
 
@@ -69,7 +74,7 @@ mass (Cuturi, 2013), a bigram hidden Markov model learned by expectation-maximis
 sentences, and, for the Deep subject only, re-estimated batch-normalisation statistics (Li et al., 2016). No
 computation ever combines rows from different subjects.
 
-## 4 Four ways accuracy was not what it seemed
+## 4 Ways accuracy was not what it seemed
 
 ### 4.1 The stimulus timing shortcut
 
@@ -131,7 +136,8 @@ Re-estimating batch-normalisation statistics on the Deep subject's own test rows
 0.044, an effect our same-day validation could not see. A leave-recording-day-out model, trained with that day removed
 entirely, gave a day-novel instrument. It reproduced the leaderboard effect of class balancing on the Deep subject
 (+0.0105 against +0.010), but not the effect of batch-normalisation re-estimation (−0.010 against +0.044), so even the
-corrected instrument was faithful for some interventions and not others.
+corrected instrument was faithful for some interventions and not others. On the private split the re-estimation gain was
+0.015 rather than 0.044, still positive and still outside what the same-day split could see.
 
 The same re-estimation lowered the Broad score by 0.011, and a partial version that improved Broad locally by 0.028
 lowered it by 0.002 on the leaderboard. A new recording day of a known brain benefits from re-standardisation; a new
@@ -143,18 +149,21 @@ Three changes passed strict local tests and failed on the leaderboard.
 
 - **Per-subject input layers fitted on labelled data (Broad).** Fitting a 306 × 306 input map for each Broad subject on
   that subject's labelled recordings, with the network frozen, improved local accuracy by 0.03 to 0.07 in all 18
-  configurations tested (two checkpoints, three data fractions, three step counts). On the leaderboard it added 0.001.
-  A variant initialised from a temporal-lobe sensor weighting lost 0.003.
+  configurations tested (two checkpoints, three data fractions, three step counts). On the public leaderboard it added
+  0.001. A variant initialised from a temporal-lobe sensor weighting lost 0.003. On the private split the same pair of
+  files differs by +0.030, close to the local estimate (Section 4.7).
 - **Time-stretch augmentation (Deep).** Training with windows stretched by 0.8 to 1.25 around the onset improved the
-  Deep subject's local accuracy by 0.034 in both of two seeds. On the leaderboard the same pipeline with it scored 0.712,
-  against 0.716 without it.
-- **Partial batch-normalisation re-estimation (Broad):** +0.028 locally, −0.002 on the leaderboard (Section 4.3).
+  Deep subject's local accuracy by 0.034 in both of two seeds. On the public leaderboard the same pipeline with it
+  scored 0.712, against 0.716 without it; on the private split, 0.663 against 0.689 (−0.025).
+- **Partial batch-normalisation re-estimation (Broad):** +0.028 locally, −0.002 on the public leaderboard, +0.007 on the
+  private split (Section 4.3).
 
 Figure 1 (`docs/figures/local_vs_lb.png`, data in `docs/writeups/analyses/local_vs_lb.csv`) plots every intervention we
 measured both locally and on the leaderboard. Estimates from the calibrated simulator (Section 5) lie near the
 diagonal, apart from one smoothing setting; estimates from same-session prose validation fall below it for every
 per-subject or training-time change; the day-novel instrument is right for class balancing and wrong in sign for
 batch-normalisation re-estimation.
+Figure 2 (`docs/figures/public_vs_private.png`) repeats the comparison against the private split (Section 4.7).
 
 The common factor is that all three local estimates were made on held-out quarters of the same recording sessions
 used for fitting, in long prose sentences with mostly fully valid windows. The leaderboard rows came from a different
@@ -181,22 +190,65 @@ each condition before it can be read as a statement about neural signal.
 ### 4.6 Text priors flip sign with evidence strength
 
 A trigram language model over vocabulary words, applied by exact forward-backward marginals within each sentence,
-improved the Broad leaderboard score by 0.006 to 0.012 when the decoder scored about 0.43. Applied to a decoder scoring
-0.66, the same prior lowered it by 0.11, and on the Deep track by 0.047. A prior learned without labels from each
-subject's own 156 decoded sentences, by contrast, helped at the higher level (+0.018 Broad, +0.008 Deep). Text priors
-substitute for evidence rather than complementing it: when brain evidence is strong, a mismatched prior overrides it.
+improved the public Broad score by 0.006 to 0.012 when the decoder scored about 0.43. Applied to a decoder scoring
+0.66, the same prior lowered it by 0.11, and on the Deep track by 0.047. On the private split those losses were 0.090 and 0.022. A prior learned without labels from each subject's own 156
+decoded sentences, by contrast, appeared to help at the higher level on the public split (+0.017 Broad, +0.008 Deep),
+and it is the clearest casualty of Section 4.7: on the private split it lost 0.036 and 0.029. Text priors substitute
+for evidence rather than complementing it: when brain evidence is strong, a mismatched prior overrides it.
 Results reported for language-model rescoring on weak decoders need not hold for strong ones.
+
+### 4.7 The public split disagreed with the private split
+
+The private scores, released after the close, cover the roughly 70% of rows the public leaderboard did not. Every
+submission was scored on both, so each leaderboard comparison in this paper can be read twice (Figure 2;
+`results/lb_private_20261102/`, built by `docs/writeups/analyses/private_lb_table.py`). Several readings agree.
+Sinkhorn class balancing gained 0.036 on the public Broad split and 0.037 on the private one, the prose trigram prior
+lost 0.111 and 0.090, and restricting the Sinkhorn offsets to sentence rows gained 0.0085 and 0.0087. The family we
+tuned hardest on the public split does not agree. The self-learned sentence prior traced an interior optimum on the
+public Broad split over its smoothing strength κ (0.688, 0.705, 0.710, 0.704, 0.689, 0.692 for κ = 5, 10, 20, 50, 200,
+∞), and the private split ranks the same six files in strictly reverse order of prior strength (0.590, 0.616, 0.634,
+0.646, 0.665, 0.671). On Broad the public split holds about 11,000 rows and the private split about 26,000, so the
+paired standard error of a difference is near 0.004 and 0.003; a sign reversal of 0.05 is not sampling noise under a
+row-random split. The two splits are measuring different populations of rows, in a way the prior is sensitive to and
+class balancing is not.
+
+We can say where the prior acts, though not yet which rows are private. The hidden Markov model rewrites only sentence
+rows, but the Sinkhorn balancing that follows it is fitted jointly over each subject's sentence and isolated-word rows.
+Measured as the number of words entering or leaving a row's top ten relative to the prior-free file, the prior at κ =
+20 changes isolated-word rows more than sentence rows (3.1 against 1.4 words per row) and at κ = 5 more again (4.8
+against 2.3). A split that weights the two row types differently would therefore see the prior differently. The
+direction of the private result implies that the prior's indirect effect on isolated-word rows, or its effect on some
+subset of subjects or sentences, is harmful and the public split under-sampled it. Resolving this needs the row-level
+public/private assignment, which only the organisers hold.
+
+The private split also reverses the reading of two interventions in Section 4.4. The labelled per-subject input layer,
+which we reported as a transfer failure on the public split (+0.001), gained 0.030 on the private one, close to its
+local estimate of 0.041; this pair is confounded with the sentence prior, which both files carry, so the honest reading
+is that the per-subject fit helped once the prior's damage is held fixed. The Deep wider encoder, promoted on a
+day-novel local gain of 0.041 and a public gain of 0.008, lost 0.017 on the private split. Deep class balancing, +0.010
+on the public split, gained 0.051 on the private one, about five times as much. Deep comparisons rest on about 290
+public and 670 private rows and differences below about 0.03 there remain uninterpretable on either split.
+
+For benchmark design the consequence is direct. A public leaderboard computed on a fixed subset of rows is itself a
+validation instrument, and it can be unfaithful in the same way as a same-session split when the subset is not
+exchangeable with the rest. Participants who tune against it, as we did over 61 submissions, inherit its bias. Our own
+final selections were made on public scores; the best private Broad file we submitted (0.680, partial
+batch-normalisation re-estimation without the sentence prior) was not among them, and neither was the best private Deep
+file (0.718, full re-estimation and class balancing, again without the prior), against 0.697 for the one ranked.
 
 ## 5 A calibrated simulator of the test set
 
 Because local prose was a poor proxy for the constructed test sentences, we built a simulator: language-model-generated
 5- to 9-word sentences using only the vocabulary, with each word replaced by a real held-out posterior row of that word
 from the same subject. The substitution is valid to the extent that per-word evidence is conditionally independent
-given the word, which our same-word similarity tests support (Section 6). The simulator reproduced the leaderboard
-effect of the self-learned sentence prior (+0.016 against +0.018 on Broad, +0.007 against +0.008 on Deep), and we used
-it to screen 164 post-processing ideas in the final two days. It still misranked one setting badly: it preferred a
-weaker smoothing strength for the sentence prior that cost 0.022 on the leaderboard. Calibration against known
-leaderboard effects is necessary, and it is not sufficient.
+given the word, which our same-word similarity tests support (Section 6). The simulator reproduced the public
+leaderboard effect of the self-learned sentence prior (+0.016 against +0.017 on Broad, +0.007 against +0.008 on Deep),
+and we used it to screen 164 post-processing ideas in the final two days. It still misranked one setting badly: it
+preferred a weaker smoothing strength for the sentence prior that cost 0.022 on the public split. Worse, the private
+split shows that the effect it was calibrated to was itself a property of the public rows: the prior lost 0.036 (Broad)
+and 0.029 (Deep) on the private split (Section 4.7). The simulator was faithful to the public split, which was
+unfaithful to the test set. Calibration against known leaderboard effects is necessary, and it is not sufficient, and
+it is only as good as the leaderboard split it is calibrated to.
 
 ## 6 The information ceiling
 
@@ -227,8 +279,8 @@ to it.
 ## 8 Limitations
 
 All numbers come from one competition, one model family and one research group. Many effects rest on one or two seeds;
-the Deep public split has about 288 rows, so differences under about 0.03 there are not interpretable. The private
-leaderboard scores were not yet released at the time of writing. [UPDATE when released.]
+the Deep public split has about 288 rows, so differences under about 0.03 there are not interpretable. The row-level
+public/private assignment is not public, so Section 4.7 establishes that the two splits disagree but not why.
 
 ## References
 
