@@ -13,7 +13,7 @@ with its prediction before it ran in `PREDICTIONS.md`, and every run with its sc
 | Recording-day drift, day-novel instrument (4.3) | `scripts/proxy_calib.py` (`PX=`) | `runs/proxy_calib*.json`, `logs/proxy_calib_px*.log` | 5bb2556 |
 | Per-subject input layer map (4.4) | `scripts/fita_map.py` | `runs/fita_map_*.json` | 10d8d48 |
 | Time-stretch augmentation (4.4) | `docs/xsession/train_stretch.py` | `runs/stretch_s{0,1}.json`, `runs/ci_stretch_s2.json` | 14e10da |
-| Transfer seeds (4.4) | `scripts/queue_ci_transfer.sh` | `runs/ci_*.json`, `logs/ci/` | see text |
+| Transfer seeds (4.4, 4.7) | `scripts/queue_ci_transfer.sh`, `docs/writeups/analyses/seeded_cis.py` | `runs/ci_*.json`, `runs/ci_px_*.json`, `runs/fita_map_ci_*.json`, `seeded_cis.json` | abc8e79 |
 | Conditional predictability and word control (4.5) | `scripts/packard_tests.py`, `docs/xsession/packard_strong.py` | `PREDICTIONS.md` (PACKARD entries) | d03adbf |
 | Self-learned sentence prior (4.6, 4.7) | `scripts/hmm_prior.py`; class balancing `scripts/balance_submission.py` | `submissions/slp*.csv` | de10a30, a70cdfa |
 | Public and private scores of all 61 submissions (4.4, 4.7) | `docs/writeups/analyses/private_lb_table.py` | `results/lb_private_20261102/` | bd9c50b |

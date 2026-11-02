@@ -2,8 +2,8 @@
 
 Rohit Ravi (New York University)
 
-*Draft, 2026-10-18. Numbers trace to `PREDICTIONS.md`, `results/lb_history/` and `runs/*.json` in the accompanying
-repository. Items marked [VERIFY] need a check before submission.*
+*Draft, revised 2026-11-02. Numbers trace to `PREDICTIONS.md`, `results/`, `docs/writeups/analyses/` and `runs/*.json`
+in the accompanying repository (Appendix A).*
 
 ## Abstract
 
@@ -362,8 +362,6 @@ Every entry was checked by direct fetch; URLs in `docs/writeups/references_verif
 
 ## To finish before posting
 
-- Seeded confidence intervals: done (`seeded_cis.py`), Sections 4.1, 4.4, 4.7.
-- Private-leaderboard numbers for Section 4.4.
-- Timing-only baseline: done, including holdout epoch format (0.572) and timing + MEG fusion (+0.01).
-- Figure 1 (local vs leaderboard): done.
-- Decide venue: bioRxiv (no endorsement needed) now; arXiv cs.LG / q-bio.NC once an endorser is available.
+All analysis jobs are done (private leaderboard, seeded intervals, timing baselines, references, build). What remains
+is Rohit's: the decisions in `docs/writeups/paper/SUBMISSION_CHECKLIST.md`, pushing the scripts the paper names, and
+choosing the venue.
