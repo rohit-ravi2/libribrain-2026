@@ -39,3 +39,4 @@
 - Job 3 instrument problem: in holdout format the local Q3/Q4 blocks give only 74+27 scorable rows (sent59) and 6+21 (runs≥5 vocab); deep_c fusion result there (MEG 0.680, timing 0.642, fused 0.685) is UNINFORMATIVE at that n. timing_holdout_format.py removed (superseded).
   Re-run with real n: timing_meg_fusion.py on the leave-day-out checkpoint lso1 (both shared sessions MEG-novel → ~4x rows, day-novel), and timing_only_cv.py (session-grouped 5-fold CV over all subj0 data, sent59 + prose formats, 3 seeds). Running on CPU.
 - 08:50 EST: timing_only_cv sent59 = 0.5724 ± 0.0022 (3 seeds, session-grouped 5-fold); prose format and lso1 fusion still running (fusion log currently stale from the masked-session bug run).
+- 09:00 EST: timing_only_cv done → §4.1 updated (prose 0.593, holdout-epoch 0.572; recommendation 2 floor 0.63→0.57). lso1 fusion running.

@@ -97,10 +97,18 @@ well. To measure how well, we trained a gradient-boosted classifier on timing me
 features were each word's onset relative to its sentence, the gap to the next word's onset (or to the sentence end),
 its position, the number of words and the sentence duration, all of which a test row exposes. Trained on the Deep
 subject's training sentences and scored on the same held-out blocks as the MEG decoder, it reached 0.632 top-10
-balanced accuracy. The duration proxy alone gave 0.468 and position alone 0.361 (chance 0.20). For comparison, the
+balanced accuracy. The duration proxy alone gave 0.468 and position alone 0.361 (chance 0.20). Those blocks are one
+split. Over five folds grouped by recording session, covering all of the Deep subject's labelled vocabulary words, the
+same model scored 0.593 (three seeds, standard deviation below 0.001), the duration proxy alone 0.469 and position
+alone 0.380. The holdout exposes less than prose does: its epochs end one second after the last onset, so the last
+word's gap and the sentence duration carry no information about where the sentence really ended. Restricting the data
+to sentences of 5 to 9 words and framing each as a holdout epoch, the timing model still reached 0.572 ± 0.002 (gap
+alone 0.441, position alone 0.433; `docs/writeups/analyses/timing_only_cv.py`). For comparison, the
 timing-free MEG decoder scored about 0.70 to 0.78 on the Deep subject's blocks and 0.64 to 0.69 on new subjects. A
-metadata model with no access to the brain thus comes within a few points of a brain decoder on this benchmark's
-format. [Exploratory, run after the competition; `docs/writeups/analyses/timing_only_baseline.py`.] The model learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
+metadata model with no access to the brain thus recovers most of the margin above chance that a brain decoder reaches
+on this benchmark's format: 0.37 of the 0.44 to 0.58 by which the MEG decoder clears 0.20 on the Deep subject's
+blocks, and nearly all of it for new subjects. (All timing-only analyses were run after the competition;
+`docs/writeups/analyses/timing_only_baseline.py` and `timing_only_cv.py`.) The transformer learned to read word identity from the audio file's timing rather than from the brain. Nothing in the
 competition rules forbade within-subject use of relative timing, and on the leaderboard it would very likely have been
 worth about 0.2. We excluded it. A decoder that improves when given the stimulus's own temporal structure is decoding
 the stimulus.
@@ -274,8 +282,8 @@ to it.
 1. **Do not share test stimuli across subjects or tracks when metadata allows alignment.** If shared stimuli are
    needed for scientific reasons, release no absolute timing or ordering information that links rows.
 2. **Report a timing-only baseline.** A model given only the stimulus metadata a decoder can see (onsets, durations,
-   epoch lengths) sets the floor that any brain-based claim must clear. On this benchmark's format that floor is about
-   0.63, not 0.20.
+   epoch lengths) sets the floor that any brain-based claim must clear. On this benchmark's epoch format that floor is
+   about 0.57 for a single listener's prose, not 0.20.
 3. **Hold out recording days, not just stimuli.** Publish acquisition dates and require validation splits disjoint
    in day as well as in subject and stimulus.
 4. **Score held-out data in the test set's own format.** If test sentences are constructed and short, validation
