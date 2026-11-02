@@ -10,3 +10,10 @@
 - Diagnostic: the prior changes isolated-word rows' top-10 more than sentence rows (3.1 vs 1.4 words/row at κ20) via the joint Sinkhorn offsets. Split mechanism OPEN; needs the organisers' row-level Usage column (Rohit's call to ask).
 - Paper: abstract (five mechanisms), §1, §4.3, §4.4, §4.6, new §4.7, §5, §8 updated; Figure 2 `docs/figures/public_vs_private.png`.
 - Implication for Job 2: the "transfer failures" of §4.4 are now partly reversed on private; seeded CIs must be local-instrument CIs for each arm (the LB is single-shot).
+
+### Job 2a — timing-ablation seeds: PENDING (launched ~07:55 EST)
+- `scripts/queue_ci_timing.sh`: arms v3b / v3c0 / v3c_rel / v3d0 / v3d_rel × seeds 0,1,2 → `runs/ci_v3*_s*.json`, `logs/ci/`. Smoke: 9.8 GB RSS with LB_MMAP=1, ~8 min/run, ~2 h total.
+
+### Job 4 — reference verification: DONE (~07:55 EST)
+- `docs/writeups/references_verified.md`: 13 entries, each fetched (arXiv API / Crossref / publisher). Fixes: Cuturi title; PNPL = Mantegna et al. 2026a (arXiv:2609.03231); MEG-XL = Jayalath & Parker Jones 2026 (arXiv:2602.02494); Packard page range dropped (not on publisher page). Added LibriBrain, LibriBrain100, Roelofs 2019, Blum & Hardt 2015, Dwork 2015 (for §4.7).
+- Job 2a note: machine load ~42 (other sessions), training step rate fell ~20x after warm-up; CPU/data bound. Re-projecting after first run.

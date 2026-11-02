@@ -1,0 +1,20 @@
+# Reference verification — leakage paper (2026-11-02)
+
+Each entry was checked by direct fetch of the URL below (arXiv export API, Crossref API, or the publisher page); the
+title and author list returned by the source were compared with the citation. Status: OK = exists and is the right paper.
+
+| Key | Citation as it appears in the paper | Verified URL | Source of check | Status / correction |
+|---|---|---|---|---|
+| Cuturi 2013 | Cuturi, M. (2013). Sinkhorn distances: lightspeed computation of optimal transportation distances. NeurIPS 26. | https://arxiv.org/abs/1306.0895 | arXiv API | OK; title corrected ("transportation distances", was "transport") |
+| dAscoli 2024 | d'Ascoli, S., Bel, C., Rapin, J., Banville, H., Benchetrit, Y., Pallier, C., & King, J.-R. (2024). Decoding individual words from non-invasive brain recordings across 723 participants. arXiv:2412.17829. | https://arxiv.org/abs/2412.17829 | arXiv API | OK |
+| Geirhos 2020 | Geirhos, R., Jacobsen, J.-H., Michaelis, C., Zemel, R., Brendel, W., Bethge, M., & Wichmann, F. A. (2020). Shortcut learning in deep neural networks. Nature Machine Intelligence 2(11), 665–673. | https://doi.org/10.1038/s42256-020-00257-z | Crossref API | OK |
+| Kapoor 2023 | Kapoor, S., & Narayanan, A. (2023). Leakage and the reproducibility crisis in machine-learning-based science. Patterns 4(9), 100804. | https://doi.org/10.1016/j.patter.2023.100804 | Crossref API | OK (article number added) |
+| Li 2016 | Li, Y., Wang, N., Shi, J., Liu, J., & Hou, X. (2016). Revisiting batch normalization for practical domain adaptation. arXiv:1603.04779. | https://arxiv.org/abs/1603.04779 | arXiv API | OK |
+| Packard 1990 | Packard, N. H. (1990). A genetic learning algorithm for the analysis of complex data. Complex Systems 4(5). | https://www.complex-systems.com/abstracts/v04_i05_a04/ | publisher page | OK; issue 5 confirmed, page range 543–572 not shown on the page, dropped |
+| Mantegna 2026a (PNPL competition) | Mantegna, F., Elvers, G., Jayalath, D., Landau, G., et al. (2026). The 2026 PNPL Competition: Word classification and efficient cross-subject generalisation in LibriBrain100. arXiv:2609.03231. | https://arxiv.org/abs/2609.03231 | arXiv API | OK; [VERIFY] resolved: first author Mantegna, 21 authors |
+| Jayalath 2026 (MEG-XL) | Jayalath, D., & Parker Jones, O. (2026). MEG-XL: Data-efficient brain-to-text via long-context pre-training. ICML 2026; arXiv:2602.02494. | https://arxiv.org/abs/2602.02494 | arXiv API | OK; [VERIFY] resolved. ICML venue from search result only (not fetched from the proceedings) |
+| Mantegna 2026b (LibriBrain100) | Mantegna, F., Jayalath, D., Elvers, G., et al. (2026). LibriBrain100: One hundred hours of broad and deep MEG data for neural speech decoding at scale. arXiv:2608.25204. | https://arxiv.org/abs/2608.25204 | arXiv API | OK (added: dataset) |
+| Ozdogan 2025 (LibriBrain) | Özdogan, M., Landau, G., Elvers, G., Jayalath, D., Somaiya, P., Mantegna, F., Woolrich, M., & Parker Jones, O. (2025). LibriBrain: Over 50 hours of within-subject MEG to improve speech decoding methods at scale. arXiv:2506.02098. | https://arxiv.org/abs/2506.02098 | arXiv API | OK (added: Deep subject data) |
+| Roelofs 2019 | Roelofs, R., Shankar, V., Recht, B., Fridovich-Keil, S., Hardt, M., Miller, J., & Schmidt, L. (2019). A meta-analysis of overfitting in machine learning. NeurIPS 32, 9175–9185. | https://proceedings.neurips.cc/paper/2019/hash/ee39e503b6bedf0c98c388b7e8589aca-Abstract.html | proceedings page (title); dblp for pages | OK (added for Section 4.7) |
+| Blum 2015 | Blum, A., & Hardt, M. (2015). The Ladder: A reliable leaderboard for machine learning competitions. ICML; arXiv:1502.04585. | https://arxiv.org/abs/1502.04585 | arXiv API | OK (added for Section 4.7) |
+| Dwork 2015 | Dwork, C., Feldman, V., Hardt, M., Pitassi, T., Reingold, O., & Roth, A. (2015). The reusable holdout: Preserving validity in adaptive data analysis. Science 349(6248), 636–638. | https://doi.org/10.1126/science.aaa9375 | Crossref API | OK (added for Section 4.7) |

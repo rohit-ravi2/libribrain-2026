@@ -38,11 +38,11 @@ where single-trial signal-to-noise is low, so a weak non-neural cue can account 
 accuracy.
 
 This paper is a case study. Over 26 days we built an entry for both tracks of the PNPL LibriBrain 2026 competition
-(PNPL, 2026) on a single 8 GB GPU, pre-registering each experiment with a predicted effect before running it. The
+(Mantegna et al., 2026a), built on the LibriBrain recordings (Özdogan et al., 2025; Mantegna et al., 2026b), on a single 8 GB GPU, pre-registering each experiment with a predicted effect before running it. The
 final entry scored 0.722 on the public Broad leaderboard (39 listeners with at most 40 minutes of labelled data each)
 and 0.729 on the public Deep leaderboard (one listener with about 80 hours); on the private split, released after the
 close, the same files scored 0.678 and 0.685 (the best-scoring of the selected Deep files, 0.697, is the one Kaggle
-ranked). These compare with published references of 0.430 (MEG-XL) and 0.732 (d'Ascoli
+ranked). These compare with published references of 0.430 (MEG-XL; Jayalath & Parker Jones, 2026) and 0.732 (d'Ascoli
 et al., 2024) respectively. Those results are reported elsewhere. Here we document the ways the evaluation, ours and
 the benchmark's, could have misled us, because each of them would generalise to other decoding benchmarks.
 
@@ -231,7 +231,10 @@ public and 670 private rows and differences below about 0.03 there remain uninte
 
 For benchmark design the consequence is direct. A public leaderboard computed on a fixed subset of rows is itself a
 validation instrument, and it can be unfaithful in the same way as a same-session split when the subset is not
-exchangeable with the rest. Participants who tune against it, as we did over 61 submissions, inherit its bias. Our own
+exchangeable with the rest. Participants who tune against it, as we did over 61 submissions, inherit its bias. Roelofs et al. (2019) found little adaptive overfitting across 120 Kaggle
+competitions, and the reusable-holdout and Ladder mechanisms (Dwork et al., 2015; Blum & Hardt, 2015) address the
+adaptive kind. What we observed is different in kind: a split whose two parts are not exchangeable, which no amount of
+restraint in querying the public score would correct. Our own
 final selections were made on public scores; the best private Broad file we submitted (0.680, partial
 batch-normalisation re-estimation without the sentence prior) was not among them, and neither was the best private Deep
 file (0.718, full re-estimation and class balancing, again without the prior), against 0.697 for the one ranked.
@@ -284,17 +287,33 @@ public/private assignment is not public, so Section 4.7 establishes that the two
 
 ## References
 
-- Cuturi, M. (2013). Sinkhorn distances: lightspeed computation of optimal transport. *NeurIPS*.
-- d'Ascoli, S., et al. (2024). Decoding individual words from non-invasive brain recordings across 723 participants.
-  arXiv:2412.17829.
-- Geirhos, R., et al. (2020). Shortcut learning in deep neural networks. *Nature Machine Intelligence* 2, 665–673.
+- Blum, A., & Hardt, M. (2015). The Ladder: A reliable leaderboard for machine learning competitions. *ICML*.
+  arXiv:1502.04585.
+- Cuturi, M. (2013). Sinkhorn distances: lightspeed computation of optimal transportation distances. *NeurIPS* 26.
+  arXiv:1306.0895.
+- d'Ascoli, S., Bel, C., Rapin, J., Banville, H., Benchetrit, Y., Pallier, C., & King, J.-R. (2024). Decoding individual
+  words from non-invasive brain recordings across 723 participants. arXiv:2412.17829.
+- Dwork, C., Feldman, V., Hardt, M., Pitassi, T., Reingold, O., & Roth, A. (2015). The reusable holdout: Preserving
+  validity in adaptive data analysis. *Science* 349(6248), 636–638.
+- Geirhos, R., Jacobsen, J.-H., Michaelis, C., Zemel, R., Brendel, W., Bethge, M., & Wichmann, F. A. (2020). Shortcut
+  learning in deep neural networks. *Nature Machine Intelligence* 2(11), 665–673.
+- Jayalath, D., & Parker Jones, O. (2026). MEG-XL: Data-efficient brain-to-text via long-context pre-training. *ICML*.
+  arXiv:2602.02494.
 - Kapoor, S., & Narayanan, A. (2023). Leakage and the reproducibility crisis in machine-learning-based science.
-  *Patterns* 4(9).
+  *Patterns* 4(9), 100804.
 - Li, Y., Wang, N., Shi, J., Liu, J., & Hou, X. (2016). Revisiting batch normalization for practical domain adaptation.
   arXiv:1603.04779.
-- Packard, N. H. (1990). A genetic learning algorithm for the analysis of complex data. *Complex Systems* 4, 543–572.
-- PNPL (2026). The 2026 PNPL Competition. arXiv:2609.03231. [VERIFY exact title and authors]
-- MEG-XL reference. [VERIFY citation]
+- Mantegna, F., Elvers, G., Jayalath, D., Landau, G., et al. (2026a). The 2026 PNPL Competition: Word classification and
+  efficient cross-subject generalisation in LibriBrain100. arXiv:2609.03231.
+- Mantegna, F., Jayalath, D., Elvers, G., et al. (2026b). LibriBrain100: One hundred hours of broad and deep MEG data for
+  neural speech decoding at scale. arXiv:2608.25204.
+- Özdogan, M., Landau, G., Elvers, G., Jayalath, D., Somaiya, P., Mantegna, F., Woolrich, M., & Parker Jones, O. (2025).
+  LibriBrain: Over 50 hours of within-subject MEG to improve speech decoding methods at scale. arXiv:2506.02098.
+- Packard, N. H. (1990). A genetic learning algorithm for the analysis of complex data. *Complex Systems* 4(5).
+- Roelofs, R., Shankar, V., Recht, B., Fridovich-Keil, S., Hardt, M., Miller, J., & Schmidt, L. (2019). A meta-analysis
+  of overfitting in machine learning. *NeurIPS* 32, 9175–9185.
+
+Every entry was checked by direct fetch; URLs in `docs/writeups/references_verified.md`.
 
 ## To finish before posting
 
