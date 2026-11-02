@@ -7,7 +7,7 @@ with its prediction before it ran in `PREDICTIONS.md`, and every run with its sc
 | Claim (section) | Script | Output / data | Commit |
 |---|---|---|---|
 | Timing ladder and its ablation, one seed (4.1) | `scripts/train_v3.py` (`--rel 0/1`), `scripts/ablate_v3.py` | `runs/v3{b,c,c0,d,d0}.json` | 57a4d05, 22e21ed |
-| Timing ladder and ablation, three seeds (4.1) | `scripts/queue_ci_timing.sh`, `docs/writeups/analyses/seeded_cis.py` | `runs/ci_v3*_s{0,1,2}.json`, `logs/ci/ablate_ci_v3*.log`, `seeded_cis.json` | COMMIT_SEEDED |
+| Timing ladder and ablation, three seeds (4.1) | `scripts/queue_ci_timing.sh`, `docs/writeups/analyses/seeded_cis.py` | `runs/ci_v3*_s{0,1,2}.json`, `logs/ci/ablate_ci_v3*.log`, `seeded_cis.json` | cb248d9 |
 | Timing-only baseline, local blocks (4.1) | `docs/writeups/analyses/timing_only_baseline.py` | `timing_only_baseline.json` | e2adffb |
 | Timing-only in holdout epoch format; timing + MEG fusion (4.1) | `docs/writeups/analyses/timing_only_cv.py`, `timing_meg_fusion.py` | `timing_only_cv.json`, `timing_meg_fusion_{lso1,deep_c}.json` | 9dc85b4, 3d5858c |
 | Recording-day drift, day-novel instrument (4.3) | `scripts/proxy_calib.py` (`PX=`) | `runs/proxy_calib*.json`, `logs/proxy_calib_px*.log` | 5bb2556 |
