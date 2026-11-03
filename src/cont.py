@@ -10,7 +10,7 @@ from .split import parse, T_MAX, SHARED
 
 import os as _os
 FS = int(_os.environ.get("LB_FS", 50)); TAIL = 1.0                 # cache rate: 50 (cont/) or 100 (cont100/)
-CONT = f"{CACHE}/cont" if FS == 50 else f"{CACHE}/cont{FS}"
+CONT = f"{CACHE}/{_os.environ['LB_CONTDIR']}" if _os.environ.get("LB_CONTDIR") else (f"{CACHE}/cont" if FS == 50 else f"{CACHE}/cont{FS}")   # LB_CONTDIR: alternative cache (e.g. cont_dc, onset-deconvolved)
 MMAP = _os.environ.get("LB_MMAP") == "1"                          # keep MEG on disk (memmap) instead of RAM
 PRE, POST = [float(x) for x in _os.environ.get("LB_WIN", "1.0,2.0").split(",")]   # context window around onset, seconds (env LB_WIN="pre,post")
 WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset at sample 50

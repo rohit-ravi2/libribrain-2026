@@ -24,6 +24,7 @@ def fake(x50, ons_s, key):
     if NOISE == 3: z += synth_signal(np.round(np.asarray(ons_s) * FS).astype(int), 0, x50.shape[1], _SK)
     return z.astype(np.float16)
 from src.v3lib import Model, dev
+from src.deconv import fit_kernel, subtract
 
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True, help="comma-separated checkpoints (softmax-averaged)")
 ap.add_argument("--out", required=True); ap.add_argument("--track", default="broad")
@@ -44,6 +45,7 @@ ap.add_argument("--temporal_base", type=int, default=0, help="1 = subjects witho
 ap.add_argument("--st_steps", type=int, default=0, help="N > 0: self-train each subject's A on its OWN holdout rows toward --st_targets (soft labels)")
 ap.add_argument("--st_targets", default=None, help="submission CSV whose rows are the soft targets (e.g. the SLP + Sinkhorn file)")
 ap.add_argument("--st_lr", type=float, default=3e-4)
+ap.add_argument("--deconv", type=int, default=0, help="1 = regress the generic word-onset response (ridge TRF over all onsets) out of each subject's holdout MEG")
 ap.add_argument("--coral", type=float, default=0.0); ap.add_argument("--ent_steps", type=int, default=0); ap.add_argument("--ent_lr", type=float, default=1e-3)
 a = ap.parse_args(); torch.manual_seed(0); rng = np.random.default_rng(0)
 H = LibriBrainCompetitionHoldout(track=a.track, data_path=os.path.dirname(HOLDOUT), download=False)
@@ -57,9 +59,15 @@ def load_subject(s):
     d = np.load(f"{HOLDOUT}/subj{s:02d}_holdout01_sentence.npz")
     meg, nt, wm, on = d["meg"], d["sentence_n_times"].astype(int), d["word_mask"], d["word_onsets_s"]
     rows = md[(md.subject == s) & (md.source == "sentence")]
+    xs = [resample_poly(np.nan_to_num(meg[si, :, :nt[si]].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16) for si in range(len(nt))]
+    onl = [on[si][np.flatnonzero(wm[si])] for si in range(len(nt))]; xs = [fake(x, o, (s, 0, si)) for si, (x, o) in enumerate(zip(xs, onl))]
+    dw = np.load(f"{HOLDOUT}/subj{s:02d}_holdout2_word.npz")["meg"]
+    xw = [fake(resample_poly(np.nan_to_num(dw[ei].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16), [0.0], (s, 1, ei)) for ei in range(dw.shape[0])]
+    if a.deconv:   # onset deconvolution fitted on this subject's own holdout epochs (onsets only, no labels)
+        segd = [(x, np.round(o * FS).astype(int)) for x, o in zip(xs, onl)] + [(x, np.array([0])) for x in xw]
+        B = fit_kernel(segd, FS); xs = [subtract(x, o, B, FS) for x, o in segd[:len(xs)]]; xw = [subtract(x, o, B, FS) for x, o in segd[len(xs):]]
     for si in range(len(nt)):
-        x50 = resample_poly(np.nan_to_num(meg[si, :, :nt[si]].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16)
-        T50 = x50.shape[1]; wi = np.flatnonzero(wm[si]); ons = on[si][wi]; x50 = fake(x50, ons, (s, 0, si))
+        x50 = xs[si]; T50 = x50.shape[1]; wi = np.flatnonzero(wm[si]); ons = onl[si]
         X = torch.zeros(len(wi), 306, WIN, dtype=torch.float16); V = torch.zeros(len(wi), WIN, dtype=torch.bool)
         for j, o in enumerate(ons):
             st = int(round(o * FS)) - ON; aa, bb = max(st, 0), min(st + WIN, T50)
@@ -67,11 +75,8 @@ def load_subject(s):
         r = rows[rows.epoch == si].sort_values("word")["index"].values; assert len(r) == len(wi)
         rel_s = (ons - ons[0]).astype(np.float32) if any(bool(M.a.get("rel", 1)) for M in models) else np.zeros(len(ons), np.float32)
         segs.append((X, V, torch.from_numpy(rel_s), r))
-    d = np.load(f"{HOLDOUT}/subj{s:02d}_holdout2_word.npz"); meg = d["meg"]
     rows = md[(md.subject == s) & (md.source == "word")].sort_values("epoch")["index"].values
-    for ei in range(meg.shape[0]):
-        x50 = resample_poly(np.nan_to_num(meg[ei].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16)
-        x50 = fake(x50, [0.0], (s, 1, ei))
+    for ei, x50 in enumerate(xw):
         X = torch.zeros(1, 306, WIN, dtype=torch.float16); V = torch.zeros(1, WIN, dtype=torch.bool)
         X[0, :, ON:ON + FS] = torch.from_numpy(x50[:, :FS]); V[0, ON:ON + FS] = True
         segs.append((X, V, torch.zeros(1), rows[ei:ei + 1]))
