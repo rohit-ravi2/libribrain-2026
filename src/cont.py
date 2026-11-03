@@ -18,6 +18,7 @@ WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset
 # indexed by absolute sample, so overlapping windows share content exactly as real MEG does; LB_NOISE=2 draws independent
 # noise per window (only window geometry and valid masks remain). 0 = real MEG.
 NOISE = int(_os.environ.get("LB_NOISE", 0))
+NOCLIP = _os.environ.get("LB_NOCLIP", "0") == "1"   # 1 = valid span is the whole window (no sentence-boundary clipping)
 _NB = np.random.default_rng(12345).standard_normal((306, 1 << 17)).astype(np.float16) if NOISE == 1 else None
 GUARD = 1.0; CLIP = 10.0
 
@@ -87,6 +88,7 @@ class Words:
             lo = np.where(iso, on, lo); hi = np.where(iso, on + FS, hi)
         if clip is not None:
             lo = np.maximum(lo, on - np.round(clip[0] * FS).astype(int)); hi = np.minimum(hi, on + np.round(clip[1] * FS).astype(int))
+        if NOCLIP: lo, hi = start, start + WIN          # fixed window geometry: valid span never depends on sentence or neighbours
         for j in range(B):
             r = int(self.run[idx[j]]); T = self.meg[r].shape[1]
             a, b = max(start[j], 0), min(start[j] + WIN, T)
