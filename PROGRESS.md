@@ -115,3 +115,12 @@ one to one and a half SE: suggestive, not established. AdaBN alone lowered both 
 active, so it is being rescored with dropout off (standard AdaBN; tag clean_iso_s0_dropoff). The Kaggle ladder already
 uses dropout off. Training CE of the synthetic-timing twin (kc_deep_syn3_s0, 2.83) is BELOW the real-MEG model
 (kc_deep_s0, 3.24): onsets inside a 1 s window are highly informative when timing is easy to read.
+
+## 2026-11-03 12:35 EST — correction: read noise controls against the permutation null, not 0.20
+In the deploy metric the label-permutation null is 0.207 to 0.227 (only ~47 of 50 words occur per block), so the
+lift over the null is the honest measure. Lifts: shared noise d0 0.061, independent noise d0 0.066, single-window b
+0.029, d_rel 0.252; clean 3 s fixed window on shared noise 0.028 (selection over epochs/readouts may explain part).
+Real MEG: b 0.073, d0 0.144, d_rel 0.290, clean_iso_s0 0.293. The clean fixed 3 s window scores as high as d_rel on
+real MEG, which points at in-window onset responses of following words (the duration channel of Jayalath & Parker
+Jones). Shared noise cannot test that; queued `scripts/queue_clean_syn.sh` (synthetic onset-locked twin of the 3 s
+screen). Standard AdaBN (dropout off) still lowers top-1 on the held-out day (0.0602 vs 0.0725 base).
