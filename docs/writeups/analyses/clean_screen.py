@@ -48,7 +48,10 @@ def sinkhorn(lo, T, iters=20):
 
 def adabn(all_idx):
     for m in BNS: m.reset_running_stats(); m.momentum = None
-    M.enc.train(); logits(all_idx, train_mode=True); M.enc.eval()
+    M.enc.train()
+    for m in M.enc.modules():
+        if isinstance(m, nn.Dropout): m.eval()          # standard AdaBN: dropout off while the statistics are estimated
+    logits(all_idx, train_mode=True); M.enc.eval()
 
 
 LO = {}

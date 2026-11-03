@@ -102,3 +102,16 @@ noise scored 0.256 single-window and 0.272 with context, chance 0.20). Queued `s
 +AdaBN+Sinkhorn (T=2 fixed a priori), +Sinkhorn, noise twin. Deltas will be read against split_null.json.
 Caveat for the claim: Kaggle reports top-10 balanced accuracy, not the top-1 of Jayalath & Parker Jones, so the
 Kaggle ladder substantiates the method deltas and the noise-twin floor; the top-1 comparison stays local.
+
+## 2026-11-03 11:45 EST — noise controls complete; clean screen first result
+Noise controls (top-10 balanced, chance 0.20; real-MEG seed means in brackets): shared noise d0 0.272 (0.374),
+single-window b 0.256 (0.309), INDEPENDENT noise d0 0.288, shared noise d_rel 0.460 (0.493). The leak in the
+"timing-free" arms is window geometry (valid mask clipped at sentence bounds), not shared samples; with relative
+onsets fed, noise alone reaches 0.460, so nearly all of d_rel's score is timing.
+Clean screen (fixed 3 s window, no clipping, ctx 0, leave-day-out sub-0 Sherlock1 ses-11/12, ~1,300 rows each,
+balanced top-1, chance 0.02): base 0.0725, +Sinkhorn 0.0792, AdaBN 0.0606, AdaBN+Sinkhorn 0.0837 (top-10 0.458,
+0.472, 0.425, 0.447). Top-1 SE about 0.007 per session, so Sinkhorn (+0.007) and AdaBN+Sinkhorn (+0.011) are about
+one to one and a half SE: suggestive, not established. AdaBN alone lowered both sessions; it was estimated with dropout
+active, so it is being rescored with dropout off (standard AdaBN; tag clean_iso_s0_dropoff). The Kaggle ladder already
+uses dropout off. Training CE of the synthetic-timing twin (kc_deep_syn3_s0, 2.83) is BELOW the real-MEG model
+(kc_deep_s0, 3.24): onsets inside a 1 s window are highly informative when timing is easy to read.
