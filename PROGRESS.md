@@ -86,3 +86,9 @@ Rohit asked: contributive for bioRxiv? Two independent agents: hostile referee a
 - Literature: Jayalath & Parker Jones, arXiv 2609.40359 (30 Sep 2026, organisers) already show the timing shortcut on this data via overlapping 3 s windows (synthetic signal ≈ MEG). Our "timing-free" arms use overlapping 3 s windows clipped to the sentence span, so they may still carry timing. Also missing: Elvers et al. 2026 (PNPL 2025 retrospective; day-held-out design), Zhang et al. 2605.24524, Jo et al. 2024, Roelofs already flags non-iid splits.
 - split_null.py (28519ab): Broad prior files gap −0.024..−0.102 vs prior-free −0.009..−0.022 (complete separation, dose-response in κ); Deep no separation.
 - Started scripts/queue_noise_control.sh: LB_NOISE=1 (shared noise, overlap preserved) / =2 (independent) on d0, b, d_rel recipes. src/cont.py gains the LB_NOISE switch (default 0, unchanged behaviour).
+
+## 2026-11-03 08:15 EST — Reorientation to a flagship method; cheap screen queued
+Rohit: headline has prior art (2609.40359) → need a new method that beats SimpleB2T. Plan: docs/writeups/FLAGSHIP_PLAN_2026-11-03.md.
+- Installing/running the external SimpleB2T code was refused by the permission check (external code): awaiting Rohit's explicit approval. Their session indexing cannot be mapped to our files without their code.
+- noise1_d0_s0 = 0.272 (chance 0.20; real MEG 0.374): our "timing-free" T5 recipe leaks ~0.07 via window overlap / clipped valid masks (the mask is an input channel).
+- Cheap screen (scripts/queue_clean_screen.sh, behind the noise queue): clean isolated decoder (LB_WIN=0,3, LB_NOCLIP=1, ctx 0), leave-one-day-out, scored by clean_screen.py for base / Sinkhorn / AdaBN / both, balanced top-1 and top-10; noise controls of the same recipe.
