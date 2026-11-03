@@ -124,3 +124,11 @@ Real MEG: b 0.073, d0 0.144, d_rel 0.290, clean_iso_s0 0.293. The clean fixed 3 
 real MEG, which points at in-window onset responses of following words (the duration channel of Jayalath & Parker
 Jones). Shared noise cannot test that; queued `scripts/queue_clean_syn.sh` (synthetic onset-locked twin of the 3 s
 screen). Standard AdaBN (dropout off) still lowers top-1 on the held-out day (0.0602 vs 0.0725 base).
+
+## 2026-11-03 12:50 EST — first late submission: synthetic-timing twin scores 0.580 private on Deep
+Late-submission limit is 99/day. kc_deep_syn3_fake (model trained on noise + onset-locked kernel; holdout MEG replaced by
+noise + kernel at the holdout's own word onsets; isolated fixed [onset, onset+1 s) window, no context, no clipping):
+public 0.5915, private 0.5805 (our final Deep entry: 0.7275 / 0.6804; chance 0.20). With no brain signal at all, a
+1 s isolated window earns 0.58 from the onsets of following words inside it. The kernel (2 noise s.d.) makes timing
+easier to read than real MEG does, so this is an upper bound on the timing channel, but it shows the "isolated"
+framing on the Kaggle benchmark is dominated by word duration. Every clean-ladder claim must be read against it.
