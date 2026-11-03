@@ -19,7 +19,26 @@ WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset
 # noise per window (only window geometry and valid masks remain). 0 = real MEG.
 NOISE = int(_os.environ.get("LB_NOISE", 0))
 NOCLIP = _os.environ.get("LB_NOCLIP", "0") == "1"   # 1 = valid span is the whole window (no sentence-boundary clipping)
-_NB = np.random.default_rng(12345).standard_normal((306, 1 << 17)).astype(np.float16) if NOISE == 1 else None
+_NB = np.random.default_rng(12345).standard_normal((306, 1 << 17)).astype(np.float16) if NOISE in (1, 3) else None
+# LB_NOISE=3: shared noise plus one fixed onset-locked evoked response at EVERY word onset (synthetic MEG that carries word
+# timing and nothing else; the stronger control of Jayalath & Parker Jones). Kernel: fixed sensor pattern x 0.6 s waveform
+# (peaks at 0.1 s and 0.4 s), peak amplitude SYN_AMP noise s.d. (env LB_SYN_AMP, default 2: timing made easy to read).
+SYN_AMP = float(_os.environ.get("LB_SYN_AMP", 2.0))
+
+
+def synth_kernel(fs):
+    g = np.random.default_rng(777); u = g.standard_normal(306); u /= np.abs(u).max()
+    t = np.arange(int(0.6 * fs)) / fs
+    w = np.exp(-((t - 0.1) / 0.03) ** 2) - 0.8 * np.exp(-((t - 0.4) / 0.08) ** 2)
+    return (SYN_AMP * u[:, None] * w[None, :]).astype(np.float32)
+
+
+def synth_signal(onsets, a, b, K):
+    """Sum of kernel K (306,L) placed at integer sample onsets, evaluated on samples [a, b)."""
+    out = np.zeros((K.shape[0], b - a), np.float32); L = K.shape[1]
+    for o in onsets[(onsets > a - L) & (onsets < b)]:
+        k0, k1 = max(a - o, 0), min(b - o, L); out[:, o + k0 - a:o + k1 - a] += K[:, k0:k1]
+    return out
 GUARD = 1.0; CLIP = 10.0
 
 
@@ -95,6 +114,10 @@ class Words:
             if b <= a: continue
             if NOISE == 0: seg = np.ascontiguousarray(self.meg[r][:, a:b])
             elif NOISE == 1: seg = _NB[:, (np.arange(a, b) + r * 7919) % _NB.shape[1]]      # shared noise: overlapping windows see the same samples
+            elif NOISE == 3:
+                if not hasattr(self, "_ons"): self._ons = {}; self._K = synth_kernel(FS)
+                if r not in self._ons: self._ons[r] = np.sort(np.round(self.onset[self.run == r] * FS).astype(int))
+                seg = (_NB[:, (np.arange(a, b) + r * 7919) % _NB.shape[1]].astype(np.float32) + synth_signal(self._ons[r], a, b, self._K)).astype(np.float16)
             else: seg = np.random.default_rng().standard_normal((306, b - a)).astype(np.float16)  # independent noise per window
             x[j, :, a - start[j]:b - start[j]] = torch.from_numpy(seg)
             va, vb = max(lo[j], a), min(hi[j], b)

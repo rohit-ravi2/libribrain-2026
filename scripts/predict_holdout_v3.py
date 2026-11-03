@@ -13,7 +13,16 @@ os.environ["LB_WIN"] = _ck["args"].get("lb_win", "1.0,2.0"); os.environ["LB_FS"]
 from math import gcd
 from pnpl.competition import LibriBrainCompetitionHoldout, write_submission
 from src.common import SCALE, HOLDOUT
-from src.cont import FS, PRE, POST, WIN, ON, normalize
+from src.cont import FS, PRE, POST, WIN, ON, normalize, NOISE, synth_kernel, synth_signal
+_SK = synth_kernel(FS) if NOISE == 3 else None
+
+
+def fake(x50, ons_s, key):
+    """Noise twins (LB_NOISE=1 noise, 3 noise + onset-locked kernel at every word onset) replace the holdout MEG."""
+    if NOISE == 0: return x50
+    z = np.random.default_rng(key).standard_normal(x50.shape).astype(np.float32)
+    if NOISE == 3: z += synth_signal(np.round(np.asarray(ons_s) * FS).astype(int), 0, x50.shape[1], _SK)
+    return z.astype(np.float16)
 from src.v3lib import Model, dev
 
 ap = argparse.ArgumentParser(); ap.add_argument("--ckpt", required=True, help="comma-separated checkpoints (softmax-averaged)")
@@ -50,7 +59,7 @@ def load_subject(s):
     rows = md[(md.subject == s) & (md.source == "sentence")]
     for si in range(len(nt)):
         x50 = resample_poly(np.nan_to_num(meg[si, :, :nt[si]].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16)
-        T50 = x50.shape[1]; wi = np.flatnonzero(wm[si]); ons = on[si][wi]
+        T50 = x50.shape[1]; wi = np.flatnonzero(wm[si]); ons = on[si][wi]; x50 = fake(x50, ons, (s, 0, si))
         X = torch.zeros(len(wi), 306, WIN, dtype=torch.float16); V = torch.zeros(len(wi), WIN, dtype=torch.bool)
         for j, o in enumerate(ons):
             st = int(round(o * FS)) - ON; aa, bb = max(st, 0), min(st + WIN, T50)
@@ -62,6 +71,7 @@ def load_subject(s):
     rows = md[(md.subject == s) & (md.source == "word")].sort_values("epoch")["index"].values
     for ei in range(meg.shape[0]):
         x50 = resample_poly(np.nan_to_num(meg[ei].astype(np.float32) * SCALE), FS // gcd(250, FS), 250 // gcd(250, FS), axis=1).astype(np.float16)
+        x50 = fake(x50, [0.0], (s, 1, ei))
         X = torch.zeros(1, 306, WIN, dtype=torch.float16); V = torch.zeros(1, WIN, dtype=torch.bool)
         X[0, :, ON:ON + FS] = torch.from_numpy(x50[:, :FS]); V[0, ON:ON + FS] = True
         segs.append((X, V, torch.zeros(1), rows[ei:ei + 1]))
