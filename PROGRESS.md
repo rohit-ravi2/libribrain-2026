@@ -140,3 +140,11 @@ to read, beats real MEG in the same isolated 3 s window; compare Jayalath & Park
 synthetic-without-overlap 5.8%. The isolated condition is not timing-free while the window outlasts the word.
 Kaggle Broad twin (Broad recipe, broad_frac 0.5, per-subject A): public 0.3066, private 0.3741, far below Deep's
 0.58. Running the Deep twin model on the Broad fake holdout (identity A) to separate recipe from track.
+
+## 2026-11-03 19:35 EST — deconvolved caches built; artifact fix
+cont_dc (real MEG) and cont_syn_dc (synthetic-timing twin) written, 226 runs each, in /mnt/ssd4tb/data/libribrain_cache.
+The generic onset response removes 0.0-0.5% of real MEG variance and 6-14% of the synthetic stream (its kernel).
+Two source runs (sub-0 ses-3 Sherlock1, ses-9 Sherlock3) hold a few hundred inf samples and >30,000 artifacts; the first
+build turned them into ~3 M non-finite samples. src/deconv.py now zeroes non-finite samples and fits the kernel on data
+clipped at 20x the median |amplitude|; the two runs were rebuilt (0 non-finite). On a clean run the new kernel changes
+the residual by at most 0.08 (data s.d. 26.7, fp16 rounding), so the other 224 runs were kept.
