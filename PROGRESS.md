@@ -132,3 +132,11 @@ public 0.5915, private 0.5805 (our final Deep entry: 0.7275 / 0.6804; chance 0.2
 1 s isolated window earns 0.58 from the onsets of following words inside it. The kernel (2 noise s.d.) makes timing
 easier to read than real MEG does, so this is an upper bound on the timing channel, but it shows the "isolated"
 framing on the Kaggle benchmark is dominated by word duration. Every clean-ladder claim must be read against it.
+
+## 2026-11-03 18:00 EST — twins on the 3 s screen and on Broad
+Clean 3 s screen, held-out day, balanced top-1 (chance 0.02) / top-10: shared-noise twin 0.023 / 0.221 (at chance:
+the fixed geometry is clean); synthetic-timing twin 0.159 / 0.659; real MEG 0.073 / 0.458. Timing alone, made easy
+to read, beats real MEG in the same isolated 3 s window; compare Jayalath & Parker Jones isolated MEG 9.5% and
+synthetic-without-overlap 5.8%. The isolated condition is not timing-free while the window outlasts the word.
+Kaggle Broad twin (Broad recipe, broad_frac 0.5, per-subject A): public 0.3066, private 0.3741, far below Deep's
+0.58. Running the Deep twin model on the Broad fake holdout (identity A) to separate recipe from track.
