@@ -14,6 +14,11 @@ CONT = f"{CACHE}/cont" if FS == 50 else f"{CACHE}/cont{FS}"
 MMAP = _os.environ.get("LB_MMAP") == "1"                          # keep MEG on disk (memmap) instead of RAM
 PRE, POST = [float(x) for x in _os.environ.get("LB_WIN", "1.0,2.0").split(",")]   # context window around onset, seconds (env LB_WIN="pre,post")
 WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset at sample 50
+# Synthetic-signal control (leakage paper, after Jayalath & Parker Jones 2026): LB_NOISE=1 replaces MEG by Gaussian noise
+# indexed by absolute sample, so overlapping windows share content exactly as real MEG does; LB_NOISE=2 draws independent
+# noise per window (only window geometry and valid masks remain). 0 = real MEG.
+NOISE = int(_os.environ.get("LB_NOISE", 0))
+_NB = np.random.default_rng(12345).standard_normal((306, 1 << 17)).astype(np.float16) if NOISE == 1 else None
 GUARD = 1.0; CLIP = 10.0
 
 
@@ -86,7 +91,10 @@ class Words:
             r = int(self.run[idx[j]]); T = self.meg[r].shape[1]
             a, b = max(start[j], 0), min(start[j] + WIN, T)
             if b <= a: continue
-            x[j, :, a - start[j]:b - start[j]] = torch.from_numpy(np.ascontiguousarray(self.meg[r][:, a:b]))
+            if NOISE == 0: seg = np.ascontiguousarray(self.meg[r][:, a:b])
+            elif NOISE == 1: seg = _NB[:, (np.arange(a, b) + r * 7919) % _NB.shape[1]]      # shared noise: overlapping windows see the same samples
+            else: seg = np.random.default_rng().standard_normal((306, b - a)).astype(np.float16)  # independent noise per window
+            x[j, :, a - start[j]:b - start[j]] = torch.from_numpy(seg)
             va, vb = max(lo[j], a), min(hi[j], b)
             if vb > va: valid[j, va - start[j]:vb - start[j]] = True
         return x, valid

@@ -79,3 +79,10 @@ Independent audit of every number in the draft against repo files: ~170 verified
 ## 2026-11-02 16:30 EST — All six jobs done
 Appendix table reflowed (bf63048), checklist updated. PDF: docs/writeups/paper/leakage_paper.pdf, 10 pages, builds clean.
 Open for Rohit (DECIDE items in SUBMISSION_CHECKLIST.md): PNPL courtesy note, consensus analysis (held), "8th place" wording, bioRxiv AI-disclosure vs no-vendor rule, venue order, pushing the scripts. Nothing pushed, posted or submitted.
+
+## 2026-11-03 07:00 EST — Adversarial pass (referee + novelty), noise control started
+Rohit asked: contributive for bioRxiv? Two independent agents: hostile referee and literature check.
+- Referee verdict: do not post as is. Verified: §4.2 "signature" argument self-refuting (our clean Broad 0.722 vs top 0.729); §4.7 SE 0.004 was an estimate, not measured; "private confirmed the robust gain" pair confounded 5 ways; omitted that local prose predicted the prior's private sign (LEDGER T18) — Rec. 4 inverted.
+- Literature: Jayalath & Parker Jones, arXiv 2609.40359 (30 Sep 2026, organisers) already show the timing shortcut on this data via overlapping 3 s windows (synthetic signal ≈ MEG). Our "timing-free" arms use overlapping 3 s windows clipped to the sentence span, so they may still carry timing. Also missing: Elvers et al. 2026 (PNPL 2025 retrospective; day-held-out design), Zhang et al. 2605.24524, Jo et al. 2024, Roelofs already flags non-iid splits.
+- split_null.py (28519ab): Broad prior files gap −0.024..−0.102 vs prior-free −0.009..−0.022 (complete separation, dose-response in κ); Deep no separation.
+- Started scripts/queue_noise_control.sh: LB_NOISE=1 (shared noise, overlap preserved) / =2 (independent) on d0, b, d_rel recipes. src/cont.py gains the LB_NOISE switch (default 0, unchanged behaviour).

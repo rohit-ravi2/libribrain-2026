@@ -34,9 +34,8 @@ fetched 2026-11-02. Items marked DECIDE are Rohit's call.
       The LibriBrain data are CC-BY-NC-4.0 but are not redistributed in the paper, so they do not constrain the
       paper's licence.
 - [ ] Funding: none (state "no external funding"). Competing interests: none.
-- [ ] DECIDE: bioRxiv's FAQ asks authors to disclose use of generative AI tools in the manuscript. This conflicts
-      with the standing rule that no file names an AI tool. Options: a generic disclosure sentence (no vendor named),
-      or none if you judge it does not apply. Not added to the draft.
+- [x] DECIDED (Rohit, 2026-11-03): disclose generative-AI and computational-tool use in the manuscript at submission.
+      Wording with tool names to be confirmed by Rohit, since it is an explicit exception to the standing no-vendor rule.
 - [ ] No identifiable images of people (none in the paper).
 - [ ] Order matters: bioRxiv does not post manuscripts already on another preprint server, so bioRxiv must come
       first if both are used. arXiv's endorsement page does not address prior posting elsewhere; check arXiv's
