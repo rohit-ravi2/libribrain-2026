@@ -92,3 +92,13 @@ Rohit: headline has prior art (2609.40359) → need a new method that beats Simp
 - Installing/running the external SimpleB2T code was refused by the permission check (external code): awaiting Rohit's explicit approval. Their session indexing cannot be mapped to our files without their code.
 - noise1_d0_s0 = 0.272 (chance 0.20; real MEG 0.374): our "timing-free" T5 recipe leaks ~0.07 via window overlap / clipped valid masks (the mask is an input channel).
 - Cheap screen (scripts/queue_clean_screen.sh, behind the noise queue): clean isolated decoder (LB_WIN=0,3, LB_NOCLIP=1, ctx 0), leave-one-day-out, scored by clean_screen.py for base / Sinkhorn / AdaBN / both, balanced top-1 and top-10; noise controls of the same recipe.
+
+## 2026-11-03 08:45 EST — Kaggle late submissions authorised; timing-clean ladder queued
+Rohit authorised Kaggle late submissions to substantiate a methodological gain. Holdout check: every sentence epoch
+has at least 1.018 s after its last word onset and isolated words are 1 s epochs, so a fixed [onset, onset+1 s)
+window fits every row with no boundary clipping (the geometry channel that the noise controls showed leaking: shared
+noise scored 0.256 single-window and 0.272 with context, chance 0.20). Queued `scripts/queue_kaggle_clean.sh`:
+3 seeds per track of the clean isolated decoder + a shared-noise twin per track; CSVs for base, +AdaBN,
++AdaBN+Sinkhorn (T=2 fixed a priori), +Sinkhorn, noise twin. Deltas will be read against split_null.json.
+Caveat for the claim: Kaggle reports top-10 balanced accuracy, not the top-1 of Jayalath & Parker Jones, so the
+Kaggle ladder substantiates the method deltas and the noise-twin floor; the top-1 comparison stays local.
