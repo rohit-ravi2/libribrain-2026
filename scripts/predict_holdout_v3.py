@@ -45,6 +45,7 @@ ap.add_argument("--temporal_base", type=int, default=0, help="1 = subjects witho
 ap.add_argument("--st_steps", type=int, default=0, help="N > 0: self-train each subject's A on its OWN holdout rows toward --st_targets (soft labels)")
 ap.add_argument("--st_targets", default=None, help="submission CSV whose rows are the soft targets (e.g. the SLP + Sinkhorn file)")
 ap.add_argument("--st_lr", type=float, default=3e-4)
+ap.add_argument("--A_from", type=int, default=-1, help="k >= 0: every subject uses subject k's input layer")
 ap.add_argument("--deconv", type=int, default=0, help="1 = regress the generic word-onset response (ridge TRF over all onsets) out of each subject's holdout MEG")
 ap.add_argument("--coral", type=float, default=0.0); ap.add_argument("--ent_steps", type=int, default=0); ap.add_argument("--ent_lr", type=float, default=1e-3)
 a = ap.parse_args(); torch.manual_seed(0); rng = np.random.default_rng(0)
@@ -106,6 +107,7 @@ def cov_of(segs):
 
 
 def subject_A(M, s, segs, Cp_half):
+    if a.A_from >= 0: return M.A[M.sid[a.A_from]]   # one subject's learned input layer for everyone (subject-free synthetic twins)
     A = M.A[M.sid[s]] if s in M.sid else M.Amean
     if s in M.sid or (a.coral == 0 and a.ent_steps == 0): return A
     if a.coral > 0:

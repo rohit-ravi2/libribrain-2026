@@ -148,3 +148,10 @@ Two source runs (sub-0 ses-3 Sherlock1, ses-9 Sherlock3) hold a few hundred inf 
 build turned them into ~3 M non-finite samples. src/deconv.py now zeroes non-finite samples and fits the kernel on data
 clipped at 20x the median |amplitude|; the two runs were rebuilt (0 non-finite). On a clean run the new kernel changes
 the residual by at most 0.08 (data s.d. 26.7, fp16 rounding), so the other 224 runs were kept.
+
+## 2026-11-03 19:50 EST — wasted late submission (degenerate), fixed
+kc_deepmodel_broad_syn3_fake (Deep synthetic twin on the Broad fake holdout, --identA 1) predicted 2 distinct top-1
+words (87% one word): public 0.158, private 0.201, uninformative. The Deep model never trained input layers for
+subjects 1-32, so identity/mean A do not match its learned sensor map. Added --A_from k (every subject uses subject
+k's layer); rerunning with --A_from 0. Rule from here: check the distinct-top-1 diagnostic in the prediction log
+before every submission.
