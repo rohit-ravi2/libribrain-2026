@@ -1,6 +1,8 @@
 #!/bin/bash
 # 306-channel linear probe. Same hard caps. Read budget is 512 MiB, not the whole run.
 # Does not take the scheduler lock. See campaigns/sdr_uncertainty/SCHEDULER_CONTRACT.md.
+# An exhausted earliest-4 cache under decode306_cache is provenance and is not rewritten.
+# Later subject-0 dates continue in decode306_expand_cache while next_action is rerun_this_command.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -41,7 +43,7 @@ if [[ -z "${SDR_PY:-}" ]]; then
 fi
 
 if [[ "${SDR_INSIDE_SCOPE:-}" != "1" ]]; then
-  echo "sdr-uncertainty decode-306: MemoryMax=4G MemorySwapMax=0 CPUQuota=100% TasksMax=16 threads=1 GPU hidden; runtime ceiling is not the science gate; one 512MiB batch" >&2
+  echo "sdr-uncertainty decode-306: MemoryMax=4G MemorySwapMax=0 CPUQuota=100% TasksMax=16 threads=1 GPU hidden; runtime ceiling is not the science gate; one 512MiB batch; frozen decode306_cache is not rewritten" >&2
   exec systemd-run --user --scope --collect \
     -p MemoryMax=4G \
     -p MemorySwapMax=0 \

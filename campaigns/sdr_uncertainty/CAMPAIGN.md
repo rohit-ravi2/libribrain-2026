@@ -55,7 +55,11 @@ The four-sensor `decode-probe` is not a 50-word decoder. `STATUS_CORRECTION.md` 
 cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_decode306.sh
 ```
 
-Each invocation reads one 512 MiB batch and checkpoints normalized 306-by-50 windows. Rerun it while the JSON says `next_action` is `rerun_this_command`. Stop when it says `stop`: either the 50-class gate is met, or the frozen dates have no further runs and the missing words are a limit of those recordings. The 512 MiB figure is the batch size, not the science gate. Memory, swap, one CPU, 16 tasks, one thread, and a hidden GPU still apply. A runtime ceiling is not required. Do not start it while the MICrONS CPU job holds the machine. This session does not launch it.
+Each invocation reads one 512 MiB batch and checkpoints normalized 306-by-50 windows. Rerun it while the JSON says `next_action` is `rerun_this_command`. The 512 MiB figure is the batch size, not the science gate. Memory, swap, one CPU, 16 tasks, one thread, and a hidden GPU still apply. A runtime ceiling is not required. Do not start it while the MICrONS CPU job holds the machine. This session does not launch it.
+
+The earliest four subject-0 dates, 2024-07-31, 2024-08-07, 2024-08-12, and 2024-08-14, were scanned through all 21 runs and stopped as `dataset_limitation`. Their cache, `decode306_cache` batches `batch_0000.npz` through `batch_0006.npz`, stays in place and is not rewritten. The same command then acquires later subject-0 dates in acquisition order, skipping 2024-10-04, into `decode306_expand_cache`. Run order is date then run name. A score is not a sort key. Each new batch records a sha256 before a later launch may append, and a changed frozen-batch hash or a changed expansion fingerprint stops the launch.
+
+A fully scanned date is a held-out day only when that date has at least 3 observations of every vocabulary word. Dates below that remain available as training rows and are not given an accuracy. The 50-class metric is defined only when at least two held-out days exist and each one's train fold also has at least 3 of every class. Until then the JSON carries no balanced accuracy, `fifty_class_metric_defined` is false, and `effect_claimed` is false. `effect_claimed` stays false after the metric is defined as well: a defined contrast is not an effect claim. This does not revive the out-of-day residual proxy, and it does not submit to Hugging Face, Kaggle, or bioRxiv.
 
 The next command, still inside the same caps, is a four-sensor linear probe. It is not run by the residual command.
 

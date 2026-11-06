@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-PROTOCOL_VERSION = "1.3.0"
+PROTOCOL_VERSION = "1.4.0"
 PROTOCOL_NAME = "sdr-uncertainty"
 FEATURE_SET = "frozen_v1_disjoint_channels"
 PRIMARY_ENDPOINT = "mean_heldout_residual_logscore"
@@ -69,6 +69,24 @@ DECODE306_BATCH_READ_BYTES = DECODE306_MAX_READ_BYTES
 DECODE306_FEATURE_CACHE_MAX_BYTES = 2 * 1024 ** 3
 DECODE306_NONOVERLAP_SEC = 1.0
 DECODE306_CACHE_VERSION = "decode306-cache-1"
+# Expansion after the verified earliest-4 exhaustion. Does not retune the class gate or the batch cap.
+# The held-out set is every fully scanned date that itself has 3 of every class. Dates below that
+# stay in the train pool and are not scored. At least two such held-out dates are required so the
+# day-level standard error is defined. Effect claims stay off until that gate is met, and this
+# probe still does not set effect_claimed.
+DECODE306_MIN_HELDOUT_DAYS = 2
+DECODE306_EXPAND_CACHE_VERSION = "decode306-expand-1"
+DECODE306_EXPAND_SELECTION_RULE = "chronological_dates_after_frozen_earliest4_no_score"
+DECODE306_FROZEN_CACHE_DIRNAME = "decode306_cache"
+DECODE306_EXPAND_CACHE_DIRNAME = "decode306_expand_cache"
+DECODE306_VERIFIED_FROZEN_DATES = (
+    "2024-07-31",
+    "2024-08-07",
+    "2024-08-12",
+    "2024-08-14",
+)
+DECODE306_VERIFIED_FROZEN_RUNS = 21
+DECODE306_VERIFIED_FROZEN_BATCH_COUNT = 7
 WINDOW_SAMPLES = 250
 DECODE306_TIME = WINDOW_SAMPLES // DECODE306_POOL
 FS_HZ = 250
@@ -183,6 +201,12 @@ def protocol_document() -> dict:
         "decode306_feature_cache_max_bytes": DECODE306_FEATURE_CACHE_MAX_BYTES,
         "decode306_nonoverlap_sec": DECODE306_NONOVERLAP_SEC,
         "decode306_cache_version": DECODE306_CACHE_VERSION,
+        "decode306_min_heldout_days": DECODE306_MIN_HELDOUT_DAYS,
+        "decode306_expand_cache_version": DECODE306_EXPAND_CACHE_VERSION,
+        "decode306_expand_selection_rule": DECODE306_EXPAND_SELECTION_RULE,
+        "decode306_verified_frozen_dates": list(DECODE306_VERIFIED_FROZEN_DATES),
+        "decode306_verified_frozen_runs": DECODE306_VERIFIED_FROZEN_RUNS,
+        "decode306_verified_frozen_batch_count": DECODE306_VERIFIED_FROZEN_BATCH_COUNT,
         "memory_max_bytes": MEMORY_MAX_BYTES,
         "memory_swap_max_bytes": MEMORY_SWAP_MAX_BYTES,
         "cpu_quota_ratio": CPU_QUOTA_RATIO,
