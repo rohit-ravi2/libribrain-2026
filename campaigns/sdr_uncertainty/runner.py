@@ -373,33 +373,37 @@ def decode306() -> dict:
     data_root = os.environ.get("LIBRIBRAIN_DATA")
     if not data_root:
         raise RuntimeError("blocker: LIBRIBRAIN_DATA is not set")
-    from .decode306 import read_window
-    from .decode306_resume import resume_batch
-    from .protocol import FS_HZ, N_SENSORS, WINDOW_SAMPLES
-    from .stream import open_data_dataset
-    runs, itemsize = _decode306_runs(data_root)
-    if len({row["date"] for row in runs}) < 2:
-        raise RuntimeError("blocker: fewer than two subject-0 dates remain after excluding 2024-10-04")
-    open_handles = {}
-
-    def read_raw(run_index, onset):
-        if run_index not in open_handles:
-            handle, dataset = open_data_dataset(runs[run_index]["h5"])
-            open_handles[run_index] = (handle, dataset)
-        dataset = open_handles[run_index][1]
-        start = int(round(float(onset) * FS_HZ))
-        stop = start + WINDOW_SAMPLES
-        if start < 0 or stop > int(dataset.shape[1]):
-            return None
-        block, _ = read_window(dataset, start, stop, 0, N_SENSORS * WINDOW_SAMPLES * itemsize)
-        return block
-
+    from .decode306_expand import frozen_action, run_expansion
     cache_dir = os.path.join(destination, "decode306_cache")
-    try:
-        record = resume_batch(cache_dir, runs, read_raw, itemsize=itemsize)
-    finally:
-        for handle, _dataset in open_handles.values():
-            handle.close()
+    if frozen_action(cache_dir) == "expand":
+        record = run_expansion(destination, data_root)
+    else:
+        from .decode306 import read_window
+        from .decode306_resume import resume_batch
+        from .protocol import FS_HZ, N_SENSORS, WINDOW_SAMPLES
+        from .stream import open_data_dataset
+        runs, itemsize = _decode306_runs(data_root)
+        if len({row["date"] for row in runs}) < 2:
+            raise RuntimeError("blocker: fewer than two subject-0 dates remain after excluding 2024-10-04")
+        open_handles = {}
+
+        def read_raw(run_index, onset):
+            if run_index not in open_handles:
+                handle, dataset = open_data_dataset(runs[run_index]["h5"])
+                open_handles[run_index] = (handle, dataset)
+            dataset = open_handles[run_index][1]
+            start = int(round(float(onset) * FS_HZ))
+            stop = start + WINDOW_SAMPLES
+            if start < 0 or stop > int(dataset.shape[1]):
+                return None
+            block, _ = read_window(dataset, start, stop, 0, N_SENSORS * WINDOW_SAMPLES * itemsize)
+            return block
+
+        try:
+            record = resume_batch(cache_dir, runs, read_raw, itemsize=itemsize)
+        finally:
+            for handle, _dataset in open_handles.values():
+                handle.close()
     record = _stamp(record, started_perf)
     record["real_meg_scientific_validation"] = False
     record["effect_claimed"] = False

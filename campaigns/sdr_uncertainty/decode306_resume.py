@@ -115,18 +115,37 @@ def _class_matrix(batches: list[dict], n_dates: int) -> np.ndarray:
     return counts
 
 
-def _load_batches(cache_dir: str) -> list[dict]:
+def _batch_names(cache_dir: str) -> list[str]:
+    if not os.path.isdir(cache_dir):
+        return []
+    return sorted(
+        name for name in os.listdir(cache_dir)
+        if name.startswith("batch_") and name.endswith(".npz")
+    )
+
+
+def _load_count_rows(cache_dir: str) -> list[dict]:
+    """Labels and day indices only. Feature blocks stay on disk."""
     rows = []
-    for name in sorted(os.listdir(cache_dir)):
-        if not (name.startswith("batch_") and name.endswith(".npz")):
-            continue
+    for name in _batch_names(cache_dir):
         with np.load(os.path.join(cache_dir, name)) as archive:
             rows.append({
-                "features": archive["features"],
-                "label": archive["label"],
-                "day_index": archive["day_index"],
-                "onset_s": archive["onset_s"],
-                "run_index": archive["run_index"],
+                "label": np.array(archive["label"], copy=True),
+                "day_index": np.array(archive["day_index"], copy=True),
+            })
+    return rows
+
+
+def _load_batches(cache_dir: str) -> list[dict]:
+    rows = []
+    for name in _batch_names(cache_dir):
+        with np.load(os.path.join(cache_dir, name)) as archive:
+            rows.append({
+                "features": np.array(archive["features"], copy=True),
+                "label": np.array(archive["label"], copy=True),
+                "day_index": np.array(archive["day_index"], copy=True),
+                "onset_s": np.array(archive["onset_s"], copy=True),
+                "run_index": np.array(archive["run_index"], copy=True),
             })
     return rows
 
@@ -136,7 +155,7 @@ def inventory(cache_dir: str) -> dict:
     progress = _load_json(os.path.join(cache_dir, "progress.json")) or _empty_progress()
     if manifest is None:
         return {"claim_status": "no_manifest", "effect_claimed": False}
-    batches = _load_batches(cache_dir)
+    batches = _load_count_rows(cache_dir)
     date_index = {date: i for i, date in enumerate(manifest["dates"])}
     counts = _class_matrix(batches, len(manifest["dates"]))
     per_date = []
