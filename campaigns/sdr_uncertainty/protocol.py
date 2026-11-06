@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-PROTOCOL_VERSION = "1.1.0"
+PROTOCOL_VERSION = "1.2.0"
 PROTOCOL_NAME = "sdr-uncertainty"
 FEATURE_SET = "frozen_v1_disjoint_channels"
 PRIMARY_ENDPOINT = "mean_heldout_residual_logscore"
@@ -43,6 +43,16 @@ OOD_MIN_WINDOWS_PER_DAY = 24
 OOD_MAX_READ_BYTES = MAX_READ_BYTES
 OOD_SOFT_DEADLINE_SEC = 540
 OOD_SELECTION_RULE = "earliest_nonexcluded_dates_one_run_each_no_score"
+# Decoding probe. Not a retune of the residual models. 10% is aspirational.
+DECODE_MIN_LABELED_PER_DAY = 20
+DECODE_MIN_DAYS = 3
+DECODE_MIN_CLASSES = 20
+DECODE_TOP_K = 10
+DECODE_WEIGHT_CLIP = (0.5, 1.5)
+DECODE_SHRINK_TOWARD_UNIFORM = 0.75
+DECODE_FRACTIONS = (1.0, 0.5, 0.25, 0.10)
+DECODE_MIN_TRAIN_LABELED = 40
+DECODE_BINS = 4
 WINDOW_SAMPLES = 250
 FS_HZ = 250
 N_SENSORS = 306
@@ -135,6 +145,14 @@ def protocol_document() -> dict:
         "ood_max_read_bytes": OOD_MAX_READ_BYTES,
         "ood_soft_deadline_sec": OOD_SOFT_DEADLINE_SEC,
         "ood_selection_rule": OOD_SELECTION_RULE,
+        "decode_min_labeled_per_day": DECODE_MIN_LABELED_PER_DAY,
+        "decode_min_days": DECODE_MIN_DAYS,
+        "decode_min_classes": DECODE_MIN_CLASSES,
+        "decode_top_k": DECODE_TOP_K,
+        "decode_weight_clip": list(DECODE_WEIGHT_CLIP),
+        "decode_shrink_toward_uniform": DECODE_SHRINK_TOWARD_UNIFORM,
+        "decode_fractions": list(DECODE_FRACTIONS),
+        "decode_min_train_labeled": DECODE_MIN_TRAIN_LABELED,
         "memory_max_bytes": MEMORY_MAX_BYTES,
         "memory_swap_max_bytes": MEMORY_SWAP_MAX_BYTES,
         "cpu_quota_ratio": CPU_QUOTA_RATIO,

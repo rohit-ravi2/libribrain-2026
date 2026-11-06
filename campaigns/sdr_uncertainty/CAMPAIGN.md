@@ -47,6 +47,14 @@ cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_out_of_day.s
 
 `~/research/empirical_scheduler/acquire_lock.sh` and `release_lock.sh` were not available here, so this command does not take that lock. The coordinator's wrapper contract is `SCHEDULER_CONTRACT.md`.
 
+The finished residual run is a proxy score, not a decoding result. `AUDIT.md` says what the four channel means are, why the held-out logscore is not a word likelihood, and why a contrast of about -0.099 with SE about 0.42 is not evidence. The completion flag is not evidence either.
+
+The next command, still inside the same caps, is a four-sensor linear probe. It is not run by the residual command.
+
+```bash
+cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_decode_probe.sh
+```
+
 ## What is not run
 
 Ladder, in order, each started by a person:

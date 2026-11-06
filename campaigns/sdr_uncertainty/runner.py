@@ -223,6 +223,89 @@ def out_of_day() -> dict:
     return record
 
 
+def decode_probe() -> dict:
+    started_perf = time.perf_counter()
+    cgroup_info = _live_preflight()
+    out = os.environ.get("LIBRIBRAIN_SDR_OUT")
+    if not out:
+        raise RuntimeError("blocker: LIBRIBRAIN_SDR_OUT is not set")
+    destination = assert_output_dir(out, synthetic=False)
+    data_root = os.environ.get("LIBRIBRAIN_DATA")
+    if not data_root:
+        raise RuntimeError("blocker: LIBRIBRAIN_DATA is not set")
+    import numpy as np
+    from .decode import collect_decode_windows, evaluate_decoding
+    from .protocol import OOD_MAX_DAYS, OOD_MAX_READ_BYTES, OOD_MAX_WINDOWS_PER_DAY, VOCAB
+    from .stream import discover_out_of_day_runs
+    specs = discover_out_of_day_runs(data_root, max_days=OOD_MAX_DAYS)
+    parts = []
+    bytes_used = 0
+    if len(specs) < 2:
+        record = {
+            "claim_status": "decoding_inadequate",
+            "real_meg_scientific_validation": False,
+            "effect_claimed": False,
+            "endpoint_is_decoding": False,
+            "adequate_for_competition_claim": False,
+            "reason": "Fewer than two eligible days. No decoding score is reported.",
+            "dates": [spec["date"] for spec in specs],
+            "frozen_eval": None,
+            "meg_opened": False,
+        }
+        record = _stamp(record, started_perf)
+        record["real_meg_scientific_validation"] = False
+        record["effect_claimed"] = False
+        record["cgroup"] = cgroup_info
+        record["bytes_read"] = 0
+        record["caps_relaxed"] = False
+        path = os.path.join(destination, "sdr_uncertainty_decode_probe.json")
+        _write(path, record)
+        record["output_path"] = path
+        return record
+    for spec in specs:
+        remaining = OOD_MAX_READ_BYTES - bytes_used
+        if remaining <= 0:
+            break
+        text, rows, refused, dataset, closer = _open_decode(spec)
+        try:
+            part = collect_decode_windows(dataset, rows, VOCAB, max_windows=OOD_MAX_WINDOWS_PER_DAY, max_bytes=remaining)
+        finally:
+            closer()
+        part["day"] = np.full(part["n_windows"], len(parts), dtype=np.int64)
+        part["date"] = spec["date"]
+        part["fields_seen_not_used"] = refused
+        part["events_bytes"] = len(text.encode())
+        parts.append(part)
+        bytes_used += int(part["bytes_read"])
+    record = evaluate_decoding({
+            "y": np.concatenate([part["y"] for part in parts]),
+            "state": np.concatenate([part["state"] for part in parts]),
+            "label": np.concatenate([part["label"] for part in parts]),
+            "day": np.concatenate([part["day"] for part in parts]),
+            "time_index": np.concatenate([part["time_index"] for part in parts]),
+            "dates": [part["date"] for part in parts],
+        })
+    record = _stamp(record, started_perf)
+    record["real_meg_scientific_validation"] = False
+    record["effect_claimed"] = False
+    record["cgroup"] = {**cgroup_info, "local_cgroup_verified": bool(cgroup_info.get("local_cgroup_verified"))}
+    record["bytes_read"] = int(bytes_used) if parts else 0
+    record["caps_relaxed"] = False
+    path = os.path.join(destination, "sdr_uncertainty_decode_probe.json")
+    _write(path, record)
+    record["output_path"] = path
+    return record
+
+
+def _open_decode(spec):
+    from .stream import open_data_dataset, parse_events
+    with open(spec["events"], encoding="utf-8") as handle:
+        text = handle.read()
+    rows, refused = parse_events(text)
+    handle, dataset = open_data_dataset(spec["h5"])
+    return text, rows, refused, dataset, handle.close
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     command = argv[0] if argv else ""
@@ -259,6 +342,18 @@ def main(argv: list[str] | None = None) -> int:
                 "banner": "Local smoke only. Not a cross-day result and not scientific validation.",
             }))
             return 0
+        if command == "decode-probe":
+            result = decode_probe()
+            print(json.dumps({
+                "output_path": result["output_path"],
+                "claim_status": result["claim_status"],
+                "real_meg_scientific_validation": False,
+                "effect_claimed": False,
+                "endpoint_is_decoding": result.get("endpoint_is_decoding"),
+                "adequate_for_competition_claim": False,
+                "banner": "Decode probe only. Not a competition-decoder result and not evidence that weighting helps.",
+            }))
+            return 0
         if command == "out-of-day":
             result = out_of_day()
             science = bool(result["real_meg_scientific_validation"])
@@ -280,7 +375,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print(
             "usage: python -m campaigns.sdr_uncertainty.runner "
-            "{verify-cgroup|smoke-synthetic|smoke-local|out-of-day}",
+            "{verify-cgroup|smoke-synthetic|smoke-local|out-of-day|decode-probe}",
             file=sys.stderr,
         )
         return 2

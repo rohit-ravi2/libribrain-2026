@@ -184,8 +184,10 @@ class ClaimTests(unittest.TestCase):
             selection_rule=OOD_SELECTION_RULE,
         )
         science = classify_out_of_day(**powered)
-        self.assertTrue(science["real_meg_scientific_validation"])
-        self.assertEqual(science["claim_status"], "out_of_day_replication")
+        self.assertFalse(science["real_meg_scientific_validation"])
+        self.assertTrue(science["residual_protocol_completed"])
+        self.assertFalse(science["endpoint_is_decoding"])
+        self.assertEqual(science["claim_status"], "residual_proxy_completed")
         self.assertFalse(science["neural_inference_allowed"])
 
         synthetic = classify_out_of_day(**{**powered, "regime": "synthetic_dgp"})
@@ -219,7 +221,9 @@ class ClaimTests(unittest.TestCase):
             cgroup_live=True,
             selection_rule=OOD_SELECTION_RULE,
         )
-        self.assertTrue(live["real_meg_scientific_validation"])
+        self.assertFalse(live["real_meg_scientific_validation"])
+        self.assertTrue(live["residual_protocol_completed"])
+        self.assertFalse(live["audit"]["endpoint_is_decoding"])
         self.assertFalse(live["next_rung"]["executed"])
         self.assertEqual(live["uncertainty"]["models"]["M0_fixed_gaussian"]["n_days"], 3)
 

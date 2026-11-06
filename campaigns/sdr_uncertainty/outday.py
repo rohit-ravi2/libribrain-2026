@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 
+from .audit import residual_audit_record
 from .crossfit import run_crossfit
 from .metrics import day_group_uncertainty
 from .protocol import (
@@ -34,6 +35,9 @@ def classify_out_of_day(*, regime: str, n_days: int, windows_per_day: list[int],
     base = {
         "real_meg_scientific_validation": False,
         "neural_inference_allowed": False,
+        "endpoint_is_decoding": False,
+        "science_flag_is_not_evidence": True,
+        "residual_protocol_completed": False,
         "rung": LADDER[1],
         "rung_completed_as_science": False,
     }
@@ -64,10 +68,15 @@ def classify_out_of_day(*, regime: str, n_days: int, windows_per_day: list[int],
             "The caps were not raised."
         )
         return base
-    base["real_meg_scientific_validation"] = True
-    base["rung_completed_as_science"] = True
-    base["claim_status"] = "out_of_day_replication"
-    base["reason"] = "Pre-registered multi-day cross-fit finished inside the original caps."
+    # Completing the window count is not evidence. The endpoint is a residual proxy.
+    base["residual_protocol_completed"] = True
+    base["endpoint_is_decoding"] = False
+    base["science_flag_is_not_evidence"] = True
+    base["claim_status"] = "residual_proxy_completed"
+    base["reason"] = (
+        "The cross-fit finished inside the caps. The score is a 4-channel window-mean "
+        "residual logscore, not word-decoding accuracy, and the completion flag is not evidence."
+    )
     return base
 
 
@@ -87,16 +96,31 @@ def uncertainty_report(fitted: dict) -> dict:
         deltas.append(
             fold["models"]["M2_state_variance"]["logscore"] - fold["models"]["M0_fixed_gaussian"]["logscore"]
         )
+    by_day = day_group_uncertainty(deltas)
     return {
         "primary_endpoint": PRIMARY_ENDPOINT,
         "primary_contrast": PRIMARY_CONTRAST,
-        "primary_contrast_by_day": day_group_uncertainty(deltas),
+        "primary_contrast_by_day": by_day,
         "models": per_model,
         "best_day_index": None,
         "selected_model": None,
         "day_selected_by_score": False,
         "model_selected_by_score": False,
         "confirmation_quarters_used": False,
+        "contrast_reading": contrast_reading(by_day["mean"], by_day["se"]),
+    }
+
+
+def contrast_reading(estimate, se) -> dict:
+    """A finished protocol is not a nonzero effect. Two SE is a reading rule, not a second search."""
+    distinguishable = False
+    if estimate is not None and se is not None and se > 0:
+        distinguishable = abs(float(estimate)) > 2.0 * float(se)
+    return {
+        "estimate": estimate,
+        "se": se,
+        "distinguishable_from_zero": distinguishable,
+        "science_flag_is_not_evidence": True,
     }
 
 
@@ -114,6 +138,7 @@ def _empty_record(status: dict, *, dates, windows, timed_out: bool, bytes_read: 
         "uncertainty": None,
         "next_rung": next_rung(LADDER[1]),
         "decoder_intervention_executed": False,
+        "audit": residual_audit_record(),
     }
 
 
@@ -153,6 +178,8 @@ def evaluate_out_of_day(parts: list[dict], *, regime: str, timed_out: bool, cgro
     fitted["uncertainty"] = uncertainty_report(fitted)
     fitted["next_rung"] = next_rung(LADDER[1])
     fitted["evidence_class"] = batch["evidence_class"]
+    fitted["audit"] = residual_audit_record()
+    fitted["real_meg_scientific_validation"] = False
     return fitted
 
 
