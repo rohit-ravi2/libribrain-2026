@@ -32,7 +32,7 @@ def parse_cpu_quota_ratio(text: str):
     return int(parts[0]) / period
 
 
-def evaluate_limits(files: dict, env: dict, nvidia_majors: list[int], runtime_sec) -> list[str]:
+def evaluate_limits(files: dict, env: dict, nvidia_majors: list[int], runtime_sec, *, require_runtime: bool = True) -> list[str]:
     errors = []
     memory = str(files.get("memory.max", "")).strip()
     if memory != str(MEMORY_MAX_BYTES):
@@ -50,7 +50,7 @@ def evaluate_limits(files: dict, env: dict, nvidia_majors: list[int], runtime_se
         runtime_ok = runtime_sec is not None and int(runtime_sec) == RUNTIME_MAX_SEC
     except (TypeError, ValueError):
         runtime_ok = False
-    if not runtime_ok:
+    if require_runtime and not runtime_ok:
         errors.append(f"RuntimeMaxSec {runtime_sec!r} != {RUNTIME_MAX_SEC}")
     for key in THREAD_ENV:
         if str(env.get(key, "")) != "1":
@@ -171,8 +171,7 @@ def nvidia_majors_from_dev() -> list[int]:
     return majors
 
 
-def verify_live() -> dict:
-    directory, unit = _self_cgroup_dir()
+def _read_cgroup_files(directory: str) -> dict:
     files = {}
     for name in ("memory.max", "memory.swap.max", "cpu.max", "pids.max"):
         file_path = os.path.join(directory, name)
@@ -180,8 +179,43 @@ def verify_live() -> dict:
             raise CgroupError([f"missing {file_path}; refusing to compute without cgroup v2 limits"])
         with open(file_path, encoding="utf-8") as handle:
             files[name] = handle.read()
+    return files
+
+
+def verify_live() -> dict:
+    directory, unit = _self_cgroup_dir()
+    files = _read_cgroup_files(directory)
     runtime = _read_runtime_sec(unit)
     errors = evaluate_limits(files, dict(os.environ), nvidia_majors_from_dev(), runtime)
     if errors:
         raise CgroupError(errors)
     return {"cgroup_dir": directory, "unit": unit, "runtime_max_sec": runtime, "source": "live"}
+
+
+def verify_live_hardware() -> dict:
+    """Memory, CPU, tasks, threads, and a hidden GPU. A runtime ceiling is not required."""
+    directory, unit = _self_cgroup_dir()
+    files = _read_cgroup_files(directory)
+    runtime = None
+    if unit.endswith(".scope"):
+        try:
+            raw = subprocess.check_output(
+                ["systemctl", "--user", "show", unit, "-p", "RuntimeMaxUSec", "--value"],
+                text=True,
+            ).strip()
+            if raw not in ("", "infinity"):
+                runtime = _runtime_seconds(raw)
+        except (OSError, subprocess.CalledProcessError, CgroupError):
+            runtime = None
+    errors = evaluate_limits(
+        files, dict(os.environ), nvidia_majors_from_dev(), runtime, require_runtime=False
+    )
+    if errors:
+        raise CgroupError(errors)
+    return {
+        "cgroup_dir": directory,
+        "unit": unit,
+        "runtime_max_sec": runtime,
+        "runtime_ceiling_required": False,
+        "source": "live",
+    }

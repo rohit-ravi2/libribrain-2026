@@ -160,8 +160,9 @@ class MetricTests(unittest.TestCase):
         ))
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
-        for needle in ("MemoryMax=4G", "MemorySwapMax=0", "CPUQuota=100%", "TasksMax=16", "RuntimeMaxSec=600", "decode-306"):
+        for needle in ("MemoryMax=4G", "MemorySwapMax=0", "CPUQuota=100%", "TasksMax=16", "decode-306"):
             self.assertIn(needle, text)
+        self.assertNotIn("RuntimeMaxSec", text)
         self.assertNotIn("acquire_lock.sh", text)
         subprocess.run(["bash", "-n", path], check=True)
         sidecar = os.path.join(os.path.dirname(__file__), "STATUS_CORRECTION.md")

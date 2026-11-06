@@ -65,6 +65,10 @@ DECODE306_COV_SHRINK = 0.5
 DECODE306_WEIGHT_CLIP = (0.5, 1.5)
 DECODE306_WEIGHT_SHRINK = 0.75
 DECODE306_PLANNED_ITEMSIZE = 4
+DECODE306_BATCH_READ_BYTES = DECODE306_MAX_READ_BYTES
+DECODE306_FEATURE_CACHE_MAX_BYTES = 2 * 1024 ** 3
+DECODE306_NONOVERLAP_SEC = 1.0
+DECODE306_CACHE_VERSION = "decode306-cache-1"
 WINDOW_SAMPLES = 250
 DECODE306_TIME = WINDOW_SAMPLES // DECODE306_POOL
 FS_HZ = 250
@@ -175,6 +179,10 @@ def protocol_document() -> dict:
         "decode306_n_classes": DECODE306_N_CLASSES,
         "decode306_cov_shrink": DECODE306_COV_SHRINK,
         "decode306_planned_itemsize": DECODE306_PLANNED_ITEMSIZE,
+        "decode306_batch_read_bytes": DECODE306_BATCH_READ_BYTES,
+        "decode306_feature_cache_max_bytes": DECODE306_FEATURE_CACHE_MAX_BYTES,
+        "decode306_nonoverlap_sec": DECODE306_NONOVERLAP_SEC,
+        "decode306_cache_version": DECODE306_CACHE_VERSION,
         "memory_max_bytes": MEMORY_MAX_BYTES,
         "memory_swap_max_bytes": MEMORY_SWAP_MAX_BYTES,
         "cpu_quota_ratio": CPU_QUOTA_RATIO,

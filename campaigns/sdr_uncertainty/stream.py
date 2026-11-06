@@ -202,8 +202,8 @@ def _h5_base(path: str) -> str:
     return os.path.basename(path).split("_proc")[0]
 
 
-def _eligible_runs(data_root: str) -> list[dict]:
-    """One run per acquisition date, earliest dates first, first run name on that date.
+def list_subject0_runs(data_root: str) -> list[dict]:
+    """Every eligible sub-0 run, sorted by date then run name. Does not collapse a date to one run.
 
     Presence of an h5 path and an events file is required. Residuals and scores are not read.
     The excluded shared day is omitted here, not replaced by a later score-based choice.
@@ -238,19 +238,24 @@ def _eligible_runs(data_root: str) -> list[dict]:
                     continue
                 dated.append((date, base, h5_path, events))
     dated.sort()
+    return [{
+        "date": date,
+        "base": base,
+        "h5": h5_path,
+        "events": events,
+        "excluded_date": EXCLUDED_SMOKE_DATE,
+    } for date, base, h5_path, events in dated]
+
+
+def _eligible_runs(data_root: str) -> list[dict]:
+    """One run per date: the first name in chronological order. Smoke and the first out-of-day pass use this."""
     chosen = []
     seen = set()
-    for date, base, h5_path, events in dated:
-        if date in seen:
+    for spec in list_subject0_runs(data_root):
+        if spec["date"] in seen:
             continue
-        seen.add(date)
-        chosen.append({
-            "date": date,
-            "base": base,
-            "h5": h5_path,
-            "events": events,
-            "excluded_date": EXCLUDED_SMOKE_DATE,
-        })
+        seen.add(spec["date"])
+        chosen.append(spec)
     return chosen
 
 

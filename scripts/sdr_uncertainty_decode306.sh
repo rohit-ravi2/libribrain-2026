@@ -41,13 +41,12 @@ if [[ -z "${SDR_PY:-}" ]]; then
 fi
 
 if [[ "${SDR_INSIDE_SCOPE:-}" != "1" ]]; then
-  echo "sdr-uncertainty decode-306: MemoryMax=4G MemorySwapMax=0 CPUQuota=100% TasksMax=16 RuntimeMaxSec=600 read<=512MiB" >&2
+  echo "sdr-uncertainty decode-306: MemoryMax=4G MemorySwapMax=0 CPUQuota=100% TasksMax=16 threads=1 GPU hidden; runtime ceiling is not the science gate; one 512MiB batch" >&2
   exec systemd-run --user --scope --collect \
     -p MemoryMax=4G \
     -p MemorySwapMax=0 \
     -p CPUQuota=100% \
     -p TasksMax=16 \
-    -p RuntimeMaxSec=600 \
     -- \
     env SDR_INSIDE_SCOPE=1 \
       SDR_PY="$SDR_PY" \

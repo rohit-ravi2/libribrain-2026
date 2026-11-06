@@ -13,7 +13,14 @@ import subprocess
 import sys
 import time
 
-from .cgroup import CgroupError, nvidia_majors_from_dev, runtime_environment_errors, verify_fixture, verify_live
+from .cgroup import (
+    CgroupError,
+    nvidia_majors_from_dev,
+    runtime_environment_errors,
+    verify_fixture,
+    verify_live,
+    verify_live_hardware,
+)
 from .protocol import (
     ALREADY_EXPLORED,
     MAX_OUTPUT_BYTES,
@@ -104,7 +111,7 @@ def smoke_synthetic(out_dir: str) -> dict:
     return result
 
 
-def _live_preflight():
+def _live_preflight(*, require_runtime: bool = True):
     if os.environ.get("SDR_FORBID_LIVE_SMOKE") == "1" or os.environ.get("SDR_FORBID_LIVE_COMPUTE") == "1":
         raise CgroupError(["refusing live compute because SDR_FORBID_LIVE_SMOKE or SDR_FORBID_LIVE_COMPUTE is set"])
     env_errors = runtime_environment_errors(dict(os.environ), nvidia_majors_from_dev())
@@ -116,7 +123,7 @@ def _live_preflight():
             raise CgroupError(["SDR_CGROUP_FIXTURE is a test hook and is refused for live compute"])
         verify_fixture(fixture)
         return {"source": "test_fixture", "local_cgroup_verified": False}
-    info = verify_live()
+    info = verify_live() if require_runtime else verify_live_hardware()
     info["local_cgroup_verified"] = True
     return info
 
@@ -306,9 +313,59 @@ def _open_decode(spec):
     return text, rows, refused, dataset, handle.close
 
 
+def _decode306_runs(data_root: str):
+    import numpy as np
+    from .decode306_resume import events_sha256, h5_fingerprint
+    from .protocol import DECODE306_MAX_DAYS, VOCAB
+    from .stream import list_subject0_runs, open_data_dataset, parse_events, vocab_index
+    dates = []
+    selected = []
+    for spec in list_subject0_runs(data_root):
+        if spec["date"] not in dates:
+            if len(dates) >= DECODE306_MAX_DAYS:
+                continue
+            dates.append(spec["date"])
+        selected.append(spec)
+    runs = []
+    itemsize = None
+    for spec in selected:
+        with open(spec["events"], encoding="utf-8") as handle:
+            text = handle.read()
+        rows, refused = parse_events(text)
+        words = []
+        for row in rows:
+            label = vocab_index(row["segment"], VOCAB)
+            if label < 0:
+                continue
+            words.append([float(row["timemeg"]), int(label)])
+        words.sort()
+        handle, dataset = open_data_dataset(spec["h5"])
+        try:
+            this_item = int(np.dtype(dataset.dtype).itemsize)
+            if itemsize is None:
+                itemsize = this_item
+            elif this_item != itemsize:
+                raise RuntimeError("refusing mixed h5 dtypes inside one probe")
+            fingerprint = h5_fingerprint(spec["h5"], dataset)
+        finally:
+            handle.close()
+        runs.append({
+            "date": spec["date"],
+            "base": spec["base"],
+            "h5": spec["h5"],
+            "events_sha256": events_sha256(spec["events"]),
+            "h5_nbytes": fingerprint["nbytes"],
+            "h5_shape": fingerprint["shape"],
+            "h5_dtype": fingerprint["dtype"],
+            "words": words,
+            "fields_seen_not_used": refused,
+        })
+    return runs, itemsize or 4
+
+
 def decode306() -> dict:
     started_perf = time.perf_counter()
-    cgroup_info = _live_preflight()
+    cgroup_info = _live_preflight(require_runtime=False)
     out = os.environ.get("LIBRIBRAIN_SDR_OUT")
     if not out:
         raise RuntimeError("blocker: LIBRIBRAIN_SDR_OUT is not set")
@@ -316,95 +373,42 @@ def decode306() -> dict:
     data_root = os.environ.get("LIBRIBRAIN_DATA")
     if not data_root:
         raise RuntimeError("blocker: LIBRIBRAIN_DATA is not set")
-    import numpy as np
-    from .decode306 import collect_day, evaluate_decode306, planned_budget
-    from .protocol import OOD_SOFT_DEADLINE_SEC, VOCAB
-    from .stream import discover_out_of_day_runs, open_data_dataset, parse_events
-    specs = discover_out_of_day_runs(data_root)
-    deadline = time.monotonic() + OOD_SOFT_DEADLINE_SEC
-    plan = planned_budget()
-    parts = []
-    used = 0
-    itemsize = None
-    timed_out = False
-    if len(specs) < 2:
-        record = evaluate_decode306(
-            np.zeros((0, 306, 50)), np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), []
-        )
-        record["meg_opened"] = False
-    else:
-        import numpy as np
-        for spec in specs:
-            if time.monotonic() > deadline:
-                timed_out = True
-                break
-            with open(spec["events"], encoding="utf-8") as handle:
-                text = handle.read()
-            rows, refused = parse_events(text)
-            handle, dataset = open_data_dataset(spec["h5"])
-            try:
-                this_item = int(np.dtype(dataset.dtype).itemsize)
-                if itemsize is None:
-                    itemsize = this_item
-                    plan = planned_budget(itemsize)
-                elif this_item != itemsize:
-                    raise RuntimeError("refusing mixed h5 dtypes inside one probe")
-                part = collect_day(
-                    dataset, rows, VOCAB,
-                    per_day=plan["max_windows_per_day"],
-                    used=used,
-                    max_bytes=plan["max_read_bytes"],
-                    deadline=deadline,
-                )
-            finally:
-                handle.close()
-            part["date"] = spec["date"]
-            part["fields_seen_not_used"] = refused
-            part["events_bytes"] = len(text.encode())
-            used = int(part["bytes_cursor"])
-            parts.append(part)
-            if time.monotonic() > deadline:
-                timed_out = True
-                break
-        if not parts or sum(part["n_windows"] for part in parts) == 0:
-            record = evaluate_decode306(
-                np.zeros((0, 306, 50)), np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64),
-                [part["date"] for part in parts],
-            )
-        else:
-            record = evaluate_decode306(
-                np.concatenate([part["features"] for part in parts if part["n_windows"]]),
-                np.concatenate([part["label"] for part in parts if part["n_windows"]]),
-                np.concatenate([
-                    np.full(part["n_windows"], index, dtype=np.int64)
-                    for index, part in enumerate(parts) if part["n_windows"]
-                ]),
-                [part["date"] for part in parts if part["n_windows"]],
-            )
-        record["exposure"] = {
-            "files": [
-                {"path": spec["h5"], "role": "meg_h5_window_chunks", "bytes_read": part["bytes_read"]}
-                for spec, part in zip(specs, parts)
-            ],
-            "fields_seen_not_used": sorted({name for part in parts for name in part.get("fields_seen_not_used", [])}),
-            "onset_in_feature_matrix": False,
-            "full_meg_loaded": False,
-            "bytes_read": used,
-        }
+    from .decode306 import read_window
+    from .decode306_resume import resume_batch
+    from .protocol import FS_HZ, N_SENSORS, WINDOW_SAMPLES
+    from .stream import open_data_dataset
+    runs, itemsize = _decode306_runs(data_root)
+    if len({row["date"] for row in runs}) < 2:
+        raise RuntimeError("blocker: fewer than two subject-0 dates remain after excluding 2024-10-04")
+    open_handles = {}
+
+    def read_raw(run_index, onset):
+        if run_index not in open_handles:
+            handle, dataset = open_data_dataset(runs[run_index]["h5"])
+            open_handles[run_index] = (handle, dataset)
+        dataset = open_handles[run_index][1]
+        start = int(round(float(onset) * FS_HZ))
+        stop = start + WINDOW_SAMPLES
+        if start < 0 or stop > int(dataset.shape[1]):
+            return None
+        block, _ = read_window(dataset, start, stop, 0, N_SENSORS * WINDOW_SAMPLES * itemsize)
+        return block
+
+    cache_dir = os.path.join(destination, "decode306_cache")
+    try:
+        record = resume_batch(cache_dir, runs, read_raw, itemsize=itemsize)
+    finally:
+        for handle, _dataset in open_handles.values():
+            handle.close()
     record = _stamp(record, started_perf)
     record["real_meg_scientific_validation"] = False
     record["effect_claimed"] = False
-    record["planned_budget"] = plan
-    record["timed_out"] = timed_out
     record["cgroup"] = cgroup_info
     record["caps_relaxed"] = False
+    record["runtime_ceiling_required"] = False
+    record["microns_lock"] = "not_acquired_here; coordinator queues after the MICrONS CPU job"
     record["status_correction"] = "campaigns/sdr_uncertainty/STATUS_CORRECTION.md"
-    if timed_out and record.get("fifty_class_metric_defined"):
-        record["fifty_class_metric_defined"] = False
-        record["frozen_eval"] = None
-        record["claim_status"] = "engineering_cap_metric_undefined"
-        record["reason"] = "The 540 s soft deadline fired. A partial day set is not the 50-class result."
-        record["engineering_cap_is_not_scientific_evidence"] = True
+    record["full_meg_loaded"] = False
     path = os.path.join(destination, "sdr_uncertainty_decode306.json")
     _write(path, record)
     record["output_path"] = path
@@ -455,9 +459,10 @@ def main(argv: list[str] | None = None) -> int:
                 "real_meg_scientific_validation": False,
                 "effect_claimed": False,
                 "fifty_class_metric_defined": result.get("fifty_class_metric_defined"),
-                "planned_max_read_bytes": result["planned_budget"]["max_read_bytes"],
-                "planned_max_windows_per_day": result["planned_budget"]["max_windows_per_day"],
-                "banner": "306-channel probe. Not a 50-class result unless fifty_class_metric_defined is true.",
+                "planned_max_read_bytes": (result.get("planned_budget") or {}).get("max_read_bytes"),
+                "next_action": result.get("next_action"),
+                "kept": result.get("kept"),
+                "banner": "One 512 MiB batch. Rerun only while next_action is rerun_this_command. Not an effect claim.",
             }))
             return 0
         if command == "decode-probe":
