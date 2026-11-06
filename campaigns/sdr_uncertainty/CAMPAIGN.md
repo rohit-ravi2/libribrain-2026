@@ -49,6 +49,12 @@ cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_out_of_day.s
 
 The finished residual run is a proxy score, not a decoding result. `AUDIT.md` says what the four channel means are, why the held-out logscore is not a word likelihood, and why a contrast of about -0.099 with SE about 0.42 is not evidence. The completion flag is not evidence either.
 
+The four-sensor `decode-probe` is not a 50-word decoder. `STATUS_CORRECTION.md` records that, including the local run with 27, 20, 20, and 28 labels per day. The 306-channel command below keeps the same hard caps and a separate 512 MiB read budget.
+
+```bash
+cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_decode306.sh
+```
+
 The next command, still inside the same caps, is a four-sensor linear probe. It is not run by the residual command.
 
 ```bash
@@ -60,7 +66,7 @@ cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_decode_probe
 Ladder, in order, each started by a person:
 
 1. Residual prediction on one training-day group (the local smoke below). Plumbing, already exercised locally.
-2. Out-of-day replication (the command above). This is the first scientific rung, and only a finished live run is a result.
+2. Out-of-day residual proxy (the command above). Finishing it is not a decoding result. See `STATUS_CORRECTION.md`.
 3. Subject transfer, if a later revision supports it.
 4. Structured-noise training intervention.
 5. Matched-budget learning curves at 100, 50, 25, and 10 percent of labeled minutes. The target is fixed before those ratios. The 10 percent budget is aspirational.

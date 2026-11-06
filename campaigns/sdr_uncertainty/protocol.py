@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-PROTOCOL_VERSION = "1.2.0"
+PROTOCOL_VERSION = "1.3.0"
 PROTOCOL_NAME = "sdr-uncertainty"
 FEATURE_SET = "frozen_v1_disjoint_channels"
 PRIMARY_ENDPOINT = "mean_heldout_residual_logscore"
@@ -53,7 +53,20 @@ DECODE_SHRINK_TOWARD_UNIFORM = 0.75
 DECODE_FRACTIONS = (1.0, 0.5, 0.25, 0.10)
 DECODE_MIN_TRAIN_LABELED = 40
 DECODE_BINS = 4
+# 306-channel probe. Explicit read budget inside the 4 GiB / 600 s caps. Not a lowered class gate.
+DECODE306_MAX_READ_BYTES = 512 * 1024 * 1024
+DECODE306_MAX_DAYS = 4
+DECODE306_CHUNK_CHANNELS = 32
+DECODE306_POOL = 5
+DECODE306_MIN_PER_CLASS = 3
+DECODE306_N_CLASSES = 50
+DECODE306_TOP_K = 10
+DECODE306_COV_SHRINK = 0.5
+DECODE306_WEIGHT_CLIP = (0.5, 1.5)
+DECODE306_WEIGHT_SHRINK = 0.75
+DECODE306_PLANNED_ITEMSIZE = 4
 WINDOW_SAMPLES = 250
+DECODE306_TIME = WINDOW_SAMPLES // DECODE306_POOL
 FS_HZ = 250
 N_SENSORS = 306
 TARGET_CHANNELS = (0, 3, 6, 9)
@@ -153,6 +166,15 @@ def protocol_document() -> dict:
         "decode_shrink_toward_uniform": DECODE_SHRINK_TOWARD_UNIFORM,
         "decode_fractions": list(DECODE_FRACTIONS),
         "decode_min_train_labeled": DECODE_MIN_TRAIN_LABELED,
+        "decode306_max_read_bytes": DECODE306_MAX_READ_BYTES,
+        "decode306_max_days": DECODE306_MAX_DAYS,
+        "decode306_chunk_channels": DECODE306_CHUNK_CHANNELS,
+        "decode306_pool": DECODE306_POOL,
+        "decode306_time": DECODE306_TIME,
+        "decode306_min_per_class": DECODE306_MIN_PER_CLASS,
+        "decode306_n_classes": DECODE306_N_CLASSES,
+        "decode306_cov_shrink": DECODE306_COV_SHRINK,
+        "decode306_planned_itemsize": DECODE306_PLANNED_ITEMSIZE,
         "memory_max_bytes": MEMORY_MAX_BYTES,
         "memory_swap_max_bytes": MEMORY_SWAP_MAX_BYTES,
         "cpu_quota_ratio": CPU_QUOTA_RATIO,

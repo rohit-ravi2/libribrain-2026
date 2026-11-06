@@ -306,6 +306,111 @@ def _open_decode(spec):
     return text, rows, refused, dataset, handle.close
 
 
+def decode306() -> dict:
+    started_perf = time.perf_counter()
+    cgroup_info = _live_preflight()
+    out = os.environ.get("LIBRIBRAIN_SDR_OUT")
+    if not out:
+        raise RuntimeError("blocker: LIBRIBRAIN_SDR_OUT is not set")
+    destination = assert_output_dir(out, synthetic=False)
+    data_root = os.environ.get("LIBRIBRAIN_DATA")
+    if not data_root:
+        raise RuntimeError("blocker: LIBRIBRAIN_DATA is not set")
+    import numpy as np
+    from .decode306 import collect_day, evaluate_decode306, planned_budget
+    from .protocol import OOD_SOFT_DEADLINE_SEC, VOCAB
+    from .stream import discover_out_of_day_runs, open_data_dataset, parse_events
+    specs = discover_out_of_day_runs(data_root)
+    deadline = time.monotonic() + OOD_SOFT_DEADLINE_SEC
+    plan = planned_budget()
+    parts = []
+    used = 0
+    itemsize = None
+    timed_out = False
+    if len(specs) < 2:
+        record = evaluate_decode306(
+            np.zeros((0, 306, 50)), np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64), []
+        )
+        record["meg_opened"] = False
+    else:
+        import numpy as np
+        for spec in specs:
+            if time.monotonic() > deadline:
+                timed_out = True
+                break
+            with open(spec["events"], encoding="utf-8") as handle:
+                text = handle.read()
+            rows, refused = parse_events(text)
+            handle, dataset = open_data_dataset(spec["h5"])
+            try:
+                this_item = int(np.dtype(dataset.dtype).itemsize)
+                if itemsize is None:
+                    itemsize = this_item
+                    plan = planned_budget(itemsize)
+                elif this_item != itemsize:
+                    raise RuntimeError("refusing mixed h5 dtypes inside one probe")
+                part = collect_day(
+                    dataset, rows, VOCAB,
+                    per_day=plan["max_windows_per_day"],
+                    used=used,
+                    max_bytes=plan["max_read_bytes"],
+                    deadline=deadline,
+                )
+            finally:
+                handle.close()
+            part["date"] = spec["date"]
+            part["fields_seen_not_used"] = refused
+            part["events_bytes"] = len(text.encode())
+            used = int(part["bytes_cursor"])
+            parts.append(part)
+            if time.monotonic() > deadline:
+                timed_out = True
+                break
+        if not parts or sum(part["n_windows"] for part in parts) == 0:
+            record = evaluate_decode306(
+                np.zeros((0, 306, 50)), np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64),
+                [part["date"] for part in parts],
+            )
+        else:
+            record = evaluate_decode306(
+                np.concatenate([part["features"] for part in parts if part["n_windows"]]),
+                np.concatenate([part["label"] for part in parts if part["n_windows"]]),
+                np.concatenate([
+                    np.full(part["n_windows"], index, dtype=np.int64)
+                    for index, part in enumerate(parts) if part["n_windows"]
+                ]),
+                [part["date"] for part in parts if part["n_windows"]],
+            )
+        record["exposure"] = {
+            "files": [
+                {"path": spec["h5"], "role": "meg_h5_window_chunks", "bytes_read": part["bytes_read"]}
+                for spec, part in zip(specs, parts)
+            ],
+            "fields_seen_not_used": sorted({name for part in parts for name in part.get("fields_seen_not_used", [])}),
+            "onset_in_feature_matrix": False,
+            "full_meg_loaded": False,
+            "bytes_read": used,
+        }
+    record = _stamp(record, started_perf)
+    record["real_meg_scientific_validation"] = False
+    record["effect_claimed"] = False
+    record["planned_budget"] = plan
+    record["timed_out"] = timed_out
+    record["cgroup"] = cgroup_info
+    record["caps_relaxed"] = False
+    record["status_correction"] = "campaigns/sdr_uncertainty/STATUS_CORRECTION.md"
+    if timed_out and record.get("fifty_class_metric_defined"):
+        record["fifty_class_metric_defined"] = False
+        record["frozen_eval"] = None
+        record["claim_status"] = "engineering_cap_metric_undefined"
+        record["reason"] = "The 540 s soft deadline fired. A partial day set is not the 50-class result."
+        record["engineering_cap_is_not_scientific_evidence"] = True
+    path = os.path.join(destination, "sdr_uncertainty_decode306.json")
+    _write(path, record)
+    record["output_path"] = path
+    return record
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     command = argv[0] if argv else ""
@@ -342,6 +447,19 @@ def main(argv: list[str] | None = None) -> int:
                 "banner": "Local smoke only. Not a cross-day result and not scientific validation.",
             }))
             return 0
+        if command == "decode-306":
+            result = decode306()
+            print(json.dumps({
+                "output_path": result["output_path"],
+                "claim_status": result["claim_status"],
+                "real_meg_scientific_validation": False,
+                "effect_claimed": False,
+                "fifty_class_metric_defined": result.get("fifty_class_metric_defined"),
+                "planned_max_read_bytes": result["planned_budget"]["max_read_bytes"],
+                "planned_max_windows_per_day": result["planned_budget"]["max_windows_per_day"],
+                "banner": "306-channel probe. Not a 50-class result unless fifty_class_metric_defined is true.",
+            }))
+            return 0
         if command == "decode-probe":
             result = decode_probe()
             print(json.dumps({
@@ -375,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print(
             "usage: python -m campaigns.sdr_uncertainty.runner "
-            "{verify-cgroup|smoke-synthetic|smoke-local|out-of-day|decode-probe}",
+            "{verify-cgroup|smoke-synthetic|smoke-local|out-of-day|decode-probe|decode-306}",
             file=sys.stderr,
         )
         return 2
