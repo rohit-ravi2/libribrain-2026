@@ -1,0 +1,4 @@
+# First and only authorized local command. Run it on rohit-pc, from the repo root.
+# It is a capped one-day smoke. It is not scientific validation.
+# Do not queue the later rungs from this command.
+cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_local_smoke.sh
