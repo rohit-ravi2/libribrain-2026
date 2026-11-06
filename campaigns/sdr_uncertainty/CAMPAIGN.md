@@ -1,6 +1,6 @@
-# State-dependent residual uncertainty, protocol 1.0.0
+# State-dependent residual uncertainty, protocol 1.1.0
 
-Status: the code and the synthetic fixtures are what this revision tests. No real MEG was read while building it. A synthetic pass is not a scientific result about LibriBrain. Q3/Q4 and the public and private scores were already explored; this campaign does not re-score them and does not use them as a confirmation set.
+Status: protocol 1.1.0 adds the out-of-day runner. The model list, the primary contrast, the channels, and the cgroup caps are the ones frozen in 1.0.0. Synthetic tests and the one-day smoke are plumbing. They are not LibriBrain results. Q3/Q4 and the public and private scores are not a confirmation set.
 
 The question is whether, after a shared encoding mean, leftover uncertainty across recording days is better described by fixed Gaussian noise, by a constrained temporal correlation, or by a low-dimensional state-dependent variance. Tenfold fewer labeled minutes is an aspirational later target, not a result.
 
@@ -35,12 +35,24 @@ The encoding likelihood is `0.5 * (sum_d log(2*pi*sigma_d^2(s)) + (y_d - mu_d(s)
 
 If the caller passes more than the one frozen feature set, or sets feature mining on, the call returns `null_adaptive_search` and omits scores. The whole search is the null.
 
+## Out-of-day rung
+
+The live command streams up to four earliest subject-0 acquisition dates, one run on each date, skipping 2024-10-04. It does not rank days by a score. Each day contributes at most 48 windows. All days share the original 32 MiB hyperslab cap. A voluntary stop at 540s leaves time to write the JSON before the 600s scope kills the process. Those bounds are inside the smoke caps, not a relaxation.
+
+A result is `out_of_day_replication` only when the live cgroup was verified, the clock and the excluded day were respected, and at least three days have at least 24 windows each. Fewer days, a short day, a timeout, or a fixture cgroup is `underpowered`, `timeout`, or `cgroup_not_live`, and `real_meg_scientific_validation` stays false. The report keeps every held-out day's logscore, plus the mean, standard deviation, and standard error of the primary contrast across days. It does not store a best day or a selected model.
+
+```bash
+cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_out_of_day.sh
+```
+
+`~/research/empirical_scheduler/acquire_lock.sh` and `release_lock.sh` were not available here, so this command does not take that lock. The coordinator's wrapper contract is `SCHEDULER_CONTRACT.md`.
+
 ## What is not run
 
 Ladder, in order, each started by a person:
 
-1. Residual prediction on one training-day group (the local smoke below).
-2. Out-of-day replication.
+1. Residual prediction on one training-day group (the local smoke below). Plumbing, already exercised locally.
+2. Out-of-day replication (the command above). This is the first scientific rung, and only a finished live run is a result.
 3. Subject transfer, if a later revision supports it.
 4. Structured-noise training intervention.
 5. Matched-budget learning curves at 100, 50, 25, and 10 percent of labeled minutes. The target is fixed before those ratios. The 10 percent budget is aspirational.

@@ -14,7 +14,14 @@ import sys
 import time
 
 from .cgroup import CgroupError, nvidia_majors_from_dev, runtime_environment_errors, verify_fixture, verify_live
-from .protocol import ALREADY_EXPLORED, MAX_OUTPUT_BYTES, PROTOCOL_VERSION, protocol_sha256
+from .protocol import (
+    ALREADY_EXPLORED,
+    MAX_OUTPUT_BYTES,
+    OOD_SELECTION_RULE,
+    OOD_SOFT_DEADLINE_SEC,
+    PROTOCOL_VERSION,
+    protocol_sha256,
+)
 
 
 def _repo_root() -> str:
@@ -97,22 +104,35 @@ def smoke_synthetic(out_dir: str) -> dict:
     return result
 
 
-def smoke_local() -> dict:
-    started = time.perf_counter()
-    if os.environ.get("SDR_FORBID_LIVE_SMOKE") == "1":
-        raise CgroupError(["refusing live smoke because SDR_FORBID_LIVE_SMOKE=1"])
+def _live_preflight():
+    if os.environ.get("SDR_FORBID_LIVE_SMOKE") == "1" or os.environ.get("SDR_FORBID_LIVE_COMPUTE") == "1":
+        raise CgroupError(["refusing live compute because SDR_FORBID_LIVE_SMOKE or SDR_FORBID_LIVE_COMPUTE is set"])
     env_errors = runtime_environment_errors(dict(os.environ), nvidia_majors_from_dev())
     if env_errors:
         raise CgroupError(env_errors)
     fixture = os.environ.get("SDR_CGROUP_FIXTURE")
     if fixture:
         if os.environ.get("SDR_TEST_HOOK") != "1":
-            raise CgroupError(["SDR_CGROUP_FIXTURE is a test hook and is refused for a local smoke"])
+            raise CgroupError(["SDR_CGROUP_FIXTURE is a test hook and is refused for live compute"])
         verify_fixture(fixture)
-        cgroup_info = {"source": "test_fixture", "local_cgroup_verified": False}
-    else:
-        cgroup_info = verify_live()
-        cgroup_info["local_cgroup_verified"] = True
+        return {"source": "test_fixture", "local_cgroup_verified": False}
+    info = verify_live()
+    info["local_cgroup_verified"] = True
+    return info
+
+
+def _open_run(spec):
+    from .stream import open_data_dataset, parse_events
+    with open(spec["events"], encoding="utf-8") as handle:
+        text = handle.read()
+    rows, refused = parse_events(text)
+    handle, dataset = open_data_dataset(spec["h5"])
+    return text, rows, refused, dataset, handle.close
+
+
+def smoke_local() -> dict:
+    started = time.perf_counter()
+    cgroup_info = _live_preflight()
     out = os.environ.get("LIBRIBRAIN_SDR_OUT")
     if not out:
         raise RuntimeError("blocker: LIBRIBRAIN_SDR_OUT is not set")
@@ -138,6 +158,69 @@ def smoke_local() -> dict:
     _write(path, result)
     result["output_path"] = path
     return result
+
+
+def out_of_day() -> dict:
+    started_perf = time.perf_counter()
+    cgroup_info = _live_preflight()
+    out = os.environ.get("LIBRIBRAIN_SDR_OUT")
+    if not out:
+        raise RuntimeError("blocker: LIBRIBRAIN_SDR_OUT is not set")
+    destination = assert_output_dir(out, synthetic=False)
+    data_root = os.environ.get("LIBRIBRAIN_DATA")
+    if not data_root:
+        raise RuntimeError("blocker: LIBRIBRAIN_DATA is not set")
+    from .outday import evaluate_out_of_day, stream_out_of_day
+    from .protocol import VOCAB
+    from .stream import discover_out_of_day_runs
+    specs = discover_out_of_day_runs(data_root)
+    if len(specs) < 2:
+        record = evaluate_out_of_day(
+            [],
+            regime="local_out_of_day_stream",
+            timed_out=False,
+            cgroup_live=bool(cgroup_info["local_cgroup_verified"]),
+            selection_rule=OOD_SELECTION_RULE,
+        )
+        record["dates_discovered"] = [spec["date"] for spec in specs]
+        record["meg_opened"] = False
+    else:
+        streamed = stream_out_of_day(
+            specs,
+            VOCAB,
+            deadline=time.monotonic() + OOD_SOFT_DEADLINE_SEC,
+            opener=_open_run,
+        )
+        record = evaluate_out_of_day(
+            streamed["parts"],
+            regime="local_out_of_day_stream",
+            timed_out=bool(streamed["timed_out"]),
+            cgroup_live=bool(cgroup_info["local_cgroup_verified"]),
+            selection_rule=streamed["selection_rule"],
+        )
+        record["read_budget_hit"] = streamed["read_budget_hit"]
+        record["dates_discovered"] = [spec["date"] for spec in specs]
+        record["meg_opened"] = True
+        record["exposure"] = {
+            "files": [item for part in streamed["parts"] for item in part.get("exposure_files", [])],
+            "fields_seen_not_used": streamed["fields_seen_not_used"],
+            "fields_stored_from_events": ["timemeg_slice_only_not_in_features", "segment_task_label_only"],
+            "onset_in_feature_matrix": False,
+            "full_meg_loaded": False,
+            "holdout_opened": False,
+            "quarters_scored": False,
+        }
+    science = bool(record["real_meg_scientific_validation"])
+    record = _stamp(record, started_perf)
+    record["real_meg_scientific_validation"] = science
+    record["cgroup"] = cgroup_info
+    record["data_regime"] = "local_out_of_day_stream"
+    record["raw_meg_transferred"] = False
+    record["caps_relaxed"] = False
+    path = os.path.join(destination, "sdr_uncertainty_out_of_day.json")
+    _write(path, record)
+    record["output_path"] = path
+    return record
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -176,9 +259,28 @@ def main(argv: list[str] | None = None) -> int:
                 "banner": "Local smoke only. Not a cross-day result and not scientific validation.",
             }))
             return 0
+        if command == "out-of-day":
+            result = out_of_day()
+            science = bool(result["real_meg_scientific_validation"])
+            print(json.dumps({
+                "output_path": result["output_path"],
+                "claim_status": result["claim_status"],
+                "real_meg_scientific_validation": science,
+                "data_regime": "local_out_of_day_stream",
+                "n_days": result.get("n_days"),
+                "timed_out": result.get("timed_out"),
+                "peak_rss_bytes": result["peak_rss_bytes"],
+                "wall_sec": result["wall_sec"],
+                "banner": (
+                    "Out-of-day cross-fit finished inside the original caps."
+                    if science else
+                    "Not a scientific result. See claim_status. Caps were not relaxed."
+                ),
+            }))
+            return 0
         print(
             "usage: python -m campaigns.sdr_uncertainty.runner "
-            "{verify-cgroup|smoke-synthetic|smoke-local}",
+            "{verify-cgroup|smoke-synthetic|smoke-local|out-of-day}",
             file=sys.stderr,
         )
         return 2

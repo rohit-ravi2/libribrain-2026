@@ -17,6 +17,8 @@ from .protocol import (
     MAX_READ_BYTES,
     MAX_WINDOWS,
     N_SENSORS,
+    OOD_MAX_DAYS,
+    OOD_SELECTION_RULE,
     SCALE_GRAD,
     SCALE_MAG,
     STATE_CHANNELS,
@@ -133,10 +135,10 @@ def stream_windows(dataset, rows: list[dict], vocab: tuple[str, ...], *,
     energy = []
     labels = []
     ranges = []
-    truncated = False
+    stop_reason = "rows_exhausted"
     for row in rows:
         if len(features) >= max_windows:
-            truncated = True
+            stop_reason = "max_windows"
             break
         onset = int(round(float(row["timemeg"]) * FS_HZ))
         start, stop = onset, onset + WINDOW_SAMPLES
@@ -144,7 +146,7 @@ def stream_windows(dataset, rows: list[dict], vocab: tuple[str, ...], *,
             continue
         need = (stop - start) * 8 * (len(target_channels) + len(state_channels))
         if bytes_read + need > max_bytes:
-            truncated = True
+            stop_reason = "max_bytes"
             break
         target = []
         for channel in target_channels:
@@ -178,7 +180,8 @@ def stream_windows(dataset, rows: list[dict], vocab: tuple[str, ...], *,
         "sample_ranges": ranges,
         "feature_set": FEATURE_SET,
         "bytes_read": int(bytes_read),
-        "truncated": bool(truncated),
+        "truncated": stop_reason != "rows_exhausted",
+        "stop_reason": stop_reason,
         "n_windows": n,
         "evidence_class": "local_smoke_one_training_day_group",
     }
@@ -199,10 +202,11 @@ def _h5_base(path: str) -> str:
     return os.path.basename(path).split("_proc")[0]
 
 
-def discover_smoke_run(data_root: str) -> dict:
-    """Earliest sub-0 acquisition date other than the excluded shared day, then the first run name.
+def _eligible_runs(data_root: str) -> list[dict]:
+    """One run per acquisition date, earliest dates first, first run name on that date.
 
-    This rule does not look at residuals or scores. It reads scans.tsv dates and path names only.
+    Presence of an h5 path and an events file is required. Residuals and scores are not read.
+    The excluded shared day is omitted here, not replaced by a later score-based choice.
     """
     if not os.path.isdir(data_root):
         raise StreamError(f"blocker: data root does not exist: {data_root}")
@@ -229,23 +233,57 @@ def discover_smoke_run(data_root: str) -> dict:
                 h5_path = by_base.get(base)
                 if h5_path is None:
                     continue
-                dated.append((date, base, h5_path))
-    if not dated:
+                events = os.path.join(os.path.dirname(os.path.dirname(h5_path)), "events", base + "_events.tsv")
+                if not os.path.exists(events):
+                    continue
+                dated.append((date, base, h5_path, events))
+    dated.sort()
+    chosen = []
+    seen = set()
+    for date, base, h5_path, events in dated:
+        if date in seen:
+            continue
+        seen.add(date)
+        chosen.append({
+            "date": date,
+            "base": base,
+            "h5": h5_path,
+            "events": events,
+            "excluded_date": EXCLUDED_SMOKE_DATE,
+        })
+    return chosen
+
+
+def discover_smoke_run(data_root: str) -> dict:
+    """Earliest sub-0 acquisition date other than the excluded shared day, then the first run name.
+
+    This rule does not look at residuals or scores. It reads scans.tsv dates and path names only.
+    """
+    runs = _eligible_runs(data_root)
+    if not runs:
         raise StreamError(
             "blocker: no sub-0 training run remains after excluding "
             f"{EXCLUDED_SMOKE_DATE} and holdout paths"
         )
-    dated.sort()
-    date, base, h5_path = dated[0]
-    events = _session_events(h5_path, base)
-    return {
-        "date": date,
-        "base": base,
-        "h5": h5_path,
-        "events": events,
-        "selection_rule": "earliest_nonexcluded_sub0_date_then_first_run",
-        "excluded_date": EXCLUDED_SMOKE_DATE,
-    }
+    spec = dict(runs[0])
+    spec["selection_rule"] = "earliest_nonexcluded_sub0_date_then_first_run"
+    return spec
+
+
+def discover_out_of_day_runs(data_root: str, max_days: int = OOD_MAX_DAYS) -> list[dict]:
+    """Earliest eligible dates, one run each, capped by the frozen day count."""
+    runs = _eligible_runs(data_root)
+    if not runs:
+        raise StreamError(
+            "blocker: no sub-0 training run remains after excluding "
+            f"{EXCLUDED_SMOKE_DATE} and holdout paths"
+        )
+    chosen = []
+    for spec in runs[:max_days]:
+        row = dict(spec)
+        row["selection_rule"] = OOD_SELECTION_RULE
+        chosen.append(row)
+    return chosen
 
 
 def open_data_dataset(h5_path: str):
@@ -285,3 +323,45 @@ def load_smoke_run(spec: dict, vocab: tuple[str, ...]) -> tuple[dict, dict]:
     batch["acquisition_date"] = spec["date"]
     batch["run_base"] = spec["base"]
     return batch, exposure
+
+
+def assemble_days(parts: list[dict]) -> dict:
+    """Stack per-day tiny-feature batches. Day ids are the stack order, which is date order."""
+    if not parts:
+        raise StreamError("no day batches to assemble")
+    dates = [part["date"] for part in parts]
+    if EXCLUDED_SMOKE_DATE in dates:
+        raise StreamError(f"refusing to assemble excluded date {EXCLUDED_SMOKE_DATE}")
+    if len(dates) != len(set(dates)):
+        raise StreamError("duplicate acquisition date in an out-of-day batch")
+    chunks_y, chunks_s, chunks_d, chunks_t, chunks_l = [], [], [], [], []
+    bytes_read = 0
+    files = []
+    for day_id, part in enumerate(parts):
+        y = np.asarray(part["y"], dtype=np.float64)
+        state = np.asarray(part["state"], dtype=np.float64)
+        n = len(y)
+        if n != len(state):
+            raise StreamError("day batch y and state lengths differ")
+        chunks_y.append(y)
+        chunks_s.append(state)
+        chunks_d.append(np.full(n, day_id, dtype=np.int64))
+        chunks_t.append(np.arange(n, dtype=np.int64))
+        chunks_l.append(np.asarray(part["label"], dtype=np.int64))
+        bytes_read += int(part.get("bytes_read", 0))
+        if "exposure_files" in part:
+            files.extend(part["exposure_files"])
+    return {
+        "y": np.concatenate(chunks_y, axis=0),
+        "state": np.concatenate(chunks_s, axis=0),
+        "state_names": ("run_fraction", "state_energy"),
+        "day": np.concatenate(chunks_d),
+        "time_index": np.concatenate(chunks_t),
+        "label": np.concatenate(chunks_l),
+        "feature_set": FEATURE_SET,
+        "evidence_class": "local_out_of_day_stream",
+        "dates": dates,
+        "windows_per_day": [int(len(part["y"])) for part in parts],
+        "bytes_read": bytes_read,
+        "exposure_files": files,
+    }

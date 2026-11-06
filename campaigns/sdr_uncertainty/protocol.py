@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-PROTOCOL_VERSION = "1.0.0"
+PROTOCOL_VERSION = "1.1.0"
 PROTOCOL_NAME = "sdr-uncertainty"
 FEATURE_SET = "frozen_v1_disjoint_channels"
 PRIMARY_ENDPOINT = "mean_heldout_residual_logscore"
@@ -35,6 +35,14 @@ MIN_CLASSES_FOR_GATE = 4
 MAX_READ_BYTES = 32 * 1024 * 1024
 MAX_WINDOWS = 128
 MAX_OUTPUT_BYTES = 1_000_000
+# Out-of-day rung. Same cgroup and the same 32 MiB read cap. Not a retune of the models.
+OOD_MAX_DAYS = 4
+OOD_MIN_DAYS = 3
+OOD_MAX_WINDOWS_PER_DAY = 48
+OOD_MIN_WINDOWS_PER_DAY = 24
+OOD_MAX_READ_BYTES = MAX_READ_BYTES
+OOD_SOFT_DEADLINE_SEC = 540
+OOD_SELECTION_RULE = "earliest_nonexcluded_dates_one_run_each_no_score"
 WINDOW_SAMPLES = 250
 FS_HZ = 250
 N_SENSORS = 306
@@ -120,6 +128,13 @@ def protocol_document() -> dict:
         "state_channels": list(STATE_CHANNELS),
         "guard_windows": GUARD_WINDOWS,
         "excluded_smoke_date": EXCLUDED_SMOKE_DATE,
+        "ood_max_days": OOD_MAX_DAYS,
+        "ood_min_days": OOD_MIN_DAYS,
+        "ood_max_windows_per_day": OOD_MAX_WINDOWS_PER_DAY,
+        "ood_min_windows_per_day": OOD_MIN_WINDOWS_PER_DAY,
+        "ood_max_read_bytes": OOD_MAX_READ_BYTES,
+        "ood_soft_deadline_sec": OOD_SOFT_DEADLINE_SEC,
+        "ood_selection_rule": OOD_SELECTION_RULE,
         "memory_max_bytes": MEMORY_MAX_BYTES,
         "memory_swap_max_bytes": MEMORY_SWAP_MAX_BYTES,
         "cpu_quota_ratio": CPU_QUOTA_RATIO,
