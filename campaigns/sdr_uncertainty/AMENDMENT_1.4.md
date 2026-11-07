@@ -16,7 +16,7 @@ A scalar per-row temperature does not change top-10. It is not applied to report
 
 The head finetune is separate and matched: uniform, frozen Q3 learned precision, and frozen Q3 random precision, same minibatches and the same step count. Its rows are subject-0 non-shared sessions, which the trunk already trained on; outputs say so. `next` uses `substantive_head_finetune`: at most 2000 steps, 100 per launch, stop when validation cross-entropy has not improved for 3 checks after step 200, or at 2000. The stop does not read eval. `smoke` is 8 steps and does not feed that comparison. This is not the 8×1500 retrain. Hidden-GPU fp32 scores are not comparable to the bf16 leaderboard numbers.
 
-`src/v3lib.py` runs the CUDA autocast only when CUDA is visible. A hidden GPU stays in fp32 instead of raising before the first forward. GPU behavior when CUDA is visible is unchanged.
+`src/v3lib.py` runs the CUDA autocast only when CUDA is visible. A hidden GPU stays in fp32. Relative onsets may arrive as float64 from numpy; they are matched to the float32 parameter dtype before the context layer. Gather indices stay integers and the pad mask stays bool. When CUDA is visible, autocast still receives float32 onsets and casts that matmul to bf16 as before. A failed forward does not publish a cache file.
 
 ## Lock and cgroup
 

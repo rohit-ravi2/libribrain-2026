@@ -457,17 +457,23 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
 
 
 def _write_forward(directory, phase, base, subject, result, sha: str) -> str:
+    """Publish one recording only after the arrays are complete. A crash leaves no final file."""
     folder = os.path.join(directory, "forward", phase)
     os.makedirs(folder, exist_ok=True)
     path = os.path.join(folder, base + ".npz")
     if os.path.exists(path):
         raise ProtocolError(f"refusing to overwrite {path}")
+    logits = np.asarray(result["logits"], dtype=np.float32)
+    embedding = np.asarray(result["embedding"], dtype=np.float32)
+    if not np.isfinite(logits).all() or not np.isfinite(embedding).all():
+        raise ProtocolError(f"non-finite decoder output for {base}; not writing a cache file")
+    temporary = os.path.join(folder, "." + base + ".writing.npz")
     np.savez_compressed(
-        path,
+        temporary,
         base=np.array(base),
         subject=np.int64(subject),
-        embedding=np.asarray(result["embedding"], dtype=np.float32),
-        logits=np.asarray(result["logits"], dtype=np.float32),
+        embedding=embedding,
+        logits=logits,
         label=np.asarray(result["label"], dtype=np.int64),
         run_fraction=np.asarray(result["run_fraction"], dtype=np.float64),
         artifact_rms=np.asarray(result["artifact_rms"], dtype=np.float64),
@@ -476,6 +482,7 @@ def _write_forward(directory, phase, base, subject, result, sha: str) -> str:
         timing=np.array(result["timing"]),
         **({} if result.get("timechapter") is None else {"timechapter": np.asarray(result["timechapter"], dtype=np.float64)}),
     )
+    os.replace(temporary, path)
     return path
 
 

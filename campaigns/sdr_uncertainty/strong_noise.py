@@ -499,18 +499,22 @@ def session_bootstrap(session_ids, values, *, seed: int = 0, draws: int = 200) -
 
 
 def timing_inputs(rel: np.ndarray, meg: np.ndarray, mode: str, *, seed: int = 0):
-    """Primary decoder timing is zero. Timing-only is a shortcut control, not a result."""
-    rel = np.asarray(rel, dtype=np.float64).copy()
-    meg = np.asarray(meg, dtype=np.float64).copy()
+    """Primary decoder timing is zero. Timing-only is a shortcut control, not a result.
+
+    Zeros keep the incoming floating dtype. The model casts that dtype to its
+    parameter dtype; MEG is not upcast here.
+    """
+    rel = np.array(rel, dtype=np.result_type(np.asarray(rel).dtype, np.float32), copy=True)
+    meg = np.array(meg, copy=True)
     if mode == "zero":
-        return np.zeros_like(rel), meg
+        return np.zeros(rel.shape, dtype=rel.dtype), meg
     if mode == "shuffle":
         rng = np.random.default_rng(seed)
         flat = rel.ravel().copy()
         rng.shuffle(flat)
         return flat.reshape(rel.shape), meg
     if mode == "timing_only":
-        return rel, np.zeros_like(meg)
+        return rel, np.zeros(meg.shape, dtype=meg.dtype)
     raise ProtocolError(mode)
 
 

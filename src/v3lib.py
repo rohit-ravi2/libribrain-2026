@@ -35,15 +35,27 @@ class Model:
     def forward(self, x, v, Am, gi, pad, rel):
         """x (B,306,WIN) fp16/32 raw, v (B,WIN) bool, Am (B,306,306) or (306,306); returns (emb, ce, t5proj)."""
         x = normalize(x.to(dev), v.to(dev)); v = v.to(dev)
+        # normalize returns fp32. A float64 alignment would fail the einsum; a
+        # parameter alignment is already fp32 on `dev` and is left unchanged.
+        if Am.dtype != x.dtype or Am.device != x.device:
+            Am = Am.to(device=x.device, dtype=x.dtype)
         x = torch.einsum("bij,bjt->bit", Am, x) if Am.dim() == 3 else torch.einsum("ij,bjt->bit", Am, x)
         x = torch.cat([x, v[:, None, :].float()], 1)
         # CUDA autocast is the training/GPU path. A hidden GPU has no CUDA device;
         # constructing that context there raises, so CPU inference stays in fp32.
+        # Relative timing is matched to the fp32 parameters here, before autocast,
+        # so a CUDA run still sees fp32 onsets and lets autocast cast the matmul.
         amp = torch.autocast("cuda", torch.bfloat16) if torch.cuda.is_available() else contextlib.nullcontext()
         with amp:
             e = self.enc(x)
             if self.ctx is not None:
-                gi_t = torch.as_tensor(gi, device=dev); pad_t = torch.as_tensor(pad, device=dev); rel_t = torch.as_tensor(rel, device=dev)
+                gi_t = torch.as_tensor(gi, device=dev)
+                pad_t = torch.as_tensor(pad, device=dev)
+                rel_t = torch.as_tensor(rel, device=dev)
+                if gi_t.dtype.is_floating_point:
+                    raise TypeError("context gather index must be an integer")
+                if pad_t.dtype != torch.bool:
+                    raise TypeError("context pad mask must be bool")
                 E = self.ctx(e[gi_t] * (~pad_t)[..., None], rel_t, pad_t); e = E[~pad_t]
             return e.float(), self.head_ce(e).float(), self.head_t5(e).float()
 

@@ -1,6 +1,7 @@
 """Strong-decoder amendment 1.4. Fixtures are not a training result and not a claim."""
 from __future__ import annotations
 
+import glob
 import json
 import os
 import stat
@@ -19,6 +20,7 @@ from campaigns.sdr_uncertainty.strong_decoder import (
     load_strong_decoder,
 )
 from campaigns.sdr_uncertainty.strong_decoder_runner import (
+    _write_forward,
     assert_output_dir,
     fit_noise_directory,
     honesty,
@@ -428,6 +430,42 @@ class SplitAndNoiseTests(unittest.TestCase):
                 assert_output_dir(os.path.join(root, "strong_decoder_1_4"), root)
             with self.assertRaises(ProtocolError):
                 assert_output_dir(os.path.join(tmp, "holdout", "strong_decoder_1_4"), root)
+            cache = os.path.join(tmp, "forward_cache")
+            written = _write_forward(cache, "noise_pool", "sub-0_ses-11_task-Sherlock1_run-1", 0, {
+                "embedding": np.zeros((2, 4), np.float32),
+                "logits": np.zeros((2, 50), np.float32),
+                "label": np.array([1, 2]),
+                "run_fraction": np.array([0.1, 0.2]),
+                "artifact_rms": np.array([1.0, 1.0]),
+                "bandpower": np.array([0.2, 0.2]),
+                "timechapter": np.array([60.0, 62.0]),
+                "timing": "zero",
+            }, "abc")
+            self.assertTrue(written.endswith("sub-0_ses-11_task-Sherlock1_run-1.npz"))
+            self.assertEqual(glob.glob(os.path.join(cache, "forward", "noise_pool", ".*.npz")), [])
+            with np.load(written, allow_pickle=False) as handle:
+                self.assertEqual(handle["logits"].shape, (2, 50))
+            with self.assertRaises(ProtocolError):
+                _write_forward(cache, "noise_pool", "sub-0_ses-11_task-Sherlock1_run-1", 0, {
+                    "embedding": np.zeros((2, 4), np.float32),
+                    "logits": np.zeros((2, 50), np.float32),
+                    "label": np.array([1, 2]),
+                    "run_fraction": np.array([0.1, 0.2]),
+                    "artifact_rms": np.array([1.0, 1.0]),
+                    "bandpower": np.array([0.2, 0.2]),
+                    "timing": "zero",
+                }, "abc")
+            with self.assertRaises(ProtocolError):
+                _write_forward(cache, "noise_pool", "sub-0_bad", 0, {
+                    "embedding": np.zeros((1, 4), np.float32),
+                    "logits": np.array([[np.nan] * 50], np.float32),
+                    "label": np.array([0]),
+                    "run_fraction": np.array([0.1]),
+                    "artifact_rms": np.array([1.0]),
+                    "bandpower": np.array([0.2]),
+                    "timing": "zero",
+                }, "abc")
+            self.assertFalse(os.path.exists(os.path.join(cache, "forward", "noise_pool", "sub-0_bad.npz")))
 
     def test_shell_lock_is_released_and_gpu_hide_fails_closed(self):
         root = os.path.join(os.path.dirname(__file__), "..", "..")
@@ -614,6 +652,50 @@ class SplitAndNoiseTests(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), (3, 50))
         held = logits / torch.tensor([0.5, 2.0, 0.25])[:, None]
         self.assertTrue(torch.equal(logits.argmax(dim=1), held.argmax(dim=1)))
+
+    def test_float64_onsets_run_through_the_real_context_layer(self):
+        """The failed PC forward passed float64 relative onsets into a float32 SentCtx."""
+        import torch
+        from src.models import CtxEncoder, SentCtx
+
+        torch.manual_seed(0)
+        torch.set_num_threads(1)
+        encoder = CtxEncoder(d=32, D=32, T=150, p=0.0).eval()
+        context = SentCtx(D=32, layers=2, maxw=4).eval()
+        head = torch.nn.Linear(32, 50).eval()
+        self.assertEqual(context.time[0].weight.dtype, torch.float32)
+        meg = torch.from_numpy(np.random.default_rng(1).normal(size=(3, 307, 150)).astype(np.float64))
+        self.assertEqual(meg.dtype, torch.float64)
+        sensors = meg[:, :306, :].float()
+        alignment = torch.from_numpy(np.eye(306, dtype=np.float64)).to(dtype=sensors.dtype)
+        mixed = torch.einsum("ij,bjt->bit", alignment, sensors)
+        self.assertEqual(mixed.dtype, torch.float32)
+        tokens_in = torch.cat([mixed, torch.ones(3, 1, 150)], dim=1)
+        gather = torch.from_numpy(np.array([[0, 1, 2]], dtype=np.int64))
+        mask = torch.from_numpy(np.array([[False, False, False]]))
+        zeros = torch.from_numpy(np.zeros((1, 3), dtype=np.float64))
+        onsets = torch.from_numpy(np.array([[0.0, 0.35, 1.2]], dtype=np.float64))
+        self.assertEqual(gather.dtype, torch.int64)
+        self.assertEqual(mask.dtype, torch.bool)
+        self.assertEqual(zeros.dtype, torch.float64)
+        with torch.no_grad():
+            tokens = encoder(tokens_in)
+            hidden = context(tokens[gather] * (~mask)[..., None], zeros, mask)
+            logits = head(hidden.reshape(3, 32))
+            timed = context(tokens[gather] * (~mask)[..., None], onsets, mask)
+        self.assertEqual(tuple(logits.shape), (3, 50))
+        self.assertEqual(tuple(hidden.shape), (1, 3, 32))
+        self.assertTrue(torch.isfinite(logits).all())
+        self.assertTrue(torch.isfinite(timed).all())
+        self.assertEqual(context.time[0].weight.dtype, torch.float32)
+        with self.assertRaises(TypeError):
+            context(tokens[gather], zeros, torch.zeros(1, 3))
+        root = os.path.join(os.path.dirname(__file__), "..", "..")
+        source = open(os.path.join(root, "src", "v3lib.py"), encoding="utf-8").read()
+        self.assertIn("context gather index must be an integer", source)
+        self.assertIn("context pad mask must be bool", source)
+        self.assertIn("Am.dtype != x.dtype", source)
+        self.assertIn('torch.autocast("cuda", torch.bfloat16)', source)
 
 
 if __name__ == "__main__":

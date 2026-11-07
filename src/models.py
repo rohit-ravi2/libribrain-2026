@@ -56,6 +56,16 @@ class SentCtx(nn.Module):
         self.norm = nn.LayerNorm(D)
 
     def forward(self, emb, t, pad):
+        # t is relative onset in seconds. Numpy defaults to float64; the linear
+        # layer is float32 (bf16 only inside CUDA autocast, which still sees fp32
+        # parameters). Cast the continuous timing, not the position indices.
+        if pad.dtype != torch.bool:
+            raise TypeError("context pad mask must be bool")
+        if not t.is_floating_point():
+            raise TypeError("relative timing must be floating point")
+        weight_dtype = self.time[0].weight.dtype
+        if t.dtype != weight_dtype:
+            t = t.to(dtype=weight_dtype)
         L = emb.shape[1]
         h = emb + self.time(t[..., None] / 5.0) + self.pos(torch.arange(L, device=emb.device))[None]
         return emb + self.norm(self.enc(h, src_key_padding_mask=pad))
