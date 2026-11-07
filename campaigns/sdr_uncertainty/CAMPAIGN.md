@@ -55,6 +55,8 @@ The four-sensor `decode-probe` is not a 50-word decoder. `STATUS_CORRECTION.md` 
 cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_decode306.sh
 ```
 
+The strong-decoder noise prior is a separate amendment in `STRONG_DECODER_NOISE.md`. It does not change this probe's gate. The local command, after the MICrONS and ANN jobs release the machine, is `bash scripts/sdr_uncertainty_strong_decoder.sh`. It loads `src.v3lib.Model` from `runs/deep_c_ep6.pt` or stops with no metric. It does not start a full retrain.
+
 Each invocation reads one 512 MiB batch and checkpoints normalized 306-by-50 windows. Rerun it while the JSON says `next_action` is `rerun_this_command`. Stop when it says `stop`: either the 50-class gate is met, or the frozen dates have no further runs and the missing words are a limit of those recordings. The 512 MiB figure is the batch size, not the science gate. Memory, swap, one CPU, 16 tasks, one thread, and a hidden GPU still apply. A runtime ceiling is not required. Do not start it while the MICrONS CPU job holds the machine. This session does not launch it.
 
 The next command, still inside the same caps, is a four-sensor linear probe. It is not run by the residual command.
