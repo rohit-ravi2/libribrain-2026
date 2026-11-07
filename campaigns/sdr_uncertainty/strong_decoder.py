@@ -78,7 +78,13 @@ def load_strong_decoder(path: str):
     if os.path.basename(path) == CHECKPOINT_BASENAME and size != CHECKPOINT_BYTES:
         raise ProtocolError(f"{CHECKPOINT_BASENAME} is {size} bytes, expected {CHECKPOINT_BYTES}")
     os.environ["LB_DEV"] = "cpu"
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
     import torch
+    torch.set_num_threads(1)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass
     from src.v3lib import Model
     model = Model(path)
     token = ("src.v3lib.Model", id(model))
@@ -121,4 +127,6 @@ def claim_from_decoder(model, *, metric_defined: bool) -> dict:
         "real_meg_scientific_validation": False,
         "linear_probe_is_not_this_result": True,
         "old_fifty_class_probe_is_not_a_decode_gain": True,
+        "scalar_temperature_is_not_an_accuracy_result": True,
+        "frozen_trunk_subject0_days_are_holdout": False,
     }

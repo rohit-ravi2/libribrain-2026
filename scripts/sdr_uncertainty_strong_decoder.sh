@@ -1,12 +1,13 @@
 #!/bin/bash
-# One self-lock, then one strong-decoder noise-prior check. No nested wait.
-# Does not start a full fit. MICrONS and ANN are not signalled from here.
+# Amendment 1.4. One scheduler lock, then one checkpointed decoder stage.
+# The lock holder is scripts/sdr_lock_run.sh and is not replaced by exec.
+# There is no runtime ceiling. MICrONS is not signalled and stays on its own 10 GiB cap.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-unset SDR_CGROUP_FIXTURE SDR_TEST_HOOK SDR_SYNTHETIC SDR_FORBID_LIVE_COMPUTE || true
+unset SDR_CGROUP_FIXTURE SDR_TEST_HOOK SDR_SYNTHETIC SDR_FORBID_LIVE_COMPUTE SDR_GPU_HIDE_FIXTURE || true
 
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
@@ -20,15 +21,14 @@ export LB_DEV=cpu
 export LIBRIBRAIN_DATA="${LIBRIBRAIN_DATA:-/mnt/ssd4tb/data/LibriBrain100}"
 export LIBRIBRAIN_CACHE="${LIBRIBRAIN_CACHE:-/mnt/ssd4tb/data/libribrain_cache}"
 export LIBRIBRAIN_LPP="${LIBRIBRAIN_LPP:-/mnt/ssd4tb/data/extmeg/lpp_listen}"
+export LIBRIBRAIN_LPP_CACHE="${LIBRIBRAIN_LPP_CACHE:-/mnt/ssd4tb/data/libribrain_cache/ext_lpp_listen}"
 export LIBRIBRAIN_SDR_OUT="${LIBRIBRAIN_SDR_OUT:-/mnt/ssd4tb/libribrain_sdr_out}"
 export LB_STRONG_CKPT="${LB_STRONG_CKPT:-$ROOT/runs/deep_c_ep6.pt}"
 
 LOCK_NAME="libribrain-strong-decoder-noise"
-ACQUIRE="${HOME}/research/empirical_scheduler/acquire_lock.sh"
-RELEASE="${HOME}/research/empirical_scheduler/release_lock.sh"
-if [[ ! -x "$ACQUIRE" || ! -x "$RELEASE" ]]; then
-  echo "blocker: scheduler self-lock is not executable; refusing to run beside MICrONS or ANN" >&2
-  exit 2
+if [[ "${SDR_LOCK_HELD:-}" != "1" ]]; then
+  bash "$ROOT/scripts/sdr_lock_run.sh" "$LOCK_NAME" -- bash "$0" "$@"
+  exit $?
 fi
 
 if [[ ! -d /mnt/ssd4tb ]]; then
@@ -44,21 +44,51 @@ if [[ -z "$PY" ]]; then
   PY="$(command -v python3)"
 fi
 
-"$ACQUIRE" "$LOCK_NAME"
-trap '"$RELEASE" "$LOCK_NAME"' EXIT
+if [[ "${SDR_INSIDE_SCOPE:-}" != "1" ]]; then
+  echo "strong-decoder 1.4: MemoryMax=4G MemorySwapMax=0 CPUQuota=100% TasksMax=16 threads=1 GPU hidden; no runtime ceiling" >&2
+  exec systemd-run --user --scope --collect \
+    -p MemoryMax=4G \
+    -p MemorySwapMax=0 \
+    -p CPUQuota=100% \
+    -p TasksMax=16 \
+    -- \
+    env SDR_LOCK_HELD=1 \
+      SDR_STRONG_LOCK=1 \
+      SDR_LOCK_TOKEN="${SDR_LOCK_TOKEN}" \
+      SDR_INSIDE_SCOPE=1 \
+      PATH="$PATH" \
+      HOME="$HOME" \
+      USER="${USER:-}" \
+      XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}" \
+      DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}" \
+      OMP_NUM_THREADS=1 \
+      OPENBLAS_NUM_THREADS=1 \
+      MKL_NUM_THREADS=1 \
+      NUMEXPR_NUM_THREADS=1 \
+      VECLIB_MAXIMUM_THREADS=1 \
+      BLIS_NUM_THREADS=1 \
+      CUDA_VISIBLE_DEVICES="" \
+      LB_WORKERS=1 \
+      LB_DEV=cpu \
+      LIBRIBRAIN_PYTHON="$PY" \
+      LIBRIBRAIN_DATA="$LIBRIBRAIN_DATA" \
+      LIBRIBRAIN_CACHE="$LIBRIBRAIN_CACHE" \
+      LIBRIBRAIN_LPP="$LIBRIBRAIN_LPP" \
+      LIBRIBRAIN_LPP_CACHE="$LIBRIBRAIN_LPP_CACHE" \
+      LIBRIBRAIN_SDR_OUT="$LIBRIBRAIN_SDR_OUT" \
+      LB_STRONG_CKPT="$LB_STRONG_CKPT" \
+    bash "$0" "$@"
+fi
 
-export SDR_STRONG_LOCK=1
-exec systemd-run --user --scope --collect \
-  -p MemoryMax=4G \
-  -p MemorySwapMax=0 \
-  -p CPUQuota=100% \
-  -p TasksMax=16 \
-  -- \
-  env SDR_STRONG_LOCK=1 SDR_INSIDE_SCOPE=1 \
-    OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-    NUMEXPR_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 BLIS_NUM_THREADS=1 \
-    CUDA_VISIBLE_DEVICES="" LB_WORKERS=1 LB_DEV=cpu \
-    LIBRIBRAIN_DATA="$LIBRIBRAIN_DATA" LIBRIBRAIN_CACHE="$LIBRIBRAIN_CACHE" \
-    LIBRIBRAIN_LPP="$LIBRIBRAIN_LPP" LIBRIBRAIN_SDR_OUT="$LIBRIBRAIN_SDR_OUT" \
-    LB_STRONG_CKPT="$LB_STRONG_CKPT" PATH="$PATH" HOME="$HOME" \
-  "$PY" -m campaigns.sdr_uncertainty.strong_decoder_runner run
+if [[ "${SDR_INSIDE_NS:-}" != "1" ]]; then
+  if ! command -v unshare >/dev/null 2>&1; then
+    echo "blocker: unshare is required to hide GPU device nodes before compute" >&2
+    exit 2
+  fi
+  exec unshare --user --map-root-user --mount \
+    env SDR_INSIDE_NS=1 SDR_INSIDE_SCOPE=1 SDR_LOCK_HELD=1 SDR_STRONG_LOCK=1 \
+      SDR_LOCK_TOKEN="${SDR_LOCK_TOKEN}" LIBRIBRAIN_PYTHON="$PY" \
+    bash "$0" "$@"
+fi
+
+exec bash "$ROOT/scripts/gpu_hide.sh" -- "$PY" -m campaigns.sdr_uncertainty.strong_decoder_runner "$@"

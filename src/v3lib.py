@@ -1,5 +1,6 @@
 """Shared v3 inference pieces: load a train_v3 checkpoint, build sentence segments, run the forward pass,
 score with label-permutation nulls. Used by adapt_v3.py and predict_holdout_v3.py (train_v3.py keeps its own copy)."""
+import contextlib
 import numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 from . import split2 as S2
 from .cont import Words, normalize, WIN
@@ -36,7 +37,10 @@ class Model:
         x = normalize(x.to(dev), v.to(dev)); v = v.to(dev)
         x = torch.einsum("bij,bjt->bit", Am, x) if Am.dim() == 3 else torch.einsum("ij,bjt->bit", Am, x)
         x = torch.cat([x, v[:, None, :].float()], 1)
-        with torch.autocast("cuda", torch.bfloat16):
+        # CUDA autocast is the training/GPU path. A hidden GPU has no CUDA device;
+        # constructing that context there raises, so CPU inference stays in fp32.
+        amp = torch.autocast("cuda", torch.bfloat16) if torch.cuda.is_available() else contextlib.nullcontext()
+        with amp:
             e = self.enc(x)
             if self.ctx is not None:
                 gi_t = torch.as_tensor(gi, device=dev); pad_t = torch.as_tensor(pad, device=dev); rel_t = torch.as_tensor(rel, device=dev)
