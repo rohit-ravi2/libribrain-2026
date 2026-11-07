@@ -117,12 +117,15 @@ def np_max_abs(rel) -> float:
 
 def claim_from_decoder(model, *, metric_defined: bool) -> dict:
     strong = is_strong_decoder(model)
-    valid = bool(strong and metric_defined)
     return {
         "decoder_identity": "src.v3lib.Model" if strong else "rejected_not_v3lib.Model",
         "strong_decoder_loaded": strong,
         "metric_defined": bool(metric_defined),
-        "valid_scientific_claim": valid,
+        "measurement_complete": False,
+        "valid_scientific_claim": False,
+        "exploratory": True,
+        "not_confirmatory": True,
+        "independent_confirmation_required": True,
         "effect_claimed": False,
         "real_meg_scientific_validation": False,
         "linear_probe_is_not_this_result": True,

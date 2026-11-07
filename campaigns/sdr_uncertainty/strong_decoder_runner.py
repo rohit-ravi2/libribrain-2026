@@ -30,19 +30,24 @@ from .strong_noise import (
     PARTIAL_LR,
     PARTIAL_TARGET_STEPS,
     PROTOCOL_ID,
+    SMOKE_SCHEDULE,
+    SUBSTANTIVE_SCHEDULE,
     ProtocolError,
     arm_logits,
     assemble_features,
     bacc10_from_logits,
+    coverage_report,
     decoder_residual,
     fit_noise,
     initial_partial_arms,
     log_variance,
     matched_partial_steps,
-    measurement_claim,
+    measurement_status,
+    quarter_labels,
     select_on_validation,
     temperature_changes_top10,
     transform_with_state,
+    validation_stop,
     weighted_nll,
 )
 from .strong_plan import next_action, plan_order
@@ -113,11 +118,20 @@ def honesty(**extra) -> dict:
     }
     payload.update(extra)
     payload["effect_claimed"] = False
+    payload["valid_scientific_claim"] = False
+    payload["exploratory"] = True
+    payload["not_confirmatory"] = True
+    payload["independent_confirmation_required"] = True
     payload["accuracy_claimed_from_temperature"] = False
     payload["frozen_trunk_subject0_days_are_holdout"] = False
     payload["eval_subjects_are_pristine_confirmatory_holdout"] = False
     payload["lpp_pooled"] = False
     payload["full_retrain"] = dict(FULL_RETRAIN)
+    payload["numeric_precision"] = {
+        "this_run": "fp32_cpu_when_cuda_hidden",
+        "leaderboard_deep_c": "bf16_cuda_autocast",
+        "direct_score_comparison_to_leaderboard": False,
+    }
     return payload
 
 
@@ -131,7 +145,7 @@ def _stage_status(directory) -> dict:
     status["full-retrain"] = "refused_impractical"
     if not directory or not os.path.isdir(directory):
         return status
-    for phase in ("selection", "train", "eval"):
+    for phase in ("noise_pool", "selection", "train", "eval"):
         found = glob.glob(os.path.join(directory, "forward", phase, "*.npz"))
         if found:
             status[f"forward-{phase}"] = f"checkpointed_{len(found)}"
@@ -213,18 +227,21 @@ def read_dates(data_root: str) -> dict:
 
 def _disk_state(directory: str) -> dict:
     done = []
-    for phase in ("selection", "train", "eval"):
+    for phase in ("noise_pool", "selection", "train", "eval"):
         for path in glob.glob(os.path.join(directory, "forward", phase, "*.npz")):
             done.append(os.path.basename(path)[:-4])
     partial = 0
+    stopped = False
     state_path = os.path.join(directory, "partial", "state.npz")
     if os.path.isfile(state_path):
         with np.load(state_path, allow_pickle=False) as handle:
             partial = int(handle["steps"])
+            stopped = bool(int(handle["stopped"])) if "stopped" in handle.files else False
     return {
         "done_bases": done,
         "noise_fit": os.path.isfile(os.path.join(directory, "noise", "fit.json")),
         "partial_steps": partial,
+        "partial_stopped": stopped,
         "score_frozen": os.path.isfile(os.path.join(directory, "score_frozen.json")),
         "score_partial": os.path.isfile(os.path.join(directory, "score_partial.json")),
     }
@@ -242,7 +259,28 @@ def _params_from_json(payload: dict) -> dict:
     return params
 
 
-def _rows_from_forward(path: str, split: str, dates: dict) -> tuple[list[dict], np.ndarray, np.ndarray]:
+def _shared_session(base: str) -> str | None:
+    if "ses-11_task-Sherlock1" in base:
+        return "ses-11"
+    if "ses-12_task-Sherlock1" in base:
+        return "ses-12"
+    return None
+
+
+def _stimulus_tmax(paths: list[str]) -> dict:
+    tmax = {}
+    for path in paths:
+        with np.load(path, allow_pickle=False) as handle:
+            if "timechapter" not in handle.files:
+                raise ProtocolError(f"{os.path.basename(path)} has no timechapter; refusing to invent a quarter")
+            session = _shared_session(str(handle["base"]))
+            if session is None:
+                continue
+            tmax[session] = max(tmax.get(session, 0.0), float(np.max(handle["timechapter"])))
+    return tmax
+
+
+def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, t_max: float | None = None) -> tuple[list[dict], np.ndarray, np.ndarray, np.ndarray]:
     with np.load(path, allow_pickle=False) as handle:
         base = str(handle["base"])
         subject = int(handle["subject"])
@@ -251,21 +289,29 @@ def _rows_from_forward(path: str, split: str, dates: dict) -> tuple[list[dict], 
         date = dates.get(base)
         if not date:
             raise ProtocolError(f"no acquisition date for {base}; refusing to invent day_rank")
+        keep = np.ones(len(labels), dtype=bool)
+        quarters = None
+        if quarter is not None:
+            if "timechapter" not in handle.files:
+                raise ProtocolError(f"{base} has no timechapter; refusing to invent a quarter")
+            quarters = quarter_labels(handle["timechapter"], t_max)
+            keep = quarters == quarter
         residual = decoder_residual(logits, labels)
         rows = []
-        for index in range(len(labels)):
+        for index in np.flatnonzero(keep):
             rows.append({
                 "base": base,
                 "subject": subject,
                 "date": date,
                 "split": split,
+                "quarter": None if quarters is None else str(quarters[index]),
                 "run_fraction": float(handle["run_fraction"][index]),
                 "artifact_rms": float(handle["artifact_rms"][index]),
                 "bandpower": float(handle["bandpower"][index]),
-                "group_windows": int(len(labels)),
+                "group_windows": int(np.sum(keep)),
                 "residual": float(residual[index]),
             })
-        return rows, logits, labels
+        return rows, logits[keep], labels[keep], np.full(int(np.sum(keep)), subject, dtype=np.int64)
 
 
 def _candidate_matrix(z: np.ndarray, names: list[str], candidate: str):
@@ -276,24 +322,42 @@ def _candidate_matrix(z: np.ndarray, names: list[str], candidate: str):
 
 
 def fit_noise_directory(directory: str, dates: dict) -> dict:
-    """Fit on train forwards. Score every candidate on selection forwards. Eval files are not opened."""
-    train_paths = sorted(glob.glob(os.path.join(directory, "forward", "train", "*.npz")))
+    """Fit on subject-0 shared Q3 only. Select on Broad validation rows. Do not open eval or head-train files.
+
+    Q3 was outside deep_c train_mask. Q1/Q2 and non-shared subject-0 sessions were not.
+    Validation rows choose the candidate and are not used as coefficient rows.
+    """
+    fit_paths = sorted(glob.glob(os.path.join(directory, "forward", "noise_pool", "*.npz")))
     val_paths = sorted(glob.glob(os.path.join(directory, "forward", "selection", "*.npz")))
-    if not train_paths or not val_paths:
-        raise ProtocolError("noise fit needs the budgeted train forwards and every selection forward")
+    if not fit_paths or not val_paths:
+        raise ProtocolError("noise fit needs the subject-0 shared forwards and every validation forward")
+    tmax = _stimulus_tmax(fit_paths)
     rows = []
-    for path in train_paths:
-        part, _logits, _labels = _rows_from_forward(path, "train", dates)
+    for path in fit_paths:
+        with np.load(path, allow_pickle=False) as handle:
+            session = _shared_session(str(handle["base"]))
+        if session is None or session not in tmax:
+            raise ProtocolError(f"{os.path.basename(path)} is not a shared Sherlock run")
+        part, _logits, _labels, _subjects = _rows_from_forward(path, "train", dates, quarter="Q3", t_max=tmax[session])
         rows.extend(part)
-    n_train = len(rows)
+    n_fit = len(rows)
+    if n_fit < 2:
+        raise ProtocolError("Q3 trunk-unseen block has fewer than two rows; not fitting on trunk-trained sessions instead")
     for path in val_paths:
-        part, _logits, _labels = _rows_from_forward(path, "selection", dates)
+        part, _logits, _labels, _subjects = _rows_from_forward(path, "selection", dates)
         rows.extend(part)
     if any(row["split"] == "eval" for row in rows):
         raise ProtocolError("eval rows were passed to the noise fit")
+    if any(row["quarter"] in ("other", "Q1", "Q2") for row in rows if row["split"] == "train"):
+        raise ProtocolError("refusing in-sample trunk-trained residuals for the noise fit")
+    fit_subjects = {int(row["subject"]) for row in rows if row["split"] == "train"}
+    if fit_subjects != {0}:
+        raise ProtocolError(f"noise fit subjects {sorted(fit_subjects)} are not subject 0 Q3")
     bundle = assemble_features(rows)
     residual = np.asarray([row["residual"] for row in rows], dtype=np.float64)
     train = bundle["train_index"]
+    if int(np.sum(train)) != n_fit:
+        raise ProtocolError("selection rows leaked into the coefficient fit")
     params = {}
     val_nll = {}
     for name in CANDIDATES:
@@ -301,17 +365,28 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
         params[name] = fit_noise(matrix[train], residual[train], name, feature_names=feat_names, seed=0)
         val_nll[name] = weighted_nll(residual[~train], matrix[~train], params[name])
     chosen = select_on_validation(val_nll)
-    subjects = sorted({int(row["subject"]) for row in rows if row["split"] == "train"})
     return {
         "objective": "gaussian_nll",
+        "objective_note": (
+            "Gaussian NLL of decoder cross-entropy is a calibration comparison against uniform and constant. "
+            "It is not evidence that a forecasting equation holds for MEG."
+        ),
         "chosen_on_validation": chosen,
         "val_nll": {name: float(value) for name, value in val_nll.items()},
         "candidates": {name: _params_to_json(value) for name, value in params.items()},
         "state": bundle["state"],
-        "train_rows": int(n_train),
-        "selection_rows": int(len(rows) - n_train),
-        "train_subjects": subjects,
+        "fit_rows": int(n_fit),
+        "train_rows": int(n_fit),
+        "selection_rows": int(len(rows) - n_fit),
+        "train_subjects": [0],
         "eval_subjects_in_train": [],
+        "residual_fit_population": "subject0_shared_sherlock_Q3",
+        "trunk_unseen_quarter": "Q3",
+        "in_sample_trunk_trained_residual": False,
+        "selection_population": "broad_val_subjects_1_5_10",
+        "selection_rows_used_for_coefficients": False,
+        "broad_eval_rows_used": False,
+        "q4_not_used_for_fit_or_selection": True,
         "eval_files_read": False,
         "temperature_applied_to_reported_logits": False,
     }
@@ -326,15 +401,22 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
     rows = []
     logits = []
     labels = []
+    subjects = []
     sessions = []
     for path in paths:
-        part_rows, part_logits, part_labels = _rows_from_forward(path, "eval", dates)
+        part_rows, part_logits, part_labels, part_subjects = _rows_from_forward(path, "eval", dates)
+        if not part_rows:
+            continue
         rows.extend(part_rows)
         logits.append(part_logits)
         labels.append(part_labels)
+        subjects.append(part_subjects)
         sessions.extend(part_rows[0]["base"] for _ in part_labels)
+    if not rows:
+        raise ProtocolError("exploratory eval forwards contained no rows")
     logits = np.concatenate(logits, axis=0)
     labels = np.concatenate(labels, axis=0)
+    subjects = np.concatenate(subjects, axis=0)
     matrix_z = transform_with_state(rows, fit["state"])
     residual = decoder_residual(logits, labels)
     nll = {}
@@ -346,23 +428,31 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
         changed = changed or temperature_changes_top10(logits, log_variance(matrix, params))
     bacc = bacc10_from_logits(logits, labels)
     chosen = fit["chosen_on_validation"]
+    coverage = coverage_report(logits, labels, subjects)
     return {
         "objective": "gaussian_nll",
+        "objective_note": fit.get("objective_note"),
         "chosen_on_validation": chosen,
         "eval_nll": {name: float(value) for name, value in nll.items()},
         "paired_vs_uniform": float(nll[chosen] - nll["uniform"]),
         "primary_bacc10_50": bacc,
         "fifty_class_metric_defined": bacc is not None,
-        "metric_undefined_reason": None if bacc is not None else "at least one of the 50 classes is absent from the exploratory eval forwards",
+        "coverage": coverage,
+        "eligible_metrics": coverage["eligible_metrics"],
         "temperature_changes_top10": bool(changed),
         "temperature_applied_to_reported_logits": False,
         "eval_rows": int(len(labels)),
         "eval_sessions": sorted(set(sessions)),
         "exploratory_not_pristine": True,
+        "not_confirmatory": True,
+        "independent_confirmation_required": True,
         "candidates_scored": list(CANDIDATES),
+        "fit_rows": int(fit.get("fit_rows", fit.get("train_rows", 0))),
         "train_rows": int(fit["train_rows"]),
         "selection_rows": int(fit["selection_rows"]),
         "eval_subjects_in_train": list(fit["eval_subjects_in_train"]),
+        "in_sample_trunk_trained_residual": bool(fit.get("in_sample_trunk_trained_residual", True)),
+        "residual_fit_population": fit.get("residual_fit_population"),
     }
 
 
@@ -384,6 +474,7 @@ def _write_forward(directory, phase, base, subject, result, sha: str) -> str:
         bandpower=np.asarray(result["bandpower"], dtype=np.float64),
         checkpoint_sha=np.array(sha),
         timing=np.array(result["timing"]),
+        **({} if result.get("timechapter") is None else {"timechapter": np.asarray(result["timechapter"], dtype=np.float64)}),
     )
     return path
 
@@ -445,8 +536,8 @@ def _load_train_embeddings(directory: str):
     return fit
 
 
-def partial_train_directory(directory: str, root: str, steps: int, dates: dict) -> dict:
-    """Matched steps on cached train embeddings. The trunk is not updated. deep_c is not written."""
+def partial_train_directory(directory: str, root: str, steps: int, dates: dict, schedule: dict | None = None, state_name: str = "state.npz") -> dict:
+    """Matched head steps. The noise equation stays the Q3 fit. Validation chooses the stop. Eval is not read."""
     if any(os.path.basename(path) == CHECKPOINT_BASENAME for path in glob.glob(os.path.join(directory, "**"), recursive=True)):
         raise ProtocolError("refusing to keep a copy of the frozen checkpoint in the output tree")
     fit_path = os.path.join(directory, "noise", "fit.json")
@@ -466,7 +557,7 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict) 
                 sha = file_sha
             elif file_sha != sha:
                 raise ProtocolError("train forwards came from different checkpoints")
-            part, _logits, part_labels = _rows_from_forward(path, "train", dates)
+            part, _logits, part_labels, _subjects = _rows_from_forward(path, "train", dates)
             rows.extend(part)
             embeddings.append(np.asarray(handle["embedding"], dtype=np.float64))
             labels.append(part_labels)
@@ -478,7 +569,8 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict) 
         live_sha = _sha256_file(ckpt_path)
         if sha and live_sha and sha != live_sha:
             raise ProtocolError("cached train forwards do not match the current checkpoint")
-    state_path = os.path.join(directory, "partial", "state.npz")
+    schedule = dict(SUBSTANTIVE_SCHEDULE if schedule is None else schedule)
+    state_path = os.path.join(directory, "partial", state_name)
     if os.path.isfile(state_path):
         with np.load(state_path, allow_pickle=False) as handle:
             arms = {}
@@ -491,6 +583,10 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict) 
                 }
             done = int(handle["steps"])
             init_sha = str(handle["init_sha"])
+            if "schedule" in handle.files and str(handle["schedule"]) != schedule["name"]:
+                raise ProtocolError(
+                    f"partial state is {str(handle['schedule'])}; refusing to switch to {schedule['name']} after it started"
+                )
     else:
         ckpt, _size, _sha = _require_checkpoint(root)
         model = load_strong_decoder(ckpt)
@@ -505,12 +601,71 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict) 
             f"embedding width {embeddings.shape[1]} does not match the classification head "
             f"{arms['uniform']['W'].shape[0]}"
         )
-    if done >= PARTIAL_TARGET_STEPS:
-        return {"steps": done, "advanced": 0, "target": PARTIAL_TARGET_STEPS, "trunk_frozen": True}
-    advancing = min(int(steps), PARTIAL_TARGET_STEPS - done)
-    matched_partial_steps(arms, embeddings, labels, features, advancing, lr=PARTIAL_LR, seed=done)
+    if done >= int(schedule["max_steps"]):
+        return {
+            "steps": done, "advanced": 0, "target": int(schedule["max_steps"]),
+            "schedule": schedule["name"], "substantive": bool(schedule["substantive"]),
+            "trunk_frozen": True, "stopped": True,
+        }
+    advancing = min(int(steps), int(schedule["max_steps"]) - done)
+    learned_params = _params_from_json(fit["candidates"]["learned_state"])
+    random_params = _params_from_json(fit["candidates"]["random_covariate"])
+    learned_z, _learned_names = _candidate_matrix(features, fit["state"]["names"], "learned_state")
+    random_z, _random_names = _candidate_matrix(features, fit["state"]["names"], "random_covariate")
+    frozen_log_var = {
+        "learned_state": log_variance(learned_z, learned_params),
+        "random_covariate": log_variance(random_z, random_params),
+    }
+    matched_partial_steps(
+        arms, embeddings, labels, features, advancing,
+        lr=PARTIAL_LR, seed=done, frozen_log_var=frozen_log_var,
+    )
+    val_paths = sorted(glob.glob(os.path.join(directory, "forward", "selection", "*.npz")))
+    if not val_paths:
+        raise ProtocolError("head finetune needs validation forwards for the stop curve")
+    val_embeddings = []
+    val_labels = []
+    for path in val_paths:
+        with np.load(path, allow_pickle=False) as handle:
+            val_embeddings.append(np.asarray(handle["embedding"], dtype=np.float64))
+            val_labels.append(np.asarray(handle["label"], dtype=np.int64))
+    val_embeddings = np.concatenate(val_embeddings, axis=0)
+    val_labels = np.concatenate(val_labels, axis=0)
+    step_now = done + advancing
+    curve_name = "val_curve.json" if schedule["substantive"] else "smoke_curve.json"
+    curve_path = os.path.join(directory, "partial", curve_name)
+    curve = []
+    if os.path.isfile(curve_path):
+        with open(curve_path, encoding="utf-8") as handle:
+            curve = json.load(handle)
+    curve.append({
+        "step": int(step_now),
+        "learned_ce": float(np.mean(decoder_residual(arm_logits(arms["learned_state"], val_embeddings), val_labels))),
+        "uniform_ce": float(np.mean(decoder_residual(arm_logits(arms["uniform"], val_embeddings), val_labels))),
+        "random_ce": float(np.mean(decoder_residual(arm_logits(arms["random_covariate"], val_embeddings), val_labels))),
+    })
+    decision = validation_stop(curve, schedule)
     os.makedirs(os.path.dirname(state_path), exist_ok=True)
-    payload = {"steps": np.int64(done + advancing), "init_sha": np.array(init_sha), "checkpoint_sha": np.array(sha or "")}
+    with open(curve_path, "w", encoding="utf-8") as handle:
+        json.dump(curve, handle)
+    if schedule["substantive"] and decision["best_step"] == step_now:
+        best_payload = {"steps": np.int64(step_now), "schedule": np.array(schedule["name"])}
+        for name, arm in arms.items():
+            best_payload[f"W_{name}"] = arm["W"]
+            best_payload[f"b_{name}"] = arm["b"]
+        best_path = os.path.join(directory, "partial", "best_val.npz")
+        temporary_best = best_path + ".tmp.npz"
+        np.savez_compressed(temporary_best, **best_payload)
+        os.replace(temporary_best, best_path)
+    payload = {
+        "steps": np.int64(step_now),
+        "stopped": np.int64(1 if decision["stop"] else 0),
+        "stop_reason": np.array(decision["reason"] or ""),
+        "best_step": np.int64(decision["best_step"] or 0),
+        "schedule": np.array(schedule["name"]),
+        "init_sha": np.array(init_sha),
+        "checkpoint_sha": np.array(sha or ""),
+    }
     for name, arm in arms.items():
         payload[f"W_{name}"] = arm["W"]
         payload[f"b_{name}"] = arm["b"]
@@ -520,30 +675,48 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict) 
     np.savez_compressed(temporary, **payload)
     os.replace(temporary, state_path)
     return {
-        "steps": done + advancing,
+        "steps": step_now,
         "advanced": advancing,
-        "target": PARTIAL_TARGET_STEPS,
+        "target": int(schedule["max_steps"]),
+        "schedule": schedule["name"],
+        "substantive": bool(schedule["substantive"]),
+        "stopped": bool(decision["stop"]),
+        "stop_reason": decision["reason"],
+        "best_validation_step": decision["best_step"],
         "trunk_frozen": True,
         "head_finetune": True,
+        "noise_equation_frozen_from_q3": True,
+        "head_data": "subject0_nonshared_trunk_trained",
+        "in_sample_for_trunk": True,
+        "not_a_subject0_day_holdout": True,
         "init_saw_subject0_days": True,
         "subject0_day_holdout_from_this_init": False,
         "not_a_full_retrain": True,
         "init_sha": init_sha,
+        "validation_learned_ce": curve[-1]["learned_ce"],
     }
 
 
 def score_partial_directory(directory: str) -> dict:
     state_path = os.path.join(directory, "partial", "state.npz")
+    best_path = os.path.join(directory, "partial", "best_val.npz")
     paths = sorted(glob.glob(os.path.join(directory, "forward", "eval", "*.npz")))
-    if not os.path.isfile(state_path) or not paths:
-        raise ProtocolError("partial score needs the matched checkpoint and eval embeddings")
+    if not os.path.isfile(state_path) or not os.path.isfile(best_path) or not paths:
+        raise ProtocolError("partial score needs the validation-selected checkpoint and eval embeddings")
     with np.load(state_path, allow_pickle=False) as handle:
         steps = int(handle["steps"])
+        stopped = bool(int(handle["stopped"])) if "stopped" in handle.files else False
+        schedule_name = str(handle["schedule"]) if "schedule" in handle.files else ""
+        best_step = int(handle["best_step"]) if "best_step" in handle.files else steps
+    if schedule_name != SUBSTANTIVE_SCHEDULE["name"]:
+        raise ProtocolError("smoke weights are not the substantive comparison")
+    if not stopped and steps < int(SUBSTANTIVE_SCHEDULE["max_steps"]):
+        raise ProtocolError(f"partial score refused at {steps} steps before the validation stop")
+    with np.load(best_path, allow_pickle=False) as handle:
         arms = {}
         for name in ("uniform", "random_covariate", "learned_state"):
             arms[name] = {"W": np.asarray(handle[f"W_{name}"]), "b": np.asarray(handle[f"b_{name}"])}
-    if steps != PARTIAL_TARGET_STEPS:
-        raise ProtocolError(f"partial score refused at {steps} steps; the matched budget is {PARTIAL_TARGET_STEPS}")
+        scored_step = int(handle["steps"])
     embeddings = []
     labels = []
     for path in paths:
@@ -558,7 +731,11 @@ def score_partial_directory(directory: str) -> dict:
     defined = all(value is not None for value in scores.values())
     paired = None if not defined else float(scores["learned_state"] - scores["uniform"])
     return {
-        "steps": steps,
+        "steps": scored_step,
+        "trained_through_step": steps,
+        "best_validation_step": best_step,
+        "schedule": schedule_name,
+        "substantive": True,
         "matched": True,
         "primary_bacc10_50": scores,
         "fifty_class_metric_defined": defined,
@@ -605,7 +782,7 @@ def run_next(root: str) -> dict:
     if action["stage"] == "score-frozen":
         payload = score_frozen_directory(directory, dates)
         ckpt, size, _sha = _require_checkpoint(root)
-        claimed = measurement_claim({
+        status = measurement_status({
             "decoder": "src.v3lib.Model",
             "checkpoint_bytes": size,
             "objective": payload["objective"],
@@ -613,17 +790,20 @@ def run_next(root: str) -> dict:
             "eval_subjects_in_train": payload["eval_subjects_in_train"],
             "subject0_frozen_holdout": False,
             "temperature_applied_to_reported_logits": False,
+            "in_sample_trunk_trained_residual": payload.get("in_sample_trunk_trained_residual"),
             "eval_rows": payload["eval_rows"],
-            "train_rows": payload["train_rows"],
+            "fit_rows": payload.get("fit_rows", 0),
             "selection_rows": payload["selection_rows"],
             "lock_held": True,
+            "fixture": False,
         })
-        payload = honesty(**payload, valid_scientific_claim=claimed, checkpoint=ckpt)
+        payload = honesty(**payload, **status, checkpoint=ckpt)
         _save_json(os.path.join(directory, "score_frozen.json"), payload)
         report.update({
-            "valid_scientific_claim": claimed,
+            "measurement_complete": status["measurement_complete"],
+            "valid_scientific_claim": False,
             "primary_bacc10_50": payload["primary_bacc10_50"],
-            "fifty_class_metric_defined": payload["fifty_class_metric_defined"],
+            "eligible_metrics": payload.get("eligible_metrics"),
             "paired_vs_uniform": payload["paired_vs_uniform"],
         })
         return report
@@ -760,6 +940,15 @@ def main(argv=None) -> int:
             payload = run_timing(root)
         elif command == "lpp-transfer":
             payload = run_lpp(root)
+        elif command == "smoke":
+            directory = out_dir(root)
+            os.makedirs(directory, exist_ok=True)
+            _cache, data_root = _cache_paths(root)
+            info = partial_train_directory(
+                directory, root, int(SMOKE_SCHEDULE["steps_per_launch"]), read_dates(data_root),
+                schedule=SMOKE_SCHEDULE, state_name="smoke_state.npz",
+            )
+            payload = honesty(**info, stage="smoke", next_action="smoke_is_not_the_substantive_schedule")
         elif command in ("noise-fit", "partial-train", "score"):
             payload = run_next(root)
             if payload.get("stage") not in ("noise-fit", "partial-train", "score-frozen", "score-partial", "forward", "stop"):
@@ -767,7 +956,7 @@ def main(argv=None) -> int:
         else:
             print(
                 "usage: python -m campaigns.sdr_uncertainty.strong_decoder_runner "
-                "{manifest|next|timing-control|lpp-transfer|full-retrain}",
+                "{manifest|next|smoke|timing-control|lpp-transfer|full-retrain}",
                 file=sys.stderr,
             )
             return 2
@@ -780,7 +969,9 @@ def main(argv=None) -> int:
             "stage": payload.get("stage"),
             "next_action": payload.get("next_action"),
             "effect_claimed": False,
-            "valid_scientific_claim": bool(payload.get("valid_scientific_claim", False)),
+            "valid_scientific_claim": False,
+            "measurement_complete": bool(payload.get("measurement_complete", False)),
+            "schedule": payload.get("schedule"),
             "real_meg_scientific_validation": False,
             "full_retrain_launched": False,
             "fifty_class_metric_defined": payload.get("fifty_class_metric_defined"),

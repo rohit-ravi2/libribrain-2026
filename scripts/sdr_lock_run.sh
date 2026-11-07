@@ -43,26 +43,16 @@ printf '%s\n' "$LOCK_NAME" > "$TOKEN"
 export SDR_LOCK_TOKEN="$TOKEN"
 export SDR_LOCK_HELD=1
 export SDR_STRONG_LOCK=1
-HB_PID=""
 cleanup() {
   local status=$?
   trap - EXIT
-  if [[ -n "${HB_PID}" ]]; then
-    kill "$HB_PID" 2>/dev/null || true
-    wait "$HB_PID" 2>/dev/null || true
-  fi
+  # Release this job id only. A busy lock was never acquired, so this trap is
+  # not installed on the failure path above. TTL is not a clock and is not cleared here.
   "$PY" -m campaigns.sdr_uncertainty.scheduler_lock release --release "$RELEASE" --name "$LOCK_NAME" || true
   rm -f "$TOKEN"
   exit "$status"
 }
 trap cleanup EXIT
-
-if ! "$PY" -m campaigns.sdr_uncertainty.scheduler_lock heartbeat-once --acquire "$ACQUIRE" --name "$LOCK_NAME"; then
-  echo "blocker: scheduler heartbeat is not usable; releasing the lock" >&2
-  exit 2
-fi
-"$PY" -m campaigns.sdr_uncertainty.scheduler_lock heartbeat-loop --acquire "$ACQUIRE" --name "$LOCK_NAME" &
-HB_PID=$!
 
 set +e
 "$@"

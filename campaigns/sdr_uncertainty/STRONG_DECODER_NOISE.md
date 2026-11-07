@@ -12,4 +12,4 @@ A per-row temperature does not change top-10. The accuracy comparison that can m
 cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_strong_decoder.sh next
 ```
 
-One lock, explicit TTL and heartbeat, `MemoryMax=4G`, no runtime ceiling, GPU nodes hidden by `scripts/gpu_hide.sh`. Repeat while `next_action` is `rerun_this_command`.
+One lock. Positional TTL label 14400, not a clock and not a heartbeat. `MemoryMax=4G`, no runtime ceiling, GPU nodes hidden by `scripts/gpu_hide.sh`. Repeat while `next_action` is `rerun_this_command`. `valid_scientific_claim` stays false.

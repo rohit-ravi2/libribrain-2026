@@ -59,14 +59,41 @@ CHECKPOINT_BYTES = 24690963
 CHANCE_BACC10_50 = 0.2
 N_CLASSES = 50
 TOP_K = 10
-TRAIN_FORWARD_RUNS = 8
-PARTIAL_STEPS_PER_LAUNCH = 8
-PARTIAL_TARGET_STEPS = 32
+# Subject-0 non-shared runs used only for the head finetune. Not the noise-equation fit,
+# and not the full 162-run corpus. The noise equation is fit on trunk-unseen Q3 instead.
+HEAD_TRAIN_RUNS = 16
+TRAIN_FORWARD_RUNS = HEAD_TRAIN_RUNS
 PARTIAL_LR = 1e-3
+# Smoke is a plumbing stage. It is not what `next` runs, and it is not a result.
+SMOKE_SCHEDULE = {
+    "name": "smoke",
+    "max_steps": 8,
+    "steps_per_launch": 8,
+    "min_steps": 8,
+    "patience_checks": None,
+    "substantive": False,
+}
+# Head-only finetune on cached embeddings. Feasible on one CPU at 4 GiB.
+# Stop is the validation curve, not a fixed 32-step cutoff and not the eval score.
+SUBSTANTIVE_SCHEDULE = {
+    "name": "substantive_head_finetune",
+    "max_steps": 2000,
+    "steps_per_launch": 100,
+    "min_steps": 200,
+    "patience_checks": 3,
+    "substantive": True,
+}
+PARTIAL_STEPS_PER_LAUNCH = SUBSTANTIVE_SCHEDULE["steps_per_launch"]
+PARTIAL_TARGET_STEPS = SUBSTANTIVE_SCHEDULE["max_steps"]
 LOCK_TTL_SECONDS = 14400
 LOCK_TTL_MIN_SECONDS = 3600
 LOCK_TTL_MAX_SECONDS = 86400
-HEARTBEAT_SECONDS = 60
+# The verified scheduler stores this number in holder.json and does not expire the lock.
+LOCK_TTL_ENFORCED = False
+HEARTBEAT_SECONDS = None
+QUARTER_PRE = 1.0
+QUARTER_POST = 2.0
+QUARTER_GUARD = 1.0
 
 FORBIDDEN_INFERENCE_FEATURES = frozenset({
     "label", "word", "class", "class_id", "word_freq", "word_frequency",
@@ -526,13 +553,103 @@ def temperature_changes_top10(logits: np.ndarray, log_var: np.ndarray) -> bool:
     return topk_sets(logits) != topk_sets(row_temperature(logits, log_var))
 
 
-def measurement_claim(checks: dict) -> bool:
-    """A readable measurement, not an effect. effect_claimed is never set here."""
+def quarter_labels(timechapter, t_max: float) -> np.ndarray:
+    """Shared-stimulus quarters with the same window guard as src/cont.py Words.quarters.
+
+    Q1 and Q2, and non-shared 'other', are what deep_c trained on. Q3 is the locked
+    trunk-unseen block used to fit the noise equation. Empty string means the guard drop.
+    """
+    if t_max is None or float(t_max) <= 0:
+        raise ProtocolError("stimulus duration is missing; refusing to invent quarters")
+    t = np.asarray(timechapter, dtype=np.float64)
+    q = np.clip((t / float(t_max) * 4.0).astype(int), 0, 3)
+    out = np.array([f"Q{int(k) + 1}" for k in q], dtype=object)
+    for boundary in (2, 3):
+        edge = boundary * float(t_max) / 4.0
+        bad = (t + QUARTER_POST > edge - QUARTER_GUARD) & (t - QUARTER_PRE < edge + QUARTER_GUARD)
+        out[bad] = ""
+    return out
+
+
+def validation_stop(curve, schedule: dict) -> dict:
+    """Pick a stop from the validation curve only. Eval and test keys are refused."""
+    for row in curve:
+        banned = set(row) & {"eval_ce", "test_ce", "eval", "test", "eval_bacc", "test_bacc"}
+        if banned:
+            raise ProtocolError(f"validation stop cannot see {sorted(banned)}")
+    if not curve:
+        return {"stop": False, "best_step": None, "reason": None, "checks_without_improvement": 0}
+    best = min(curve, key=lambda row: (float(row["learned_ce"]), int(row["step"])))
+    after = [row for row in curve if int(row["step"]) > int(best["step"])]
+    last = int(curve[-1]["step"])
+    stop = False
+    reason = None
+    patience = schedule.get("patience_checks")
+    if last >= int(schedule["max_steps"]):
+        stop = True
+        reason = "max_steps"
+    elif patience is not None and last >= int(schedule["min_steps"]) and len(after) >= int(patience):
+        stop = True
+        reason = "validation_plateau"
+    return {
+        "stop": stop,
+        "best_step": int(best["step"]),
+        "reason": reason,
+        "checks_without_improvement": int(len(after)),
+        "substantive": bool(schedule.get("substantive")),
+    }
+
+
+def coverage_report(logits, labels, subjects) -> dict:
+    """Per-subject class counts. Balanced accuracy is eligible only when all 50 classes are present."""
+    logits = np.asarray(logits, dtype=np.float64)
+    labels = np.asarray(labels, dtype=np.int64)
+    subjects = np.asarray(subjects)
+    per_subject = {}
+    for subject in sorted(set(int(s) for s in subjects)):
+        mask = subjects == subject
+        counts = {
+            str(cls): int(np.sum(labels[mask] == cls))
+            for cls in range(N_CLASSES)
+            if np.any(labels[mask] == cls)
+        }
+        per_subject[str(subject)] = {
+            "n": int(np.sum(mask)),
+            "n_classes_present": len(counts),
+            "missing_classes": [cls for cls in range(N_CLASSES) if str(cls) not in counts],
+            "class_counts": counts,
+            "bacc10_50": bacc10_from_logits(logits[mask], labels[mask]),
+            "mean_cross_entropy": float(np.mean(decoder_residual(logits[mask], labels[mask]))),
+        }
+    present = sorted(set(int(c) for c in labels))
+    eligible = ["mean_cross_entropy", "gaussian_nll_of_cross_entropy"]
+    if present == list(range(N_CLASSES)):
+        eligible.append("bacc10_50")
+    return {
+        "per_subject": per_subject,
+        "pooled_n": int(len(labels)),
+        "pooled_n_classes_present": len(present),
+        "pooled_missing_classes": [cls for cls in range(N_CLASSES) if cls not in present],
+        "eligible_metrics": eligible,
+        "bacc10_50_eligible": "bacc10_50" in eligible,
+        "gaussian_nll_note": (
+            "Gaussian NLL of the frozen per-word cross-entropy compares calibration with the "
+            "uniform and constant baselines. It is not evidence that a forecasting equation holds for MEG."
+        ),
+    }
+
+
+def measurement_status(checks: dict) -> dict:
+    """Engineering completeness is not a confirmatory claim.
+
+    Historically inspected Broad subjects 3/6/9/12 stay exploratory. Fixtures that
+    only satisfy row counts and a decoder name do not become a scientific claim.
+    """
     try:
         candidates = tuple(checks.get("candidates") or ())
     except TypeError:
-        return False
-    return bool(
+        candidates = ()
+    complete = bool(
         checks.get("decoder") == "src.v3lib.Model"
         and checks.get("checkpoint_bytes") == CHECKPOINT_BYTES
         and checks.get("objective") == "gaussian_nll"
@@ -540,11 +657,27 @@ def measurement_claim(checks: dict) -> bool:
         and list(checks.get("eval_subjects_in_train") or []) == []
         and checks.get("subject0_frozen_holdout") is False
         and checks.get("temperature_applied_to_reported_logits") is False
+        and checks.get("in_sample_trunk_trained_residual") is False
         and int(checks.get("eval_rows") or 0) > 0
-        and int(checks.get("train_rows") or 0) > 0
+        and int(checks.get("fit_rows") or 0) > 0
         and int(checks.get("selection_rows") or 0) > 0
         and checks.get("lock_held") is True
+        and checks.get("fixture") is not True
     )
+    return {
+        "measurement_complete": complete,
+        "valid_scientific_claim": False,
+        "effect_claimed": False,
+        "exploratory": True,
+        "not_confirmatory": True,
+        "independent_confirmation_required": True,
+        "historically_inspected_broad_eval": list(EVAL_SUBJECTS),
+    }
+
+
+def measurement_claim(checks: dict) -> bool:
+    """Retired name. Engineering checks must not read as a claim."""
+    return False
 
 
 def next_sessions(all_ids, done) -> list:
@@ -614,7 +747,7 @@ def initial_partial_arms(weight: np.ndarray, bias: np.ndarray, n_features: int) 
     return arms
 
 
-def matched_partial_steps(arms: dict, embeddings, labels, features, steps: int, *, lr: float = PARTIAL_LR, seed: int = 0, batch: int = 32) -> dict:
+def matched_partial_steps(arms: dict, embeddings, labels, features, steps: int, *, lr: float = PARTIAL_LR, seed: int = 0, batch: int = 32, frozen_log_var=None) -> dict:
     """Same minibatches and the same step count on every arm. Uniform is the unweighted head. Random matches capacity."""
     if set(arms) != set(PARTIAL_ARMS):
         raise ProtocolError("partial train must step uniform, random_covariate, and learned_state together")
@@ -635,7 +768,10 @@ def matched_partial_steps(arms: dict, embeddings, labels, features, steps: int, 
         rand = feat @ projection
         for name in PARTIAL_ARMS:
             arm = arms[name]
-            if name == "uniform":
+            if frozen_log_var is not None:
+                log_var = np.zeros(len(y)) if name == "uniform" else np.asarray(frozen_log_var[name], dtype=np.float64)[take]
+                used = None
+            elif name == "uniform":
                 log_var = np.zeros(len(y))
                 used = None
             elif name == "random_covariate":

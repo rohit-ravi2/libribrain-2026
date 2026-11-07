@@ -157,6 +157,9 @@ def forward_recording(model, meg: np.ndarray, events: dict, alignment: np.ndarra
         order.append(packed["flat"])
         covariates.extend(cov_rows)
     flat = np.concatenate(order)
+    timechapter = None
+    if "timechapter" in events:
+        timechapter = np.asarray(events["timechapter"], dtype=np.float64)[flat]
     return {
         "index": flat,
         "embedding": np.concatenate(embeddings, axis=0),
@@ -165,6 +168,7 @@ def forward_recording(model, meg: np.ndarray, events: dict, alignment: np.ndarra
         "run_fraction": np.asarray([row["run_fraction"] for row in covariates], dtype=np.float64),
         "artifact_rms": np.asarray([row["artifact_rms"] for row in covariates], dtype=np.float64),
         "bandpower": np.asarray([row["bandpower"] for row in covariates], dtype=np.float64),
+        "timechapter": timechapter,
         "timing": timing,
         "n_words": int(len(flat)),
     }
@@ -177,7 +181,10 @@ def load_events_safe(path: str) -> dict:
         missing = [key for key in keys if key not in handle.files]
         if missing:
             raise ProtocolError(f"{os.path.basename(path)} is missing {missing}")
-        return {key: np.asarray(handle[key]) for key in keys}
+        events = {key: np.asarray(handle[key]) for key in keys}
+        if "timechapter" in handle.files:
+            events["timechapter"] = np.asarray(handle["timechapter"], dtype=np.float64)
+        return events
 
 
 def alignment_for(model, subject: int) -> np.ndarray:

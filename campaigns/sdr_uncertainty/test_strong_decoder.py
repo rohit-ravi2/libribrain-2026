@@ -7,6 +7,7 @@ import stat
 import subprocess
 import tempfile
 import textwrap
+import time
 import unittest
 
 import numpy as np
@@ -42,6 +43,7 @@ from campaigns.sdr_uncertainty.strong_noise import (
     initial_partial_arms,
     matched_partial_steps,
     measurement_claim,
+    measurement_status,
     next_sessions,
     per_row_ce,
     row_temperature,
@@ -253,8 +255,8 @@ class SplitAndNoiseTests(unittest.TestCase):
         self.assertFalse(rejected["frozen_trunk_subject0_days_are_holdout"])
         with self.assertRaises(FileNotFoundError):
             load_strong_decoder("/no/such/deep_c_ep6.pt")
-        self.assertFalse(measurement_claim({"decoder": "src.v3lib.Model", "checkpoint_bytes": 10}))
-        self.assertTrue(measurement_claim({
+        self.assertFalse(measurement_claim({"decoder": "src.v3lib.Model", "checkpoint_bytes": CHECKPOINT_BYTES}))
+        engineering = {
             "decoder": "src.v3lib.Model",
             "checkpoint_bytes": CHECKPOINT_BYTES,
             "objective": "gaussian_nll",
@@ -262,13 +264,28 @@ class SplitAndNoiseTests(unittest.TestCase):
             "eval_subjects_in_train": [],
             "subject0_frozen_holdout": False,
             "temperature_applied_to_reported_logits": False,
+            "in_sample_trunk_trained_residual": False,
             "eval_rows": 3,
-            "train_rows": 4,
+            "fit_rows": 4,
             "selection_rows": 2,
             "lock_held": True,
-        }))
-        wrapped = honesty(valid_scientific_claim=True, effect_claimed=True)
+        }
+        status = measurement_status(engineering)
+        self.assertTrue(status["measurement_complete"])
+        self.assertFalse(status["valid_scientific_claim"])
+        self.assertFalse(status["effect_claimed"])
+        self.assertTrue(status["exploratory"])
+        self.assertTrue(status["not_confirmatory"])
+        self.assertTrue(status["independent_confirmation_required"])
+        engineering["fixture"] = True
+        self.assertFalse(measurement_status(engineering)["measurement_complete"])
+        self.assertFalse(measurement_status(engineering)["valid_scientific_claim"])
+        wrapped = honesty(valid_scientific_claim=True, effect_claimed=True, measurement_complete=True)
+        self.assertFalse(wrapped["valid_scientific_claim"])
         self.assertFalse(wrapped["effect_claimed"])
+        self.assertTrue(wrapped["not_confirmatory"])
+        self.assertTrue(wrapped["independent_confirmation_required"])
+        self.assertFalse(wrapped["numeric_precision"]["direct_score_comparison_to_leaderboard"])
         self.assertFalse(wrapped["full_retrain"]["launched"])
         self.assertFalse(wrapped["full_retrain"]["practical_under_cpu_4g_one_thread"])
 
@@ -285,23 +302,35 @@ class SplitAndNoiseTests(unittest.TestCase):
             "sub-0_ses-01_task-audiobook_run-1": "2024-08-01",
         }
         order = plan_order(bases, dates)
-        budgeted = [row["base"] for row in order if row["in_budget"]]
-        self.assertEqual(budgeted[0], "sub-1_ses-11_task-Sherlock1_run-1")
-        self.assertIn("sub-3_ses-11_task-Sherlock1_run-1", budgeted)
-        self.assertLess(
-            budgeted.index("sub-0_ses-01_task-audiobook_run-1"),
-            budgeted.index("sub-0_ses-01_task-audiobook_run-2"),
-        )
-        self.assertNotIn("sub-0_ses-11_task-Sherlock1_run-1", budgeted)
+        budgeted = [row for row in order if row["in_budget"]]
+        self.assertEqual(budgeted[0]["phase"], "noise_pool")
+        self.assertEqual(budgeted[0]["base"], "sub-0_ses-11_task-Sherlock1_run-1")
+        self.assertIn("sub-1_ses-11_task-Sherlock1_run-1", [row["base"] for row in budgeted])
+        self.assertIn("sub-3_ses-11_task-Sherlock1_run-1", [row["base"] for row in budgeted])
+        train = [row["base"] for row in budgeted if row["phase"] == "train"]
+        self.assertLess(train.index("sub-0_ses-01_task-audiobook_run-1"), train.index("sub-0_ses-01_task-audiobook_run-2"))
         self.assertEqual(classify_base("sub-0_ses-02_task-x_run-1")["phase"], "train")
         action = next_action(order, done_bases=[], noise_fit=False, partial_steps=0, score_frozen=False, score_partial=False)
-        self.assertEqual(action["phase"], "selection")
-        done = [row["base"] for row in order if row["phase"] == "selection"]
-        done += [row["base"] for row in order if row["in_budget"] and row["phase"] == "train"]
+        self.assertEqual(action["phase"], "noise_pool")
+        done = [row["base"] for row in budgeted if row["phase"] in ("noise_pool", "selection")]
         action = next_action(order, done_bases=done, noise_fit=False, partial_steps=0, score_frozen=False, score_partial=False)
         self.assertEqual(action["stage"], "noise-fit")
         action = next_action(order, done_bases=done, noise_fit=True, partial_steps=0, score_frozen=False, score_partial=False)
         self.assertEqual(action["phase"], "eval")
+        from campaigns.sdr_uncertainty.strong_noise import SUBSTANTIVE_SCHEDULE, validation_stop
+        curve = [
+            {"step": 100, "learned_ce": 1.0},
+            {"step": 200, "learned_ce": 0.8},
+            {"step": 300, "learned_ce": 0.9},
+            {"step": 400, "learned_ce": 0.91},
+            {"step": 500, "learned_ce": 0.92},
+        ]
+        decision = validation_stop(curve, SUBSTANTIVE_SCHEDULE)
+        self.assertTrue(decision["stop"])
+        self.assertEqual(decision["reason"], "validation_plateau")
+        self.assertEqual(decision["best_step"], 200)
+        with self.assertRaises(ProtocolError):
+            validation_stop([{"step": 100, "learned_ce": 1.0, "eval_ce": 0.1}], SUBSTANTIVE_SCHEDULE)
 
     def test_forward_recording_calls_the_model_and_zeroes_timing(self):
         meg = np.zeros((306, 400), dtype=np.float32)
@@ -346,33 +375,39 @@ class SplitAndNoiseTests(unittest.TestCase):
     def test_directory_fit_does_not_read_eval_and_refuses_bad_output_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             dates = {}
-            for phase, base, subject, date, label in (
-                ("train", "sub-0_a", 0, "2024-05-01", 0),
-                ("train", "sub-0_b", 0, "2024-06-01", 1),
-                ("selection", "sub-1_ses-11_task-Sherlock1_run-1", 1, "2024-07-01", 2),
-                ("eval", "sub-3_ses-11_task-Sherlock1_run-1", 3, "2024-08-01", 4),
-            ):
+            specs = (
+                ("noise_pool", "sub-0_ses-11_task-Sherlock1_run-1", 0, "2024-05-01", np.array([10.0, 60.0, 62.0, 90.0])),
+                ("noise_pool", "sub-0_ses-12_task-Sherlock1_run-1", 0, "2024-06-01", np.array([12.0, 58.0, 61.0, 95.0])),
+                ("selection", "sub-1_ses-11_task-Sherlock1_run-1", 1, "2024-07-01", np.array([20.0, 30.0, 40.0, 50.0])),
+                ("eval", "sub-3_ses-11_task-Sherlock1_run-1", 3, "2024-08-01", np.array([15.0, 25.0, 35.0, 45.0])),
+            )
+            for phase, base, subject, date, timechapter in specs:
                 folder = os.path.join(tmp, "forward", phase)
                 os.makedirs(folder, exist_ok=True)
-                n = 6
+                n = len(timechapter)
                 np.savez_compressed(
                     os.path.join(folder, base + ".npz"),
                     base=np.array(base),
                     subject=np.int64(subject),
                     embedding=np.zeros((n, 4), np.float32),
                     logits=np.zeros((n, 50), np.float32),
-                    label=np.full(n, label, np.int64),
+                    label=np.full(n, subject, np.int64),
                     run_fraction=np.linspace(0.1, 0.9, n),
                     artifact_rms=np.linspace(0.5, 1.5, n),
                     bandpower=np.linspace(0.1, 0.4, n),
+                    timechapter=timechapter,
                     checkpoint_sha=np.array("abc"),
                     timing=np.array("zero"),
                 )
                 dates[base] = date
             fit = fit_noise_directory(tmp, dates)
             self.assertEqual(fit["eval_files_read"], False)
+            self.assertFalse(fit["in_sample_trunk_trained_residual"])
+            self.assertEqual(fit["residual_fit_population"], "subject0_shared_sherlock_Q3")
+            self.assertFalse(fit["selection_rows_used_for_coefficients"])
             self.assertEqual(fit["eval_subjects_in_train"], [])
-            self.assertNotIn(3, fit["train_subjects"])
+            self.assertEqual(fit["train_subjects"], [0])
+            self.assertGreaterEqual(fit["fit_rows"], 2)
             self.assertEqual(set(fit["val_nll"]), set(CANDIDATES))
             os.makedirs(os.path.join(tmp, "noise"), exist_ok=True)
             with open(os.path.join(tmp, "noise", "fit.json"), "w", encoding="utf-8") as handle:
@@ -380,6 +415,11 @@ class SplitAndNoiseTests(unittest.TestCase):
             # Re-dump through the same serializer the runner uses: slopes may be lists already.
             score = score_frozen_directory(tmp, dates)
             self.assertIsNone(score["primary_bacc10_50"])
+            self.assertNotIn("bacc10_50", score["eligible_metrics"])
+            self.assertIn("gaussian_nll_of_cross_entropy", score["eligible_metrics"])
+            self.assertIn("3", score["coverage"]["per_subject"])
+            self.assertGreater(score["coverage"]["per_subject"]["3"]["n"], 0)
+            self.assertLess(score["coverage"]["per_subject"]["3"]["n_classes_present"], 50)
             self.assertFalse(score["temperature_applied_to_reported_logits"])
             self.assertIn("uniform", score["eval_nll"])
             self.assertIn("constant", score["eval_nll"])
@@ -406,7 +446,9 @@ class SplitAndNoiseTests(unittest.TestCase):
         self.assertIn("TasksMax=16", strong)
         self.assertIn("gpu_hide.sh", strong)
         self.assertIn("sdr_lock_run.sh", strong)
+        self.assertNotIn("exec systemd-run", strong)
         self.assertNotIn('exec "$ROOT/scripts/sdr_lock_run.sh"', strong)
+        self.assertIn("LIBRIBRAIN_SDR_SSD_PREFIX", strong)
         self.assertIn("mount --bind /dev/null", hide)
         self.assertIn("must be 1", hide)
         for path in (
@@ -430,23 +472,49 @@ class SplitAndNoiseTests(unittest.TestCase):
             log = os.path.join(home, "lock_log")
             acquire = os.path.join(scheduler, "acquire_lock.sh")
             release = os.path.join(scheduler, "release_lock.sh")
+            lock_root = os.path.join(home, "locks")
+            os.makedirs(lock_root)
             open(acquire, "w", encoding="utf-8").write(textwrap.dedent(f"""\
                 #!/bin/bash
-                # --ttl and --heartbeat are supported. A bare 700 second default is not acceptable.
-                echo "$*" >> "{log}"
-                if [[ "${{1:-}}" == "--heartbeat" ]]; then exit 0; fi
-                if [[ "${{1:-}}" != "--ttl" ]]; then exit 2; fi
+                # acquire_lock.sh JOB [TTL]. Default TTL is ${{2:-700}} and is a label only.
+                JOB="$1"
+                TTL="${{2:-700}}"
+                DIR="{lock_root}/$JOB"
+                if [[ -d "$DIR" ]]; then
+                  echo "busy" >&2
+                  exit 1
+                fi
+                mkdir -p "$DIR"
+                python3 - "$JOB" "$TTL" "$DIR/holder.json" "$$" <<'PY'
+                import json, sys
+                job, ttl, path, pid = sys.argv[1:]
+                json.dump({{"pid": int(pid), "job_id": job, "ttl_label_seconds": int(ttl), "ttl_enforced": False}}, open(path, "w"))
+                PY
+                echo "acquire $JOB $TTL" >> "{log}"
                 exit 0
             """))
             open(release, "w", encoding="utf-8").write(textwrap.dedent(f"""\
                 #!/bin/bash
-                echo "release $*" >> "{log}"
+                JOB="$1"
+                DIR="{lock_root}/$JOB"
+                if [[ ! -f "$DIR/holder.json" ]]; then exit 1; fi
+                python3 - "$JOB" "$DIR/holder.json" <<'PY'
+                import json, sys
+                job, path = sys.argv[1], sys.argv[2]
+                if json.load(open(path))["job_id"] != job:
+                    raise SystemExit(1)
+                PY
+                rm -rf "$DIR"
+                echo "release $JOB" >> "{log}"
                 exit 0
             """))
             os.chmod(acquire, os.stat(acquire).st_mode | stat.S_IEXEC)
             os.chmod(release, os.stat(release).st_mode | stat.S_IEXEC)
+            missing_ssd = os.path.join(home, "missing-ssd-prefix")
+            self.assertFalse(os.path.isdir(missing_ssd))
             env = os.environ.copy()
             env["HOME"] = home
+            env["LIBRIBRAIN_SDR_SSD_PREFIX"] = missing_ssd
             env.pop("SDR_LOCK_HELD", None)
             env.pop("SDR_STRONG_LOCK", None)
             ran = subprocess.run(
@@ -455,18 +523,48 @@ class SplitAndNoiseTests(unittest.TestCase):
             )
             self.assertNotEqual(ran.returncode, 0)
             text = open(log, encoding="utf-8").read()
-            self.assertIn("--ttl 14400", text)
-            self.assertIn("--heartbeat", text)
+            self.assertIn("acquire libribrain-strong-decoder-noise 14400", text)
+            self.assertNotIn("--heartbeat", text)
+            self.assertNotIn("--ttl", text)
             self.assertIn("release libribrain-strong-decoder-noise", text)
-            self.assertIn("not mounted", ran.stderr)
+            self.assertIn(missing_ssd, ran.stderr)
+            self.assertFalse(os.path.isdir(os.path.join(lock_root, "libribrain-strong-decoder-noise")))
+            holder_after = os.path.join(lock_root, "libribrain-strong-decoder-noise", "holder.json")
+            self.assertFalse(os.path.exists(holder_after))
 
-            bare = os.path.join(scheduler, "bare.sh")
-            open(bare, "w", encoding="utf-8").write("#!/bin/bash\nTTL=\"${2:-700}\"\nexit 0\n")
-            os.chmod(bare, os.stat(bare).st_mode | stat.S_IEXEC)
+            spec = inspect_text(open(acquire, encoding="utf-8").read())
+            self.assertEqual(spec["style"], "positional")
+            self.assertFalse(spec["heartbeat"])
+            self.assertFalse(spec["ttl_enforced"])
             with self.assertRaises(ProtocolError):
-                inspect_text(open(bare, encoding="utf-8").read())
-            self.assertIn("700", str(self._raised(bare)))
+                inspect_text("#!/bin/bash\necho no-ttl\n")
             self.assertEqual(chosen_ttl(), 14400)
+
+            held = subprocess.Popen(
+                ["bash", os.path.join(root, "scripts", "sdr_lock_run.sh"), "libribrain-strong-decoder-noise", "--", "sleep", "30"],
+                cwd=root, env=env, text=True,
+            )
+            holder = os.path.join(lock_root, "libribrain-strong-decoder-noise", "holder.json")
+            for _ in range(50):
+                if os.path.isfile(holder):
+                    break
+                time.sleep(0.05)
+            self.assertTrue(os.path.isfile(holder))
+            recorded = json.load(open(holder, encoding="utf-8"))
+            self.assertEqual(recorded["ttl_label_seconds"], 14400)
+            self.assertFalse(recorded["ttl_enforced"])
+            self.assertFalse(os.path.exists(f"/proc/{recorded['pid']}"))
+            busy = subprocess.run(
+                ["bash", os.path.join(root, "scripts", "sdr_lock_run.sh"), "libribrain-strong-decoder-noise", "--", "true"],
+                cwd=root, env=env, text=True, capture_output=True, check=False,
+            )
+            self.assertNotEqual(busy.returncode, 0)
+            self.assertTrue(os.path.isfile(holder))
+            self.assertEqual(open(log, encoding="utf-8").read().count("release "), 1)
+            held.terminate()
+            held.wait(timeout=10)
+            self.assertFalse(os.path.isdir(os.path.join(lock_root, "libribrain-strong-decoder-noise")))
+            self.assertEqual(open(log, encoding="utf-8").read().count("release "), 2)
 
         hide_env = os.environ.copy()
         hide_env.update({

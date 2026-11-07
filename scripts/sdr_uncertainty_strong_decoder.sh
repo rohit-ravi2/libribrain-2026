@@ -31,8 +31,9 @@ if [[ "${SDR_LOCK_HELD:-}" != "1" ]]; then
   exit $?
 fi
 
-if [[ ! -d /mnt/ssd4tb ]]; then
-  echo "blocker: /mnt/ssd4tb is not mounted" >&2
+SSD_PREFIX="${LIBRIBRAIN_SDR_SSD_PREFIX:-/mnt/ssd4tb}"
+if [[ ! -d "$SSD_PREFIX" ]]; then
+  echo "blocker: SSD prefix ${SSD_PREFIX} is not mounted" >&2
   exit 2
 fi
 
@@ -46,7 +47,8 @@ fi
 
 if [[ "${SDR_INSIDE_SCOPE:-}" != "1" ]]; then
   echo "strong-decoder 1.4: MemoryMax=4G MemorySwapMax=0 CPUQuota=100% TasksMax=16 threads=1 GPU hidden; no runtime ceiling" >&2
-  exec systemd-run --user --scope --collect \
+  set +e
+  systemd-run --user --scope --collect \
     -p MemoryMax=4G \
     -p MemorySwapMax=0 \
     -p CPUQuota=100% \
@@ -71,6 +73,7 @@ if [[ "${SDR_INSIDE_SCOPE:-}" != "1" ]]; then
       LB_WORKERS=1 \
       LB_DEV=cpu \
       LIBRIBRAIN_PYTHON="$PY" \
+      LIBRIBRAIN_SDR_SSD_PREFIX="$SSD_PREFIX" \
       LIBRIBRAIN_DATA="$LIBRIBRAIN_DATA" \
       LIBRIBRAIN_CACHE="$LIBRIBRAIN_CACHE" \
       LIBRIBRAIN_LPP="$LIBRIBRAIN_LPP" \
@@ -78,6 +81,9 @@ if [[ "${SDR_INSIDE_SCOPE:-}" != "1" ]]; then
       LIBRIBRAIN_SDR_OUT="$LIBRIBRAIN_SDR_OUT" \
       LB_STRONG_CKPT="$LB_STRONG_CKPT" \
     bash "$0" "$@"
+  status=$?
+  set -e
+  exit "$status"
 fi
 
 if [[ "${SDR_INSIDE_NS:-}" != "1" ]]; then
@@ -85,10 +91,15 @@ if [[ "${SDR_INSIDE_NS:-}" != "1" ]]; then
     echo "blocker: unshare is required to hide GPU device nodes before compute" >&2
     exit 2
   fi
-  exec unshare --user --map-root-user --mount \
+  set +e
+  unshare --user --map-root-user --mount \
     env SDR_INSIDE_NS=1 SDR_INSIDE_SCOPE=1 SDR_LOCK_HELD=1 SDR_STRONG_LOCK=1 \
       SDR_LOCK_TOKEN="${SDR_LOCK_TOKEN}" LIBRIBRAIN_PYTHON="$PY" \
+      LIBRIBRAIN_SDR_SSD_PREFIX="$SSD_PREFIX" \
     bash "$0" "$@"
+  status=$?
+  set -e
+  exit "$status"
 fi
 
 exec bash "$ROOT/scripts/gpu_hide.sh" -- "$PY" -m campaigns.sdr_uncertainty.strong_decoder_runner "$@"
