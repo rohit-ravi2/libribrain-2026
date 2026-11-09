@@ -1,0 +1,680 @@
+diff --git a/campaigns/sdr_uncertainty/AMENDMENT_1.4.2.md b/campaigns/sdr_uncertainty/AMENDMENT_1.4.2.md
+new file mode 100644
+index 0000000..35131e4
+--- /dev/null
++++ b/campaigns/sdr_uncertainty/AMENDMENT_1.4.2.md
+@@ -0,0 +1,28 @@
++# Amendment 1.4.2 — undated Broad subjects
++
++Protocol id of the parent: `strong-decoder-noise-1.4`. This file is amendment `1.4.2`. It is written before any noise-fit result that uses it. `CAMPAIGN.md` and `AMENDMENT_1.4.md` are left as they were. The in-vocabulary filter already in this tree stays: labels outside 0..49 are omitted before residuals and before this day-term rule. `effect_claimed` stays false. `valid_scientific_claim` stays false. Gates, the Gaussian NLL definition, the candidate list, the selection population, the memory cap, and the scheduler lock are unchanged.
++
++## What was looked up
++
++The live tree fails in `noise-fit` with `no acquisition date for sub-10_ses-11_task-Sherlock1_run-1; refusing to invent day_rank`. `read_dates()` reads BIDS `*_scans.tsv` and nothing else. On the machine that holds the data, only subject 0 has those files. Subjects 1/5/10 and 3/6/9/12 have continuous-cache forwards and no `scans.tsv`. `*_ev.npz` has no date field.
++
++Public sources, checked before this amendment:
++
++- `pnpl/LibriBrain2` on Hugging Face is the Broad release. Its Sherlock1 tree is `derivatives/` and `stimuli/` only. The dataset card says BIDS for Sherlock1 is embargoed until after the 2026 competition. A released events table, `Sherlock1/derivatives/events/sub-1_ses-11_task-Sherlock1_run-1_events.tsv`, starts with `idx, wavile, kind, segment, sentenceidx, wordidx, phonemeidx, timemeg, timeds, timechapter, timesentence, duration` and has no acquisition date. `croissant.json` has no `scans` entry and no per-subject calendar.
++- `pnpl/LibriBrain` publishes subject-0 `scans.tsv` (for example `Sherlock1/sub-0/ses-12/sub-0_ses-12_scans.tsv`). Its `metadata/` directory is channels and sensor coordinates, not a Broad date table. Broad subjects are not in that repository.
++- arXiv:2608.25204 (Mantegna et al., LibriBrain100) says sessions 11 and 12 are chapters 11 and 12 of *A Study in Scarlet*. For subjects 1–32 both chapters were presented in one recording session of about an hour, with a short break. The paper does not publish a per-subject acquisition calendar.
++- The pnpl `LibriBrain100` loader selects subjects, corpus, and partition. It does not expose an acquisition date. OSF `ag3kj` is MEG-MASC, a different study, not this release.
++
++No authorized public date for a Broad subject was found. This amendment does not add a download. `read_dates()` stays a local `scans.tsv` reader. It does not open a path that mentions holdout, and it does not contact the network.
++
++## Decision
++
++Do not invent a date. Do not use the BIDS session ordinal as a day. The dataset documents that ordinal as a chapter, and for a Broad subject the two chapters are the same recording session. Treating `ses-11` as day 11 would invent an order the paper contradicts.
++
++Do not restrict day-dependent candidates to subject 0. Selection stays on validation subjects 1/5/10, and those subjects are the ones without dates. Removing `learned_state`, `random_covariate`, and `error_scaling` from that comparison would leave only uniform and constant, which changes which candidates validation is allowed to score.
++
++Drop `day_rank` and `day_distance` on any row that has no acquisition date. The noise equation is still fit on subject-0 shared Sherlock Q3, where `scans.tsv` dates exist, and those coefficient rows still carry both day terms. Two distinct subject-0 training dates are still required. A subject-0 row or a coefficient row with no date still raises `no acquisition date for {base}; refusing to invent day_rank` and does not fall through to this rule.
++
++On an undated validation or eval row the other features stay: `run_fraction`, `artifact_rms`, `bandpower`, and `log_train_window_count` (the last is the training-window total, which does not need that row's date). The two day columns are omitted. Because those columns are centered on the training rows, the omitted contribution is zero. That zero is not stored as a calendar day and is not a session rank. If a real `scans.tsv` date is present, including one that appears later for a Broad subject, the day terms are computed from that date and clipped to the training range as in 1.4.
++
++Every candidate, including uniform and constant, is still scored by Gaussian NLL on subjects 1/5/10. Those rows are still not coefficient rows. Eval subjects 3/6/9/12 stay exploratory. The competition holdout is not read.
+diff --git a/campaigns/sdr_uncertainty/STRONG_DECODER_NOISE.md b/campaigns/sdr_uncertainty/STRONG_DECODER_NOISE.md
+index 4198437..98660cc 100644
+--- a/campaigns/sdr_uncertainty/STRONG_DECODER_NOISE.md
++++ b/campaigns/sdr_uncertainty/STRONG_DECODER_NOISE.md
+@@ -4,7 +4,7 @@ The runnable contract is `AMENDMENT_1.4.md`. This note is the short form.
+ 
+ The decoder is `src.v3lib.Model` from `runs/deep_c_ep6.pt` (24,690,963 bytes; not in this checkout). `deep_c` was trained with `train_mask` on every subject-0 non-shared session. Those days are not a frozen holdout. Eval subjects 3, 6, 9, 12 and validation subjects 1, 5, 10 were not trained and were inspected in October, so a score on them is exploratory. Subjects 13–32 and the seen subjects are not an untrained holdout. Sherlock Q3/Q4 is not confirmation. The competition holdout is not read.
+ 
+-Noise candidates are uniform, constant, random covariate, learned state, and an error-scaling pair (log training-window count and day distance). All five use Gaussian NLL of the frozen per-word cross-entropy. Coefficients are fit on training rows only. Day rank and day distance are clipped to the training range. Word frequency and class are rejected. Forecasting papers motivate the candidates and are not assumed to hold for MEG. Packard 1990 is not cited.
++Noise candidates are uniform, constant, random covariate, learned state, and an error-scaling pair (log training-window count and day distance). All five use Gaussian NLL of the frozen per-word cross-entropy. Coefficients are fit on training rows only. Day rank and day distance are clipped to the training range when a real `scans.tsv` date exists. Amendment 1.4.2 drops those two terms for a row with no acquisition date and does not invent one. Word frequency and class are rejected. Forecasting papers motivate the candidates and are not assumed to hold for MEG. Packard 1990 is not cited.
+ 
+ A per-row temperature does not change top-10. The accuracy comparison that can move logits is the matched partial finetune of the classification head (uniform versus learned precision versus a matched random projection), 32 steps, trunk frozen. The 8-epoch retrain is not launched. `effect_claimed` stays false. Old probe outputs are not overwritten.
+ 
+diff --git a/campaigns/sdr_uncertainty/strong_decoder_runner.py b/campaigns/sdr_uncertainty/strong_decoder_runner.py
+index d2fd25e..1f3146f 100644
+--- a/campaigns/sdr_uncertainty/strong_decoder_runner.py
++++ b/campaigns/sdr_uncertainty/strong_decoder_runner.py
+@@ -19,7 +19,11 @@ from .strong_decoder import is_strong_decoder, load_strong_decoder
+ from .strong_forward import alignment_for, forward_recording, load_events_safe
+ from .strong_noise import (
+     AMENDMENT,
++    AMENDMENT_142,
+     CANDIDATES,
++    DATE_SOURCE,
++    DAY_TERMS,
++    UNDATED_DAY_TERMS,
+     VAL_SUBJECTS,
+     CHECKPOINT_BASENAME,
+     CHECKPOINT_BYTES,
+@@ -44,6 +48,7 @@ from .strong_noise import (
+     log_variance,
+     matched_partial_steps,
+     measurement_status,
++    missing_acquisition_date,
+     quarter_labels,
+     select_on_validation,
+     temperature_changes_top10,
+@@ -129,6 +134,13 @@ def honesty(**extra) -> dict:
+     payload["eval_subjects_are_pristine_confirmatory_holdout"] = False
+     payload["lpp_pooled"] = False
+     payload["full_retrain"] = dict(FULL_RETRAIN)
++    payload["amendment_1_4_2"] = AMENDMENT_142
++    payload["undated_day_terms"] = UNDATED_DAY_TERMS
++    payload["day_terms"] = list(DAY_TERMS)
++    payload["date_source"] = DATE_SOURCE
++    payload["dates_invented"] = False
++    payload["session_ordinal_used_as_day"] = False
++    payload["competition_holdout_read"] = False
+     payload["numeric_precision"] = {
+         "this_run": "fp32_cpu_when_cuda_hidden",
+         "leaderboard_deep_c": "bf16_cuda_autocast",
+@@ -211,11 +223,22 @@ def list_cache_bases(cache_cont: str) -> list[str]:
+ 
+ 
+ def read_dates(data_root: str) -> dict:
++    """Acquisition dates from BIDS ``*_scans.tsv`` only.
++
++    Broad subjects have no public scans.tsv: ``pnpl/LibriBrain2`` embargos
++    Sherlock1 BIDS, and the released events tables have no date column.
++    Amendment 1.4.2 drops day terms for a base this map does not contain.
++    This function does not download, does not read a session ordinal as a
++    day, and does not open a path that mentions holdout.
++    """
+     dates = {}
+     if not data_root or not os.path.isdir(data_root):
+         return dates
+     scans = glob.glob(os.path.join(data_root, "*", "sub-*", "ses-*", "*_scans.tsv"))
+     for path in scans:
++        lowered = path.lower()
++        if "holdout" in lowered or "competition_holdout" in lowered:
++            continue
+         with open(path, encoding="utf-8-sig", newline="") as handle:
+             for row in csv.reader(handle, delimiter="\t"):
+                 if len(row) < 2 or not row[0].startswith("meg/"):
+@@ -298,9 +321,11 @@ def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | Non
+             raise ProtocolError(f"{base} logits are not {N_CLASSES}-way")
+         if not (len(labels) == len(logits) == len(embedding)):
+             raise ProtocolError(f"{base} forward arrays differ in length")
+-        date = dates.get(base)
+-        if not date:
+-            raise ProtocolError(f"no acquisition date for {base}; refusing to invent day_rank")
++        date = dates.get(base) or None
++        if split == "train" and not date:
++            raise ProtocolError(missing_acquisition_date(base))
++        if split != "train" and not date and subject == 0:
++            raise ProtocolError(missing_acquisition_date(base))
+         quarters = None
+         extra = None
+         if quarter is not None:
+@@ -402,13 +427,18 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
+     train = bundle["train_index"]
+     if int(np.sum(train)) != n_fit:
+         raise ProtocolError("selection rows leaked into the coefficient fit")
++    if not np.isfinite(bundle["z"]).all():
++        raise ProtocolError("noise features are non-finite; refusing to invent a day")
+     params = {}
+     val_nll = {}
+     for name in CANDIDATES:
+         matrix, feat_names = _candidate_matrix(bundle["z"], bundle["names"], name)
+         params[name] = fit_noise(matrix[train], residual[train], name, feature_names=feat_names, seed=0)
+         val_nll[name] = weighted_nll(residual[~train], matrix[~train], params[name])
++        if not np.isfinite(val_nll[name]):
++            raise ProtocolError(f"{name} validation NLL is non-finite")
+     chosen = select_on_validation(val_nll)
++    dropped = sorted({row["base"] for row, known in zip(rows, bundle["day_defined"]) if not known})
+     return {
+         "objective": "gaussian_nll",
+         "objective_note": (
+@@ -428,7 +458,15 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
+         "trunk_unseen_quarter": "Q3",
+         "in_sample_trunk_trained_residual": False,
+         "selection_population": "broad_val_subjects_1_5_10",
++        "selection_subjects": sorted({int(row["subject"]) for row in rows if row["split"] == "selection"}),
+         "selection_rows_used_for_coefficients": False,
++        "amendment_1_4_2": AMENDMENT_142,
++        "undated_day_terms": UNDATED_DAY_TERMS,
++        "day_terms": list(DAY_TERMS),
++        "day_terms_dropped_bases": dropped,
++        "date_source": DATE_SOURCE,
++        "dates_invented": False,
++        "session_ordinal_used_as_day": False,
+         "broad_eval_rows_used": False,
+         "q4_not_used_for_fit_or_selection": True,
+         "eval_files_read": False,
+@@ -466,7 +504,10 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
+     labels = np.concatenate(labels, axis=0)
+     subjects = np.concatenate(subjects, axis=0)
+     matrix_z = transform_with_state(rows, fit["state"])
++    if not np.isfinite(matrix_z).all():
++        raise ProtocolError("eval features are non-finite; refusing to invent a day")
+     residual = decoder_residual(logits, labels)
++    dropped = sorted({row["base"] for row in rows if not row.get("date")})
+     nll = {}
+     changed = False
+     for name in CANDIDATES:
+@@ -495,6 +536,13 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
+         "not_confirmatory": True,
+         "independent_confirmation_required": True,
+         "candidates_scored": list(CANDIDATES),
++        "amendment_1_4_2": AMENDMENT_142,
++        "undated_day_terms": UNDATED_DAY_TERMS,
++        "day_terms": list(DAY_TERMS),
++        "day_terms_dropped_bases": dropped,
++        "date_source": DATE_SOURCE,
++        "dates_invented": False,
++        "session_ordinal_used_as_day": False,
+         "fit_rows": int(fit.get("fit_rows", fit.get("train_rows", 0))),
+         "train_rows": int(fit["train_rows"]),
+         "selection_rows": int(fit["selection_rows"]),
+diff --git a/campaigns/sdr_uncertainty/strong_noise.py b/campaigns/sdr_uncertainty/strong_noise.py
+index 42e8ac1..1460e1e 100644
+--- a/campaigns/sdr_uncertainty/strong_noise.py
++++ b/campaigns/sdr_uncertainty/strong_noise.py
+@@ -5,6 +5,10 @@ for MEG. Every candidate is scored with the same Gaussian negative log-likelihoo
+ on a defined decoder residual: the frozen network's per-word cross-entropy.
+ A scalar per-row temperature is not an accuracy result. Subject-0 days are not
+ a frozen-trunk holdout.
++
++Amendment 1.4.2: a row with no BIDS acquisition date does not receive an invented
++day_rank or day_distance. Those two terms are omitted. Subject 0 still requires
++a scans.tsv date. See AMENDMENT_1.4.2.md.
+ """
+ from __future__ import annotations
+ 
+@@ -13,7 +17,12 @@ from datetime import date as Date
+ import numpy as np
+ 
+ AMENDMENT = "1.4"
++AMENDMENT_142 = "1.4.2"
+ PROTOCOL_ID = "strong-decoder-noise-1.4"
++# Pre-specified before any 1.4.2 result. Undated rows omit these terms.
++# They are not filled with a session ordinal or a calendar day.
++UNDATED_DAY_TERMS = "dropped"
++DATE_SOURCE = "bids_scans_tsv_only"
+ LPP_NOTE = (
+     "Le Petit Prince is a separate PDDL transfer stage. It is not pooled with LibriBrain. "
+     "Historical mixing of about 20 LPP listeners cost about 0.15. "
+@@ -117,6 +126,7 @@ CANDIDATES = (
+ )
+ PARTIAL_ARMS = ("uniform", "random_covariate", "learned_state")
+ ERROR_SCALING_FEATURES = ("log_train_window_count", "day_distance")
++DAY_TERMS = ("day_rank", "day_distance")
+ REJECTED_CANDIDATES = ("true_label_word_frequency",)
+ LOG_VAR_CLIP = (-8.0, 8.0)
+ 
+@@ -261,6 +271,10 @@ class NumericClip:
+         return clip
+ 
+ 
++def missing_acquisition_date(base: str) -> str:
++    return f"no acquisition date for {base}; refusing to invent day_rank"
++
++
+ def _to_date(text: str) -> Date:
+     try:
+         year, month, day = (int(part) for part in str(text).split("-"))
+@@ -269,6 +283,65 @@ def _to_date(text: str) -> Date:
+         raise ProtocolError(f"acquisition date {text!r} is not YYYY-MM-DD") from exc
+ 
+ 
++def _date_text(row: dict) -> str | None:
++    if "date" not in row or row["date"] is None:
++        return None
++    text = str(row["date"]).strip()
++    return text or None
++
++
++def _day_term_index() -> list[int]:
++    return [ALLOWED_INFERENCE_FEATURES.index(name) for name in DAY_TERMS]
++
++
++def drop_undefined_day_terms(z: np.ndarray, defined: np.ndarray) -> np.ndarray:
++    """Omit day_rank and day_distance where no acquisition date exists.
++
++    The matrix is already centered on training rows, so a zero contribution is
++    the omitted term. It is not a calendar day, a mean imputed date, or a
++    BIDS session ordinal.
++    """
++    out = np.array(z, dtype=np.float64, copy=True)
++    defined = np.asarray(defined, dtype=bool)
++    if defined.shape != (len(out),):
++        raise ProtocolError("day-term mask does not match the rows")
++    missing = ~defined
++    if np.any(missing):
++        out[np.ix_(missing, _day_term_index())] = 0.0
++    if not np.isfinite(out).all():
++        raise ProtocolError("day terms left a non-finite feature; refusing to invent a day")
++    return out
++
++
++def _use_or_drop_date(row: dict, *, coefficient: bool) -> str | None:
++    """Return a YYYY-MM-DD, or None when day terms must be dropped.
++
++    Coefficient rows and subject 0 always need a real scans.tsv date.
++    """
++    text = _date_text(row)
++    if text is not None:
++        return text
++    subject = row.get("subject")
++    if coefficient or subject is None or int(subject) == 0:
++        raise ProtocolError(missing_acquisition_date(str(row["base"])))
++    return None
++
++
++def _day_feature_values(moment: Date, *, in_train: bool, train_days, windows_on, total_train_windows):
++    if in_train:
++        others = [day for day in train_days if day != moment]
++        earlier = [day for day in train_days if day < moment]
++        count = sum(windows_on[day] for day in earlier)
++    else:
++        others = list(train_days)
++        count = total_train_windows
++    return (
++        _rank_in_train(moment, train_days),
++        float(np.log1p(count)),
++        _distance_days(moment, others),
++    )
++
++
+ def _rank_in_train(moment: Date, train_days: list[Date]) -> float:
+     ords = [day.toordinal() for day in train_days]
+     raw = int(np.searchsorted(np.asarray(ords), moment.toordinal()))
+@@ -281,10 +354,38 @@ def _distance_days(moment: Date, others: list[Date]) -> float:
+     return float(min(abs(moment.toordinal() - day.toordinal()) for day in others))
+ 
+ 
++def _fill_feature_row(raw, defined, index, row, *, in_train: bool, coefficient: bool, train_days, windows_on, total_train_windows) -> None:
++    for name in ("run_fraction", "artifact_rms", "bandpower", "base"):
++        if name not in row:
++            raise ProtocolError(f"row is missing {name}")
++    raw[index, 1] = float(row["run_fraction"])
++    raw[index, 2] = float(row["artifact_rms"])
++    raw[index, 3] = float(row["bandpower"])
++    text = _use_or_drop_date(row, coefficient=coefficient or in_train)
++    if text is None:
++        raw[index, 0] = np.nan
++        raw[index, 4] = float(np.log1p(total_train_windows))
++        raw[index, 5] = np.nan
++        defined[index] = False
++        return
++    defined[index] = True
++    rank, log_count, distance = _day_feature_values(
++        _to_date(text),
++        in_train=in_train,
++        train_days=train_days,
++        windows_on=windows_on,
++        total_train_windows=total_train_windows,
++    )
++    raw[index, 0] = rank
++    raw[index, 4] = log_count
++    raw[index, 5] = distance
++
++
+ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
+     """Build the clipped feature matrix. Statistics are fit on training rows only.
+ 
+-    rows need split, subject, date, run_fraction, artifact_rms, bandpower, group_windows, base.
++    Training rows need a real acquisition date. A non-training row may omit it.
++    Amendment 1.4.2 then drops day_rank and day_distance for that row.
+     """
+     if not rows:
+         raise ProtocolError("no rows to assemble")
+@@ -293,13 +394,16 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
+             raise ProtocolError(
+                 f"subject {row['subject']} is untrained under split v2 and leaked into the noise fit"
+             )
+-        for name in ("run_fraction", "artifact_rms", "bandpower", "date", "group_windows", "base"):
++        for name in ("run_fraction", "artifact_rms", "bandpower", "group_windows", "base", "subject"):
+             if name not in row:
+                 raise ProtocolError(f"row is missing {name}")
+     train_rows = [row for row in rows if row["split"] == train_split]
+     if len(train_rows) < 2:
+         raise ProtocolError("noise fit needs at least two training rows")
+-    train_days = sorted({_to_date(row["date"]) for row in train_rows})
++    for row in train_rows:
++        if _date_text(row) is None:
++            raise ProtocolError(missing_acquisition_date(str(row["base"])))
++    train_days = sorted({_to_date(_date_text(row)) for row in train_rows})
+     if len(train_days) < 2:
+         raise ProtocolError("day_distance needs at least two distinct training acquisition dates")
+     # group_windows is repeated on every word of a run. Count a base once.
+@@ -309,25 +413,20 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
+         if row["base"] in seen_base:
+             continue
+         seen_base.add(row["base"])
+-        day = _to_date(row["date"])
++        day = _to_date(_date_text(row))
+         windows_on[day] = windows_on.get(day, 0) + int(row["group_windows"])
+     total_train_windows = int(sum(windows_on.values()))
+     raw = np.zeros((len(rows), len(ALLOWED_INFERENCE_FEATURES)), dtype=np.float64)
+-    for i, row in enumerate(rows):
+-        moment = _to_date(row["date"])
+-        if row["split"] == train_split:
+-            others = [day for day in train_days if day != moment]
+-            earlier = [day for day in train_days if day < moment]
+-            count = sum(windows_on[day] for day in earlier)
+-        else:
+-            others = list(train_days)
+-            count = total_train_windows
+-        raw[i, 0] = _rank_in_train(moment, train_days)
+-        raw[i, 1] = float(row["run_fraction"])
+-        raw[i, 2] = float(row["artifact_rms"])
+-        raw[i, 3] = float(row["bandpower"])
+-        raw[i, 4] = float(np.log1p(count))
+-        raw[i, 5] = _distance_days(moment, others)
++    defined = np.zeros(len(rows), dtype=bool)
++    for index, row in enumerate(rows):
++        _fill_feature_row(
++            raw, defined, index, row,
++            in_train=row["split"] == train_split,
++            coefficient=row["split"] == train_split,
++            train_days=train_days,
++            windows_on=windows_on,
++            total_train_windows=total_train_windows,
++        )
+     train_index = np.array([row["split"] == train_split for row in rows])
+     clip = NumericClip().fit(raw[train_index])
+     state = {
+@@ -338,10 +437,17 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
+         "clip": clip.to_dict(),
+         "train_bases": sorted(seen_base),
+         "n_train_days": len(train_days),
++        "day_terms": list(DAY_TERMS),
++        "undated_day_terms": UNDATED_DAY_TERMS,
++        "amendment_1_4_2": AMENDMENT_142,
++        "date_source": DATE_SOURCE,
++        "dates_invented": False,
++        "session_ordinal_used_as_day": False,
+     }
+     return {
+         "names": state["names"],
+-        "z": clip.transform(raw),
++        "z": drop_undefined_day_terms(clip.transform(raw), defined),
++        "day_defined": defined,
+         "train_index": train_index,
+         "clip": clip,
+         "state": state,
+@@ -351,28 +457,28 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
+ 
+ 
+ def transform_with_state(rows: list[dict], state: dict) -> np.ndarray:
+-    """Apply a frozen training feature state. Does not refit on these rows."""
++    """Apply a frozen training feature state. Does not refit on these rows.
++
++    A non-subject-0 row with no date keeps the non-day features and drops
++    day_rank and day_distance. Subject 0 and coefficient bases still refuse
++    a missing date.
++    """
+     train_days = sorted(_to_date(day) for day in state["train_days"])
+     windows_on = {_to_date(day): int(count) for day, count in state["windows_on"].items()}
+     total = int(state["total_train_windows"])
+     train_bases = set(state["train_bases"])
+     raw = np.zeros((len(rows), len(ALLOWED_INFERENCE_FEATURES)), dtype=np.float64)
+-    for i, row in enumerate(rows):
+-        moment = _to_date(row["date"])
+-        if row["base"] in train_bases:
+-            others = [day for day in train_days if day != moment]
+-            earlier = [day for day in train_days if day < moment]
+-            count = sum(windows_on[day] for day in earlier)
+-        else:
+-            others = list(train_days)
+-            count = total
+-        raw[i, 0] = _rank_in_train(moment, train_days)
+-        raw[i, 1] = float(row["run_fraction"])
+-        raw[i, 2] = float(row["artifact_rms"])
+-        raw[i, 3] = float(row["bandpower"])
+-        raw[i, 4] = float(np.log1p(count))
+-        raw[i, 5] = _distance_days(moment, others)
+-    return NumericClip.from_dict(state["clip"]).transform(raw)
++    defined = np.zeros(len(rows), dtype=bool)
++    for index, row in enumerate(rows):
++        _fill_feature_row(
++            raw, defined, index, row,
++            in_train=row["base"] in train_bases,
++            coefficient=row["base"] in train_bases,
++            train_days=train_days,
++            windows_on=windows_on,
++            total_train_windows=total,
++        )
++    return drop_undefined_day_terms(NumericClip.from_dict(state["clip"]).transform(raw), defined)
+ 
+ 
+ def _design(z: np.ndarray) -> np.ndarray:
+diff --git a/campaigns/sdr_uncertainty/test_strong_decoder.py b/campaigns/sdr_uncertainty/test_strong_decoder.py
+index 8989260..9690301 100644
+--- a/campaigns/sdr_uncertainty/test_strong_decoder.py
++++ b/campaigns/sdr_uncertainty/test_strong_decoder.py
+@@ -11,6 +11,7 @@ import tempfile
+ import textwrap
+ import time
+ import unittest
++import unittest.mock
+ 
+ import numpy as np
+ 
+@@ -21,11 +22,13 @@ from campaigns.sdr_uncertainty.strong_decoder import (
+     load_strong_decoder,
+ )
+ from campaigns.sdr_uncertainty.strong_decoder_runner import (
++    _rows_from_forward,
+     _write_forward,
+     assert_output_dir,
+     fit_noise_directory,
+     honesty,
+     partial_train_directory,
++    read_dates,
+     score_frozen_directory,
+     score_partial_directory,
+ )
+@@ -33,6 +36,7 @@ from campaigns.sdr_uncertainty.strong_forward import forward_recording, slice_wi
+ from campaigns.sdr_uncertainty.strong_noise import (
+     CANDIDATES,
+     CHECKPOINT_BYTES,
++    DAY_TERMS,
+     PARTIAL_ARMS,
+     REJECTED_CANDIDATES,
+     ProtocolError,
+@@ -47,9 +51,11 @@ from campaigns.sdr_uncertainty.strong_noise import (
+     frozen_trunk_role,
+     gaussian_nll,
+     initial_partial_arms,
++    log_variance,
+     matched_partial_steps,
+     measurement_claim,
+     measurement_status,
++    missing_acquisition_date,
+     next_sessions,
+     per_row_ce,
+     row_temperature,
+@@ -171,6 +177,53 @@ class SplitAndNoiseTests(unittest.TestCase):
+         with self.assertRaises(ProtocolError):
+             assemble_features(_rows("only", 0, "2024-02-01", "train") + _rows("same-day", 0, "2024-02-01", "train"))
+ 
++    def test_undated_broad_rows_drop_day_terms_and_subject0_fails_closed(self):
++        rows = []
++        rows += _rows("sub-0_a", 0, "2024-02-01", "train")
++        rows += _rows("sub-0_b", 0, "2024-03-01", "train", scale=1.4)
++        rows += _rows("sub-1_ses-11_task-Sherlock1_run-1", 1, None, "selection")
++        rows += _rows("sub-5_ses-11_task-Sherlock1_run-1", 5, None, "selection")
++        rows += _rows("sub-10_ses-11_task-Sherlock1_run-1", 10, "2024-09-01", "selection")
++        bundle = assemble_features(rows)
++        names = bundle["names"]
++        day_idx = [names.index(name) for name in DAY_TERMS]
++        train = bundle["train_index"]
++        undated = np.array([row["date"] is None for row in rows])
++        self.assertTrue(np.any(undated))
++        self.assertTrue(np.all(bundle["z"][undated][:, day_idx] == 0.0))
++        self.assertGreater(float(bundle["z"][train, day_idx[0]].max()), 0.0)
++        self.assertFalse(np.allclose(bundle["z"][undated, names.index("run_fraction")], 0.0))
++        dated_selection = ~train & ~undated
++        self.assertTrue(np.allclose(bundle["z"][dated_selection, day_idx[0]], bundle["z"][train, day_idx[0]].max()))
++        self.assertFalse(bundle["state"]["dates_invented"])
++        self.assertFalse(bundle["state"]["session_ordinal_used_as_day"])
++        self.assertEqual(bundle["state"]["undated_day_terms"], "dropped")
++        again = transform_with_state(rows, bundle["state"])
++        self.assertTrue(np.allclose(bundle["z"], again))
++        residual = np.linspace(0.2, 1.8, len(rows))
++        params = fit_noise(bundle["z"][train], residual[train], "learned_state", feature_names=names)
++        muted = dict(params)
++        slope = np.array(params["slope"], dtype=np.float64, copy=True)
++        slope[day_idx] = 0.0
++        muted["slope"] = slope
++        self.assertTrue(np.allclose(
++            log_variance(bundle["z"][undated], params),
++            log_variance(bundle["z"][undated], muted),
++        ))
++        missing = _rows("sub-0_ses-11_task-Sherlock1_run-1", 0, None, "train")
++        missing += _rows("sub-0_b", 0, "2024-03-01", "train")
++        with self.assertRaises(ProtocolError) as caught:
++            assemble_features(missing)
++        self.assertEqual(
++            str(caught.exception),
++            missing_acquisition_date("sub-0_ses-11_task-Sherlock1_run-1"),
++        )
++        self.assertNotRegex(str(caught.exception), r"\d{4}-\d{2}-\d{2}")
++        session_as_day = _rows("sub-1_ses-11_task-Sherlock1_run-1", 1, "11", "selection")
++        with self.assertRaises(ProtocolError) as caught:
++            assemble_features(rows[:8] + session_as_day)
++        self.assertIn("not YYYY-MM-DD", str(caught.exception))
++
+     def test_session_interval_is_undefined_for_one_recording(self):
+         wide = session_bootstrap(["a", "a", "b", "b"], [0.1, 0.2, 0.3, 0.4], seed=0, draws=50)
+         self.assertTrue(wide["defined"])
+@@ -960,6 +1013,122 @@ class SplitAndNoiseTests(unittest.TestCase):
+             after = {path: file_sha(path) for path in written}
+             self.assertEqual(before, after)
+ 
++    def _write_scan(self, root, dataset, subject, session, base, date):
++        folder = os.path.join(root, dataset, f"sub-{subject}", f"ses-{session}")
++        os.makedirs(folder, exist_ok=True)
++        path = os.path.join(folder, f"sub-{subject}_ses-{session}_scans.tsv")
++        with open(path, "w", encoding="utf-8") as handle:
++            handle.write("filename\tacq_time\n")
++            handle.write(f"meg/{base}_meg.fif\t{date}T12:00:00\n")
++        return path
++
++    def _write_cached_forward(self, folder, base, subject, labels, timechapter):
++        os.makedirs(folder, exist_ok=True)
++        labels = np.asarray(labels, dtype=np.int64)
++        n = len(labels)
++        np.savez_compressed(
++            os.path.join(folder, base + ".npz"),
++            base=np.array(base),
++            subject=np.int64(subject),
++            embedding=np.zeros((n, 4), np.float32),
++            logits=np.zeros((n, 50), np.float32),
++            label=labels,
++            run_fraction=np.linspace(0.1, 0.9, n),
++            artifact_rms=np.linspace(0.5, 1.5, n),
++            bandpower=np.linspace(0.1, 0.4, n),
++            timechapter=np.asarray(timechapter, dtype=np.float64),
++            checkpoint_sha=np.array("abc"),
++            timing=np.array("zero"),
++        )
++
++    def test_broad_selection_without_scans_resolves_and_holdout_is_not_read(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            self._write_scan(tmp, "Sherlock1", 0, "11", "sub-0_ses-11_task-Sherlock1_run-1", "2024-05-01")
++            self._write_scan(tmp, "Sherlock1", 1, "11", "sub-1_ses-11_task-Sherlock1_run-1", "2024-07-01")
++            hold = os.path.join(tmp, "COMPETITION_HOLDOUT", "sub-9", "ses-11")
++            os.makedirs(hold, exist_ok=True)
++            hold_scan = os.path.join(hold, "sub-9_ses-11_scans.tsv")
++            with open(hold_scan, "w", encoding="utf-8") as handle:
++                handle.write("filename\tacq_time\n")
++                handle.write("meg/sub-9_ses-11_task-Sherlock1_run-1_meg.fif\t1999-01-01T00:00:00\n")
++            opened = []
++            real_open = open
++
++            def tracking_open(path, *args, **kwargs):
++                opened.append(str(path))
++                return real_open(path, *args, **kwargs)
++
++            with unittest.mock.patch("builtins.open", tracking_open):
++                dates = read_dates(tmp)
++            self.assertEqual(dates["sub-0_ses-11_task-Sherlock1_run-1"], "2024-05-01")
++            self.assertEqual(dates["sub-1_ses-11_task-Sherlock1_run-1"], "2024-07-01")
++            self.assertNotIn("1999-01-01", dates.values())
++            self.assertNotIn("sub-9_ses-11_task-Sherlock1_run-1", dates)
++            self.assertFalse(any("COMPETITION_HOLDOUT" in path for path in opened))
++            out = os.path.join(tmp, "out")
++            self._write_cached_forward(
++                os.path.join(out, "forward", "noise_pool"),
++                "sub-0_ses-11_task-Sherlock1_run-1", 0, [0, 1, 2, 3], [10.0, 60.0, 62.0, 90.0],
++            )
++            self._write_cached_forward(
++                os.path.join(out, "forward", "noise_pool"),
++                "sub-0_ses-12_task-Sherlock1_run-1", 0, [0, 1, 2, 3], [12.0, 58.0, 61.0, 95.0],
++            )
++            for subject in (1, 5, 10):
++                base = f"sub-{subject}_ses-11_task-Sherlock1_run-1"
++                self._write_cached_forward(
++                    os.path.join(out, "forward", "selection"),
++                    base, subject, [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0],
++                )
++            self._write_cached_forward(
++                os.path.join(out, "forward", "eval"),
++                "sub-3_ses-11_task-Sherlock1_run-1", 3, [0, 1, 2, 3], [15.0, 25.0, 35.0, 45.0],
++            )
++            fit_dates = {
++                "sub-0_ses-11_task-Sherlock1_run-1": "2024-05-01",
++                "sub-0_ses-12_task-Sherlock1_run-1": "2024-06-01",
++            }
++            fit = fit_noise_directory(out, fit_dates)
++            self.assertEqual(fit["selection_subjects"], [1, 5, 10])
++            self.assertGreater(fit["selection_rows"], 0)
++            self.assertEqual(fit["day_terms_dropped_bases"], sorted(
++                f"sub-{subject}_ses-11_task-Sherlock1_run-1" for subject in (1, 5, 10)
++            ))
++            self.assertFalse(fit["dates_invented"])
++            self.assertFalse(fit["session_ordinal_used_as_day"])
++            self.assertEqual(fit["amendment_1_4_2"], "1.4.2")
++            self.assertEqual(fit["undated_day_terms"], "dropped")
++            self.assertFalse(fit["eval_files_read"])
++            self.assertEqual(set(fit["val_nll"]), set(CANDIDATES))
++            for value in fit["val_nll"].values():
++                self.assertTrue(np.isfinite(value))
++            claimed = honesty(**fit)
++            self.assertFalse(claimed["effect_claimed"])
++            self.assertFalse(claimed["valid_scientific_claim"])
++            self.assertFalse(claimed["dates_invented"])
++            self.assertFalse(claimed["competition_holdout_read"])
++            os.makedirs(os.path.join(out, "noise"), exist_ok=True)
++            with open(os.path.join(out, "noise", "fit.json"), "w", encoding="utf-8") as handle:
++                json.dump(fit, handle)
++            score = score_frozen_directory(out, fit_dates)
++            self.assertEqual(score["day_terms_dropped_bases"], ["sub-3_ses-11_task-Sherlock1_run-1"])
++            for value in score["eval_nll"].values():
++                self.assertTrue(np.isfinite(value))
++            self.assertFalse(honesty(**score)["effect_claimed"])
++            with self.assertRaises(ProtocolError) as caught:
++                fit_noise_directory(out, {"sub-0_ses-12_task-Sherlock1_run-1": "2024-06-01"})
++            self.assertEqual(
++                str(caught.exception),
++                missing_acquisition_date("sub-0_ses-11_task-Sherlock1_run-1"),
++            )
++            loaded = _rows_from_forward(
++                os.path.join(out, "forward", "selection", "sub-10_ses-11_task-Sherlock1_run-1.npz"),
++                "selection",
++                fit_dates,
++            )
++            self.assertIsNone(loaded["rows"][0]["date"])
++            self.assertGreater(len(loaded["rows"]), 0)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
