@@ -70,3 +70,22 @@ equation (C3) as the second result if it holds.
 
 ## 6. Decisions for Rohit
 GPU or long-CPU slot for stages 1-2 (GPU is reserved for robotics); the stage-4 Kaggle list; headline choice.
+
+## 7. Packard 1990, read (added 2026-11-09)
+
+Source: Packard, "A Genetic Learning Algorithm for the Analysis of Complex Data", Complex Systems 4 (1990) 543-572,
+`~/papers_nyu_20261105/predco-corpus/Packard/1990_Packard_GeneticLearning.{pdf,txt}` (SSD corpus; the earlier note that
+it was not on disk was wrong). The neural-signals section proposes classifying EEG evoked potentials (stimulus A vs B,
+260 samples) and says results "will be reported in future work": proposed, not demonstrated, as Research Bot said.
+
+Its two tangible equations and how they map here:
+- Fitness of a condition set C on the inputs: F(C) = sum_y P_C(y) log(P_C(y)/P_0(y)) - a/N_C (information about y gained
+  inside the cells where C holds, minus a finite-sample penalty; Packard calls the a/N_C form ad hoc and suggests
+  confidence intervals instead). With C = conditions on the onset pattern inside the window and y = word, F is a
+  direct, network-free estimate of the timing floor (stage 0b). With C = conditions on pre-onset brain/recording state
+  and y = decoder correct/incorrect, it is the reliability-pocket search of October; the penalty is the reason those
+  pockets did not replicate, and cross-fitting by day replaces a/N_C here.
+- Finite-time spreading rate gamma_T(x) and its distribution P_T(gamma): predictability is local, and exists for horizon T
+  only where gamma_T falls below the initial information. The decoding analogue is a distribution of per-window
+  decodability over states; the heteroscedastic noise equation sigma^2(s) is a parametric model of that distribution,
+  and the campaign's M2-minus-M0 contrast tests whether it is state-dependent at all.
