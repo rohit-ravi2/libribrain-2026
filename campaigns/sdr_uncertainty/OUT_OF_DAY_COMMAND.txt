@@ -1,0 +1,3 @@
+# First bounded out-of-day command. Run on rohit-pc after the scheduler wrapper, if the lock scripts have been inspected.
+# Same caps as the smoke. A synthetic test is not this command and is not a scientific result.
+cd "$HOME/projects/libribrain-2026" && bash scripts/sdr_uncertainty_out_of_day.sh

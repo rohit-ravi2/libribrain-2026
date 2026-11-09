@@ -1,0 +1,784 @@
+diff --git a/campaigns/sdr_uncertainty/strong_noise.py b/campaigns/sdr_uncertainty/strong_noise.py
+--- a/campaigns/sdr_uncertainty/strong_noise.py
++++ b/campaigns/sdr_uncertainty/strong_noise.py
+@@ -526,10 +526,18 @@
+ 
+ 
+ def bacc10_from_logits(logits: np.ndarray, labels: np.ndarray, *, n_classes: int = N_CLASSES, k: int = TOP_K):
++    """Unweighted mean of per-class top-k recall. Undefined unless every class is present.
++
++    A row-weighted hit rate tracks word frequency and is not this metric.
++    """
+     logits = np.asarray(logits, dtype=np.float64)
+     labels = np.asarray(labels, dtype=np.int64)
+     if logits.ndim != 2 or logits.shape[0] != labels.shape[0] or logits.shape[1] < k:
+         raise ProtocolError("logits and labels do not form a top-10 score")
++    if len(labels) and (
++        np.any(labels < 0) or np.any(labels >= n_classes) or np.any(labels >= logits.shape[1])
++    ):
++        raise ProtocolError("label is outside the decoder classes")
+     present = set(int(c) for c in np.unique(labels))
+     if present != set(range(n_classes)):
+         return None
+@@ -695,11 +703,69 @@
+     return exp / exp.sum(axis=1, keepdims=True)
+ 
+ 
++def in_vocab_mask(labels: np.ndarray, n_classes: int = N_CLASSES) -> np.ndarray:
++    """True where the label is a decoder class. Out-of-range ids are not clipped into range."""
++    labels = np.asarray(labels, dtype=np.int64)
++    return (labels >= 0) & (labels < int(n_classes))
++
++
++def oov_record(base: str, labels: np.ndarray, *, used: int | None = None, n_classes: int = N_CLASSES) -> dict:
++    """How many rows of one recording sit outside the decoder vocabulary.
++
++    excluded_oov counts the whole file. used is how many rows a stage kept after
++    that filter and any quarter filter. The two are equal when no quarter filter runs.
++    """
++    labels = np.asarray(labels, dtype=np.int64)
++    mask = in_vocab_mask(labels, n_classes)
++    record = {
++        "base": str(base),
++        "rows": int(labels.shape[0]),
++        "excluded_oov": int(np.sum(~mask)),
++        "in_vocab": int(np.sum(mask)),
++    }
++    if used is not None:
++        record["used"] = int(used)
++    return record
++
++
++def vocab_view(base: str, labels, arrays: dict | None = None, *, extra_keep=None, n_classes: int = N_CLASSES) -> dict:
++    """Slice every array with the same in-vocabulary mask.
++
++    extra_keep is a further boolean mask of the same length, used for the Q3
++    noise-fit rows. Labels outside 0..n_classes-1 are dropped, never clipped.
++    """
++    labels = np.asarray(labels, dtype=np.int64)
++    if labels.ndim != 1:
++        raise ProtocolError(f"{base} labels are not one id per row")
++    mask = in_vocab_mask(labels, n_classes)
++    if extra_keep is not None:
++        extra = np.asarray(extra_keep, dtype=bool)
++        if extra.shape != mask.shape:
++            raise ProtocolError(f"{base} keep mask does not match the rows")
++        mask = mask & extra
++    sliced = {}
++    for key, value in (arrays or {}).items():
++        array = np.asarray(value)
++        if len(array) != len(labels):
++            raise ProtocolError(f"{base} {key} does not match the rows")
++        sliced[key] = array[mask]
++    return {
++        "labels": labels[mask],
++        "arrays": sliced,
++        "mask": mask,
++        "oov": oov_record(base, labels, used=int(np.sum(mask)), n_classes=n_classes),
++    }
++
++
+ def per_row_ce(logits: np.ndarray, labels: np.ndarray, *, smoothing: float = 0.0) -> np.ndarray:
+-    """Per-word cross-entropy. Smoothing 0 is the held-out residual. Training uses 0.1 to match train_v3."""
++    """Per-word cross-entropy. Smoothing 0 is the held-out residual. Training uses 0.1 to match train_v3.
++
++    Does not drop or clip labels. Callers that read a forward cache apply vocab_view first.
++    A label that still arrives out of range is a protocol error.
++    """
+     logits = np.asarray(logits, dtype=np.float64)
+     labels = np.asarray(labels, dtype=np.int64)
+-    if np.any(labels < 0) or np.any(labels >= logits.shape[1]):
++    if len(labels) and (np.any(labels < 0) or np.any(labels >= logits.shape[1])):
+         raise ProtocolError("label is outside the decoder classes")
+     logp = np.log(np.clip(softmax_rows(logits), 1e-12, 1.0))
+     n_classes = logits.shape[1]
+@@ -716,6 +782,8 @@
+ def dlogits_ce(logits: np.ndarray, labels: np.ndarray, *, smoothing: float = 0.1) -> np.ndarray:
+     logits = np.asarray(logits, dtype=np.float64)
+     labels = np.asarray(labels, dtype=np.int64)
++    if len(labels) and (np.any(labels < 0) or np.any(labels >= logits.shape[1])):
++        raise ProtocolError("label is outside the decoder classes")
+     n_classes = logits.shape[1]
+     trust = np.full_like(logits, smoothing / n_classes)
+     trust[np.arange(len(labels)), labels] += 1.0 - smoothing
+diff --git a/campaigns/sdr_uncertainty/strong_decoder_runner.py b/campaigns/sdr_uncertainty/strong_decoder_runner.py
+--- a/campaigns/sdr_uncertainty/strong_decoder_runner.py
++++ b/campaigns/sdr_uncertainty/strong_decoder_runner.py
+@@ -27,6 +27,7 @@
+     ESTIMAND,
+     FULL_RETRAIN,
+     LPP_NOTE,
++    N_CLASSES,
+     PARTIAL_LR,
+     PARTIAL_TARGET_STEPS,
+     PROTOCOL_ID,
+@@ -48,6 +49,7 @@
+     temperature_changes_top10,
+     transform_with_state,
+     validation_stop,
++    vocab_view,
+     weighted_nll,
+ )
+ from .strong_plan import next_action, plan_order
+@@ -280,38 +282,75 @@
+     return tmax
+ 
+ 
+-def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, t_max: float | None = None) -> tuple[list[dict], np.ndarray, np.ndarray, np.ndarray]:
++def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, t_max: float | None = None) -> dict:
++    """Load one cached forward and keep the same in-vocabulary rows for every arm.
++
++    The npz is not rewritten. Labels outside 0..49 stay in the file and are
++    omitted here, before cross-entropy. per_row_ce still raises if one gets through.
++    """
+     with np.load(path, allow_pickle=False) as handle:
+         base = str(handle["base"])
+         subject = int(handle["subject"])
+         labels = np.asarray(handle["label"], dtype=np.int64)
+         logits = np.asarray(handle["logits"], dtype=np.float64)
++        embedding = np.asarray(handle["embedding"], dtype=np.float64)
++        if logits.ndim != 2 or logits.shape[1] != N_CLASSES:
++            raise ProtocolError(f"{base} logits are not {N_CLASSES}-way")
++        if not (len(labels) == len(logits) == len(embedding)):
++            raise ProtocolError(f"{base} forward arrays differ in length")
+         date = dates.get(base)
+         if not date:
+             raise ProtocolError(f"no acquisition date for {base}; refusing to invent day_rank")
+-        keep = np.ones(len(labels), dtype=bool)
+         quarters = None
++        extra = None
+         if quarter is not None:
+             if "timechapter" not in handle.files:
+                 raise ProtocolError(f"{base} has no timechapter; refusing to invent a quarter")
++            if len(handle["timechapter"]) != len(labels):
++                raise ProtocolError(f"{base} timechapter does not match the rows")
+             quarters = quarter_labels(handle["timechapter"], t_max)
+-            keep = quarters == quarter
+-        residual = decoder_residual(logits, labels)
++            extra = quarters == quarter
++        view = vocab_view(
++            base,
++            labels,
++            {
++                "logits": logits,
++                "embedding": embedding,
++                "run_fraction": np.asarray(handle["run_fraction"], dtype=np.float64),
++                "artifact_rms": np.asarray(handle["artifact_rms"], dtype=np.float64),
++                "bandpower": np.asarray(handle["bandpower"], dtype=np.float64),
++            },
++            extra_keep=extra,
++        )
++        kept = view["labels"]
++        arrays = view["arrays"]
++        if len(kept):
++            residual = decoder_residual(arrays["logits"], kept)
++        else:
++            residual = np.zeros(0, dtype=np.float64)
++        quarter_of = None if quarters is None else quarters[view["mask"]]
+         rows = []
+-        for index in np.flatnonzero(keep):
++        for slot in range(len(kept)):
+             rows.append({
+                 "base": base,
+                 "subject": subject,
+                 "date": date,
+                 "split": split,
+-                "quarter": None if quarters is None else str(quarters[index]),
+-                "run_fraction": float(handle["run_fraction"][index]),
+-                "artifact_rms": float(handle["artifact_rms"][index]),
+-                "bandpower": float(handle["bandpower"][index]),
+-                "group_windows": int(np.sum(keep)),
+-                "residual": float(residual[index]),
++                "quarter": None if quarter_of is None else str(quarter_of[slot]),
++                "run_fraction": float(arrays["run_fraction"][slot]),
++                "artifact_rms": float(arrays["artifact_rms"][slot]),
++                "bandpower": float(arrays["bandpower"][slot]),
++                "group_windows": int(len(kept)),
++                "residual": float(residual[slot]),
+             })
+-        return rows, logits[keep], labels[keep], np.full(int(np.sum(keep)), subject, dtype=np.int64)
++        return {
++            "rows": rows,
++            "logits": arrays["logits"],
++            "labels": kept,
++            "subjects": np.full(len(kept), subject, dtype=np.int64),
++            "embedding": arrays["embedding"],
++            "oov": view["oov"],
++        }
+ 
+ 
+ def _candidate_matrix(z: np.ndarray, names: list[str], candidate: str):
+@@ -333,19 +372,22 @@
+         raise ProtocolError("noise fit needs the subject-0 shared forwards and every validation forward")
+     tmax = _stimulus_tmax(fit_paths)
+     rows = []
++    oov_excluded = {}
+     for path in fit_paths:
+         with np.load(path, allow_pickle=False) as handle:
+             session = _shared_session(str(handle["base"]))
+         if session is None or session not in tmax:
+             raise ProtocolError(f"{os.path.basename(path)} is not a shared Sherlock run")
+-        part, _logits, _labels, _subjects = _rows_from_forward(path, "train", dates, quarter="Q3", t_max=tmax[session])
+-        rows.extend(part)
++        loaded = _rows_from_forward(path, "train", dates, quarter="Q3", t_max=tmax[session])
++        oov_excluded[loaded["oov"]["base"]] = loaded["oov"]
++        rows.extend(loaded["rows"])
+     n_fit = len(rows)
+     if n_fit < 2:
+         raise ProtocolError("Q3 trunk-unseen block has fewer than two rows; not fitting on trunk-trained sessions instead")
+     for path in val_paths:
+-        part, _logits, _labels, _subjects = _rows_from_forward(path, "selection", dates)
+-        rows.extend(part)
++        loaded = _rows_from_forward(path, "selection", dates)
++        oov_excluded[loaded["oov"]["base"]] = loaded["oov"]
++        rows.extend(loaded["rows"])
+     if any(row["split"] == "eval" for row in rows):
+         raise ProtocolError("eval rows were passed to the noise fit")
+     if any(row["quarter"] in ("other", "Q1", "Q2") for row in rows if row["split"] == "train"):
+@@ -353,6 +395,8 @@
+     fit_subjects = {int(row["subject"]) for row in rows if row["split"] == "train"}
+     if fit_subjects != {0}:
+         raise ProtocolError(f"noise fit subjects {sorted(fit_subjects)} are not subject 0 Q3")
++    if len(rows) == n_fit:
++        raise ProtocolError("validation selection has no in-vocabulary rows")
+     bundle = assemble_features(rows)
+     residual = np.asarray([row["residual"] for row in rows], dtype=np.float64)
+     train = bundle["train_index"]
+@@ -389,6 +433,7 @@
+         "q4_not_used_for_fit_or_selection": True,
+         "eval_files_read": False,
+         "temperature_applied_to_reported_logits": False,
++        "oov_excluded": oov_excluded,
+     }
+ 
+ 
+@@ -403,15 +448,18 @@
+     labels = []
+     subjects = []
+     sessions = []
++    oov_excluded = {}
+     for path in paths:
+-        part_rows, part_logits, part_labels, part_subjects = _rows_from_forward(path, "eval", dates)
++        loaded = _rows_from_forward(path, "eval", dates)
++        oov_excluded[loaded["oov"]["base"]] = loaded["oov"]
++        part_rows = loaded["rows"]
+         if not part_rows:
+             continue
+         rows.extend(part_rows)
+-        logits.append(part_logits)
+-        labels.append(part_labels)
+-        subjects.append(part_subjects)
+-        sessions.extend(part_rows[0]["base"] for _ in part_labels)
++        logits.append(loaded["logits"])
++        labels.append(loaded["labels"])
++        subjects.append(loaded["subjects"])
++        sessions.extend(part_rows[0]["base"] for _ in loaded["labels"])
+     if not rows:
+         raise ProtocolError("exploratory eval forwards contained no rows")
+     logits = np.concatenate(logits, axis=0)
+@@ -453,6 +501,7 @@
+         "eval_subjects_in_train": list(fit["eval_subjects_in_train"]),
+         "in_sample_trunk_trained_residual": bool(fit.get("in_sample_trunk_trained_residual", True)),
+         "residual_fit_population": fit.get("residual_fit_population"),
++        "oov_excluded": oov_excluded,
+     }
+ 
+ 
+@@ -557,6 +606,7 @@
+     labels = []
+     rows = []
+     sha = None
++    oov_excluded = {}
+     for path in paths:
+         with np.load(path, allow_pickle=False) as handle:
+             file_sha = str(handle["checkpoint_sha"])
+@@ -564,10 +614,15 @@
+                 sha = file_sha
+             elif file_sha != sha:
+                 raise ProtocolError("train forwards came from different checkpoints")
+-            part, _logits, part_labels, _subjects = _rows_from_forward(path, "train", dates)
+-            rows.extend(part)
+-            embeddings.append(np.asarray(handle["embedding"], dtype=np.float64))
+-            labels.append(part_labels)
++        loaded = _rows_from_forward(path, "train", dates)
++        oov_excluded[loaded["oov"]["base"]] = loaded["oov"]
++        if len(loaded["labels"]) == 0:
++            continue
++        rows.extend(loaded["rows"])
++        embeddings.append(loaded["embedding"])
++        labels.append(loaded["labels"])
++    if not labels:
++        raise ProtocolError("partial train has no in-vocabulary rows")
+     features = transform_with_state(rows, fit["state"])
+     embeddings = np.concatenate(embeddings, axis=0)
+     labels = np.concatenate(labels, axis=0)
+@@ -608,11 +663,30 @@
+             f"embedding width {embeddings.shape[1]} does not match the classification head "
+             f"{arms['uniform']['W'].shape[0]}"
+         )
++    val_paths = sorted(glob.glob(os.path.join(directory, "forward", "selection", "*.npz")))
++    if not val_paths:
++        raise ProtocolError("head finetune needs validation forwards for the stop curve")
++    val_embeddings = []
++    val_labels = []
++    for path in val_paths:
++        loaded = _rows_from_forward(path, "selection", dates)
++        oov_excluded[loaded["oov"]["base"]] = loaded["oov"]
++        if len(loaded["labels"]) == 0:
++            continue
++        val_embeddings.append(loaded["embedding"])
++        val_labels.append(loaded["labels"])
++    if not val_labels:
++        raise ProtocolError("head finetune validation has no in-vocabulary rows")
++    val_embeddings = np.concatenate(val_embeddings, axis=0)
++    val_labels = np.concatenate(val_labels, axis=0)
+     if done >= int(schedule["max_steps"]):
+         return {
+             "steps": done, "advanced": 0, "target": int(schedule["max_steps"]),
+             "schedule": schedule["name"], "substantive": bool(schedule["substantive"]),
+             "trunk_frozen": True, "stopped": True,
++            "oov_excluded": oov_excluded,
++            "train_rows_in_vocab": int(len(labels)),
++            "selection_rows_in_vocab": int(len(val_labels)),
+         }
+     advancing = min(int(steps), int(schedule["max_steps"]) - done)
+     learned_params = _params_from_json(fit["candidates"]["learned_state"])
+@@ -627,17 +701,6 @@
+         arms, embeddings, labels, features, advancing,
+         lr=PARTIAL_LR, seed=done, frozen_log_var=frozen_log_var,
+     )
+-    val_paths = sorted(glob.glob(os.path.join(directory, "forward", "selection", "*.npz")))
+-    if not val_paths:
+-        raise ProtocolError("head finetune needs validation forwards for the stop curve")
+-    val_embeddings = []
+-    val_labels = []
+-    for path in val_paths:
+-        with np.load(path, allow_pickle=False) as handle:
+-            val_embeddings.append(np.asarray(handle["embedding"], dtype=np.float64))
+-            val_labels.append(np.asarray(handle["label"], dtype=np.int64))
+-    val_embeddings = np.concatenate(val_embeddings, axis=0)
+-    val_labels = np.concatenate(val_labels, axis=0)
+     step_now = done + advancing
+     curve_name = "val_curve.json" if schedule["substantive"] else "smoke_curve.json"
+     curve_path = os.path.join(directory, "partial", curve_name)
+@@ -701,6 +764,9 @@
+         "not_a_full_retrain": True,
+         "init_sha": init_sha,
+         "validation_learned_ce": curve[-1]["learned_ce"],
++        "oov_excluded": oov_excluded,
++        "train_rows_in_vocab": int(len(labels)),
++        "selection_rows_in_vocab": int(len(val_labels)),
+     }
+ 
+ 
+@@ -726,10 +792,21 @@
+         scored_step = int(handle["steps"])
+     embeddings = []
+     labels = []
++    oov_excluded = {}
+     for path in paths:
+         with np.load(path, allow_pickle=False) as handle:
+-            embeddings.append(np.asarray(handle["embedding"], dtype=np.float64))
+-            labels.append(np.asarray(handle["label"], dtype=np.int64))
++            view = vocab_view(
++                str(handle["base"]),
++                np.asarray(handle["label"], dtype=np.int64),
++                {"embedding": np.asarray(handle["embedding"], dtype=np.float64)},
++            )
++        oov_excluded[view["oov"]["base"]] = view["oov"]
++        if len(view["labels"]) == 0:
++            continue
++        embeddings.append(view["arrays"]["embedding"])
++        labels.append(view["labels"])
++    if not labels:
++        raise ProtocolError("partial score has no in-vocabulary eval rows")
+     embeddings = np.concatenate(embeddings, axis=0)
+     labels = np.concatenate(labels, axis=0)
+     scores = {}
+@@ -751,6 +828,8 @@
+         "trunk_frozen": True,
+         "not_a_full_retrain": True,
+         "effect_claimed": False,
++        "eval_rows": int(len(labels)),
++        "oov_excluded": oov_excluded,
+     }
+ 
+ 
+@@ -784,7 +863,12 @@
+     if action["stage"] == "noise-fit":
+         payload = fit_noise_directory(directory, dates)
+         _save_json(os.path.join(directory, "noise", "fit.json"), payload)
+-        report.update({"chosen_on_validation": payload["chosen_on_validation"], "val_nll": payload["val_nll"], "objective": "gaussian_nll"})
++        report.update({
++            "chosen_on_validation": payload["chosen_on_validation"],
++            "val_nll": payload["val_nll"],
++            "objective": "gaussian_nll",
++            "oov_excluded": payload["oov_excluded"],
++        })
+         return report
+     if action["stage"] == "score-frozen":
+         payload = score_frozen_directory(directory, dates)
+@@ -812,6 +896,7 @@
+             "primary_bacc10_50": payload["primary_bacc10_50"],
+             "eligible_metrics": payload.get("eligible_metrics"),
+             "paired_vs_uniform": payload["paired_vs_uniform"],
++            "oov_excluded": payload["oov_excluded"],
+         })
+         return report
+     if action["stage"] == "partial-train":
+@@ -825,6 +910,7 @@
+             "learned_minus_uniform": payload["learned_minus_uniform"],
+             "fifty_class_metric_defined": payload["fifty_class_metric_defined"],
+             "matched_steps": payload["steps"],
++            "oov_excluded": payload["oov_excluded"],
+         })
+         return report
+     raise ProtocolError(action["stage"])
+@@ -848,10 +934,14 @@
+         labels = np.asarray(info["result"]["label"])
+         if mode == "zero" and np.max(np.abs(logits - cached)) > 1e-3:
+             raise ProtocolError("zero-timing forward does not match the checkpointed primary logits")
++        view = vocab_view(base, labels, {"logits": logits})
++        if view["oov"]["used"] == 0:
++            raise ProtocolError("timing control has no in-vocabulary rows")
+         modes[mode] = {
+-            "mean_cross_entropy": float(np.mean(decoder_residual(logits, labels))),
+-            "primary_bacc10_50": bacc10_from_logits(logits, labels),
++            "mean_cross_entropy": float(np.mean(decoder_residual(view["arrays"]["logits"], view["labels"]))),
++            "primary_bacc10_50": bacc10_from_logits(view["arrays"]["logits"], view["labels"]),
+         }
++        oov_excluded = view["oov"]
+     payload = honesty(
+         base=base,
+         modes=modes,
+@@ -859,6 +949,7 @@
+         timing_only_is_a_control=True,
+         shuffle_is_a_control=True,
+         objective="mean_cross_entropy",
++        oov_excluded={base: oov_excluded},
+     )
+     _save_json(out, payload)
+     return payload
+@@ -970,7 +1061,7 @@
+         payload = dict(payload)
+         payload["cgroup"] = {"unit": hardware.get("unit"), "runtime_ceiling_required": False}
+         payload["effect_claimed"] = False
+-        print(json.dumps({
++        status = {
+             "protocol_id": payload.get("protocol_id", PROTOCOL_ID),
+             "amendment": AMENDMENT,
+             "stage": payload.get("stage"),
+@@ -983,7 +1074,10 @@
+             "full_retrain_launched": False,
+             "fifty_class_metric_defined": payload.get("fifty_class_metric_defined"),
+             "blocker": payload.get("blocker"),
+-        }))
++        }
++        if payload.get("oov_excluded") is not None:
++            status["oov_excluded"] = payload["oov_excluded"]
++        print(json.dumps(status))
+         return 0
+     except (CgroupError, ProtocolError, FileNotFoundError, OSError) as exc:
+         print(f"blocker: {exc}", file=sys.stderr)
+diff --git a/campaigns/sdr_uncertainty/test_strong_decoder.py b/campaigns/sdr_uncertainty/test_strong_decoder.py
+--- a/campaigns/sdr_uncertainty/test_strong_decoder.py
++++ b/campaigns/sdr_uncertainty/test_strong_decoder.py
+@@ -2,6 +2,7 @@
+ from __future__ import annotations
+ 
+ import glob
++import hashlib
+ import json
+ import os
+ import stat
+@@ -24,7 +25,9 @@
+     assert_output_dir,
+     fit_noise_directory,
+     honesty,
++    partial_train_directory,
+     score_frozen_directory,
++    score_partial_directory,
+ )
+ from campaigns.sdr_uncertainty.strong_forward import forward_recording, slice_window
+ from campaigns.sdr_uncertainty.strong_noise import (
+@@ -38,6 +41,7 @@
+     assign_split,
+     bacc10_50,
+     bacc10_from_logits,
++    decoder_residual,
+     dlogits_ce,
+     fit_noise,
+     frozen_trunk_role,
+@@ -55,6 +59,7 @@
+     temperature_changes_top10,
+     timing_inputs,
+     transform_with_state,
++    vocab_view,
+     weighted_nll,
+ )
+ from campaigns.sdr_uncertainty.strong_plan import classify_base, next_action, plan_order
+@@ -697,6 +702,264 @@
+         self.assertIn("Am.dtype != x.dtype", source)
+         self.assertIn('torch.autocast("cuda", torch.bfloat16)', source)
+ 
++    def test_cross_entropy_rejects_out_of_range_labels_without_clipping(self):
++        logits = np.zeros((1, 50))
++        logits[0, 49] = 4.0
++        for bad in (-1, 50, 77):
++            with self.assertRaises(ProtocolError) as caught:
++                per_row_ce(logits, np.array([bad]))
++            self.assertEqual(str(caught.exception), "label is outside the decoder classes")
++            with self.assertRaises(ProtocolError) as caught:
++                dlogits_ce(logits, np.array([bad]))
++            self.assertEqual(str(caught.exception), "label is outside the decoder classes")
++        on_last = float(per_row_ce(logits, np.array([49]))[0])
++        on_first = float(per_row_ce(logits, np.array([0]))[0])
++        self.assertLess(on_last, on_first)
++        with self.assertRaises(ProtocolError):
++            bacc10_from_logits(np.zeros((2, 50)), np.array([-1, 0]))
++
++    def test_reported_top10_is_the_unweighted_class_mean(self):
++        labels = np.array([0] * 30 + list(range(50)), dtype=np.int64)
++        logits = np.zeros((len(labels), 50), dtype=np.float64)
++        for index, label in enumerate(labels):
++            if label < 10:
++                logits[index, label] = 10.0
++            else:
++                logits[index, :10] = np.linspace(20.0, 11.0, 10)
++                logits[index, label] = -1.0
++        balanced = bacc10_from_logits(logits, labels)
++        chosen = np.argpartition(-logits, kth=9, axis=1)[:, :10]
++        row_rate = float(np.mean([label in chosen[index] for index, label in enumerate(labels)]))
++        self.assertAlmostEqual(balanced, 0.2)
++        self.assertAlmostEqual(row_rate, 0.5)
++        self.assertNotAlmostEqual(balanced, row_rate)
++        missing = labels[labels != 49]
++        self.assertIsNone(bacc10_from_logits(logits[labels != 49], missing))
++
++    def test_oov_rows_are_excluded_before_post_forward_stages(self):
++        """The iteration-9 failure: cached forwards keep label -1, and per_row_ce rejects it.
++
++        Noise fit, validation selection, the three head arms, eval, and coverage
++        then share one in-vocabulary mask. The npz files are not rewritten.
++        """
++        width = 8
++        rng = np.random.default_rng(0)
++
++        def write_forward(folder, base, subject, labels, timechapter):
++            os.makedirs(folder, exist_ok=True)
++            labels = np.asarray(labels, dtype=np.int64)
++            n = len(labels)
++            path = os.path.join(folder, base + ".npz")
++            np.savez_compressed(
++                path,
++                base=np.array(base),
++                subject=np.int64(subject),
++                embedding=(rng.normal(size=(n, width)) + subject).astype(np.float32),
++                logits=np.zeros((n, 50), np.float32),
++                label=labels,
++                run_fraction=np.linspace(0.1, 0.9, n),
++                artifact_rms=np.linspace(0.5, 1.5, n),
++                bandpower=np.linspace(0.1, 0.4, n),
++                timechapter=np.asarray(timechapter, dtype=np.float64),
++                checkpoint_sha=np.array("abc"),
++                timing=np.array("zero"),
++            )
++            return path
++
++        def file_sha(path):
++            digest = hashlib.sha256()
++            with open(path, "rb") as handle:
++                digest.update(handle.read())
++            return digest.hexdigest()
++
++        with tempfile.TemporaryDirectory() as tmp:
++            out = os.path.join(tmp, "out")
++            root = os.path.join(tmp, "repo")
++            os.makedirs(root)
++            dates = {}
++            specs = [
++                ("noise_pool", "sub-0_ses-11_task-Sherlock1_run-1", 0, "2024-05-01",
++                 [-1, 0, -1, 1, 3], [10.0, 60.0, 61.0, 62.0, 90.0]),
++                ("noise_pool", "sub-0_ses-12_task-Sherlock1_run-1", 0, "2024-06-01",
++                 [-1, 2, 4, -1], [12.0, 58.0, 61.0, 95.0]),
++                ("selection", "sub-1_ses-11_task-Sherlock1_run-1", 1, "2024-07-01",
++                 [-1, 0, 1, 50, 2, -1], [20.0, 30.0, 40.0, 50.0, 60.0, 70.0]),
++                ("selection", "sub-5_ses-11_task-Sherlock1_run-1", 5, "2024-07-02",
++                 [-1, 0, 1, 50, 2, -1], [20.0, 30.0, 40.0, 50.0, 60.0, 70.0]),
++                ("selection", "sub-10_ses-11_task-Sherlock1_run-1", 10, "2024-07-03",
++                 [-1, 0, 1, 50, 2, -1], [20.0, 30.0, 40.0, 50.0, 60.0, 70.0]),
++                ("train", "sub-0_ses-01_task-continuous_run-1", 0, "2024-04-01",
++                 [-1, 0, 3, -1], [1.0, 2.0, 3.0, 4.0]),
++            ]
++            written = []
++            for phase, base, subject, date, labels, times in specs:
++                written.append(write_forward(os.path.join(out, "forward", phase), base, subject, labels, times))
++                dates[base] = date
++            eval_labels = np.array([-1, -1, 50, -1] + [0] * 30 + list(range(50)), dtype=np.int64)
++            eval_logits = np.zeros((len(eval_labels), 50), np.float32)
++            for index, label in enumerate(eval_labels):
++                if label < 0 or label >= 50:
++                    eval_logits[index, 0] = 3.0
++                elif label < 10:
++                    eval_logits[index, label] = 10.0
++                else:
++                    eval_logits[index, :10] = np.linspace(20.0, 11.0, 10)
++                    eval_logits[index, label] = -1.0
++            eval_base = "sub-3_ses-11_task-Sherlock1_run-1"
++            eval_dir = os.path.join(out, "forward", "eval")
++            os.makedirs(eval_dir, exist_ok=True)
++            eval_path = os.path.join(eval_dir, eval_base + ".npz")
++            np.savez_compressed(
++                eval_path,
++                base=np.array(eval_base),
++                subject=np.int64(3),
++                embedding=(rng.normal(size=(len(eval_labels), width)) + 3).astype(np.float32),
++                logits=eval_logits,
++                label=eval_labels,
++                run_fraction=np.linspace(0.1, 0.9, len(eval_labels)),
++                artifact_rms=np.linspace(0.4, 1.2, len(eval_labels)),
++                bandpower=np.linspace(0.05, 0.3, len(eval_labels)),
++                timechapter=np.linspace(1.0, 80.0, len(eval_labels)),
++                checkpoint_sha=np.array("abc"),
++                timing=np.array("zero"),
++            )
++            dates[eval_base] = "2024-08-01"
++            written.append(eval_path)
++            before = {path: file_sha(path) for path in written}
++            with np.load(written[0], allow_pickle=False) as handle:
++                with self.assertRaises(ProtocolError) as caught:
++                    decoder_residual(handle["logits"], handle["label"])
++                self.assertEqual(str(caught.exception), "label is outside the decoder classes")
++            fit = fit_noise_directory(out, dates)
++            self.assertEqual(fit["fit_rows"], 4)
++            self.assertEqual(fit["selection_rows"], 9)
++            self.assertFalse(fit["eval_files_read"])
++            self.assertEqual(fit["oov_excluded"]["sub-0_ses-11_task-Sherlock1_run-1"], {
++                "base": "sub-0_ses-11_task-Sherlock1_run-1",
++                "rows": 5, "excluded_oov": 2, "in_vocab": 3, "used": 2,
++            })
++            self.assertEqual(fit["oov_excluded"]["sub-0_ses-12_task-Sherlock1_run-1"]["used"], 2)
++            selection_counts = [
++                fit["oov_excluded"][base]["excluded_oov"]
++                for base in (
++                    "sub-1_ses-11_task-Sherlock1_run-1",
++                    "sub-5_ses-11_task-Sherlock1_run-1",
++                    "sub-10_ses-11_task-Sherlock1_run-1",
++                )
++            ]
++            self.assertEqual(selection_counts, [3, 3, 3])
++            kept_labels = []
++            for base in (
++                "sub-1_ses-11_task-Sherlock1_run-1",
++                "sub-5_ses-11_task-Sherlock1_run-1",
++                "sub-10_ses-11_task-Sherlock1_run-1",
++            ):
++                with np.load(os.path.join(out, "forward", "selection", base + ".npz"), allow_pickle=False) as handle:
++                    view = vocab_view(base, handle["label"], {"embedding": handle["embedding"]})
++                    kept_labels.append(view["labels"])
++                    self.assertEqual(int(np.sum(view["labels"] < 0)), 0)
++                    self.assertEqual(int(np.sum(view["labels"] >= 50)), 0)
++            self.assertTrue(np.array_equal(kept_labels[0], kept_labels[1]))
++            self.assertTrue(np.array_equal(kept_labels[0], kept_labels[2]))
++            os.makedirs(os.path.join(out, "noise"), exist_ok=True)
++            with open(os.path.join(out, "noise", "fit.json"), "w", encoding="utf-8") as handle:
++                json.dump(fit, handle)
++            score = score_frozen_directory(out, dates)
++            self.assertEqual(score["eval_rows"], 80)
++            self.assertAlmostEqual(score["primary_bacc10_50"], 0.2)
++            self.assertIn("bacc10_50", score["eligible_metrics"])
++            self.assertEqual(score["coverage"]["per_subject"]["3"]["n"], 80)
++            self.assertAlmostEqual(score["coverage"]["per_subject"]["3"]["bacc10_50"], 0.2)
++            self.assertEqual(score["oov_excluded"][eval_base]["excluded_oov"], 4)
++            self.assertEqual(score["oov_excluded"][eval_base]["in_vocab"], 80)
++            filtered = eval_labels[(eval_labels >= 0) & (eval_labels < 50)]
++            filtered_logits = eval_logits[(eval_labels >= 0) & (eval_labels < 50)]
++            chosen = np.argpartition(-filtered_logits, kth=9, axis=1)[:, :10]
++            row_rate = float(np.mean([label in chosen[index] for index, label in enumerate(filtered)]))
++            self.assertAlmostEqual(row_rate, 0.5)
++            self.assertNotAlmostEqual(score["primary_bacc10_50"], row_rate)
++            claimed = honesty(**score)
++            self.assertFalse(claimed["effect_claimed"])
++            self.assertFalse(claimed["valid_scientific_claim"])
++            schedule = {
++                "name": "substantive_head_finetune",
++                "max_steps": 2,
++                "steps_per_launch": 2,
++                "min_steps": 2,
++                "patience_checks": None,
++                "substantive": True,
++            }
++            with self.assertRaises(ProtocolError) as caught:
++                partial_train_directory(out, root, 2, dates, schedule=schedule)
++            self.assertIn("missing strong checkpoint", str(caught.exception))
++            self.assertNotIn("label is outside", str(caught.exception))
++            arms = initial_partial_arms(np.zeros((width, 50)), np.zeros(50), 6)
++            state_dir = os.path.join(out, "partial")
++            os.makedirs(state_dir, exist_ok=True)
++            seeded = {
++                "steps": np.int64(0),
++                "stopped": np.int64(0),
++                "stop_reason": np.array(""),
++                "best_step": np.int64(0),
++                "schedule": np.array(schedule["name"]),
++                "init_sha": np.array("seed"),
++                "checkpoint_sha": np.array("abc"),
++            }
++            for name, arm in arms.items():
++                seeded[f"W_{name}"] = arm["W"]
++                seeded[f"b_{name}"] = arm["b"]
++                seeded[f"intercept_{name}"] = np.float64(arm["intercept"])
++                seeded[f"slope_{name}"] = arm["slope"]
++            np.savez_compressed(os.path.join(state_dir, "state.npz"), **seeded)
++            trained = partial_train_directory(out, root, 2, dates, schedule=schedule)
++            self.assertEqual(trained["train_rows_in_vocab"], 2)
++            self.assertEqual(trained["selection_rows_in_vocab"], 9)
++            self.assertTrue(trained["stopped"])
++            self.assertEqual(trained["oov_excluded"]["sub-0_ses-01_task-continuous_run-1"]["excluded_oov"], 2)
++            self.assertEqual(
++                trained["oov_excluded"]["sub-1_ses-11_task-Sherlock1_run-1"]["excluded_oov"],
++                fit["oov_excluded"]["sub-1_ses-11_task-Sherlock1_run-1"]["excluded_oov"],
++            )
++            self.assertTrue(np.isfinite(trained["validation_learned_ce"]))
++            with open(os.path.join(state_dir, "val_curve.json"), encoding="utf-8") as handle:
++                curve = json.load(handle)
++            self.assertEqual(len({row["learned_ce"] for row in curve}), 1)
++            val_emb = []
++            val_y = []
++            for base in (
++                "sub-1_ses-11_task-Sherlock1_run-1",
++                "sub-5_ses-11_task-Sherlock1_run-1",
++                "sub-10_ses-11_task-Sherlock1_run-1",
++            ):
++                with np.load(os.path.join(out, "forward", "selection", base + ".npz"), allow_pickle=False) as handle:
++                    view = vocab_view(base, handle["label"], {"embedding": handle["embedding"]})
++                val_emb.append(view["arrays"]["embedding"])
++                val_y.append(view["labels"])
++            val_emb = np.concatenate(val_emb, axis=0)
++            val_y = np.concatenate(val_y, axis=0)
++            self.assertEqual(len(val_y), 9)
++            with np.load(os.path.join(state_dir, "state.npz"), allow_pickle=False) as handle:
++                recomputed = {}
++                for name in PARTIAL_ARMS:
++                    arm = {"W": np.asarray(handle[f"W_{name}"]), "b": np.asarray(handle[f"b_{name}"])}
++                    recomputed[name] = float(np.mean(decoder_residual(arm_logits(arm, val_emb), val_y)))
++            self.assertAlmostEqual(curve[-1]["learned_ce"], recomputed["learned_state"])
++            self.assertAlmostEqual(curve[-1]["uniform_ce"], recomputed["uniform"])
++            self.assertAlmostEqual(curve[-1]["random_ce"], recomputed["random_covariate"])
++            partial = score_partial_directory(out)
++            self.assertEqual(partial["eval_rows"], 80)
++            self.assertTrue(partial["fifty_class_metric_defined"])
++            self.assertFalse(partial["effect_claimed"])
++            self.assertEqual(set(partial["primary_bacc10_50"]), set(PARTIAL_ARMS))
++            self.assertEqual(partial["oov_excluded"][eval_base]["excluded_oov"], 4)
++            with np.load(os.path.join(state_dir, "best_val.npz"), allow_pickle=False) as handle:
++                for name in PARTIAL_ARMS:
++                    arm = {"W": np.asarray(handle[f"W_{name}"]), "b": np.asarray(handle[f"b_{name}"])}
++                    scored = bacc10_from_logits(arm_logits(arm, np.load(eval_path)["embedding"][(eval_labels >= 0) & (eval_labels < 50)]), filtered)
++                    self.assertAlmostEqual(partial["primary_bacc10_50"][name], scored)
++            after = {path: file_sha(path) for path in written}
++            self.assertEqual(before, after)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
