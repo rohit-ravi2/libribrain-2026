@@ -155,3 +155,14 @@ words (87% one word): public 0.158, private 0.201, uninformative. The Deep model
 subjects 1-32, so identity/mean A do not match its learned sensor map. Added --A_from k (every subject uses subject
 k's layer); rerunning with --A_from 0. Rule from here: check the distinct-top-1 diagnostic in the prediction log
 before every submission.
+
+## 2026-11-09 11:40 EST — stage 0, light CPU: timing floor without a network
+Held-out day check: Sherlock1 ses-11/12 run-2 (book two, chapter four) shares no 5-gram with any training run, so the
+clean screen is already held-out-day AND held-out-text (Zhang et al.'s stimulus-identity condition).
+`A/timing_floor.py` (event files only; boosted classifier on the onsets inside [onset, onset+W)), balanced over 50
+words, mean of ses-11/12: W=0.5 s top-1 0.109 / top-10 0.554; 1 s 0.113 / 0.568; 2 s 0.112 / 0.606; 3 s 0.136 / 0.588.
+Packard (1990) cross-fitted conditional-set information from the next-onset cell: 0.53-0.66 bits held out.
+Reading: exact onset timing inside a fixed window predicts the word better than real MEG does in the same window
+(clean_iso 3 s: 0.073 / 0.458) and better than Jayalath & Parker Jones' isolated MEG (9.5% top-1). The synthetic
+twin CNN (0.159) sits near this floor, as it should. Whether real MEG makes this timing readable is the next test
+(`A/onset_readability.py`, running).

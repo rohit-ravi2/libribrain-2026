@@ -1,0 +1,82 @@
+{
+ "W0.5": {
+  "n_train": 310396,
+  "ses-11": {
+   "n": 1308,
+   "top1": 0.11,
+   "top10": 0.5499,
+   "packard_bits_heldout": 0.6567
+  },
+  "ses-12": {
+   "n": 1364,
+   "top1": 0.1071,
+   "top10": 0.5571,
+   "packard_bits_heldout": 0.6579
+  },
+  "mean": {
+   "top1": 0.1086,
+   "top10": 0.5535,
+   "packard_bits_heldout": 0.6573
+  }
+ },
+ "W1.0": {
+  "n_train": 310396,
+  "ses-11": {
+   "n": 1308,
+   "top1": 0.1364,
+   "top10": 0.5776,
+   "packard_bits_heldout": 0.6052
+  },
+  "ses-12": {
+   "n": 1364,
+   "top1": 0.0901,
+   "top10": 0.5578,
+   "packard_bits_heldout": 0.5875
+  },
+  "mean": {
+   "top1": 0.1132,
+   "top10": 0.5677,
+   "packard_bits_heldout": 0.5963
+  }
+ },
+ "W2.0": {
+  "n_train": 310396,
+  "ses-11": {
+   "n": 1308,
+   "top1": 0.1267,
+   "top10": 0.6176,
+   "packard_bits_heldout": 0.5736
+  },
+  "ses-12": {
+   "n": 1364,
+   "top1": 0.0975,
+   "top10": 0.5938,
+   "packard_bits_heldout": 0.5474
+  },
+  "mean": {
+   "top1": 0.1121,
+   "top10": 0.6057,
+   "packard_bits_heldout": 0.5605
+  }
+ },
+ "W3.0": {
+  "n_train": 310396,
+  "ses-11": {
+   "n": 1308,
+   "top1": 0.155,
+   "top10": 0.5934,
+   "packard_bits_heldout": 0.5593
+  },
+  "ses-12": {
+   "n": 1364,
+   "top1": 0.1167,
+   "top10": 0.5826,
+   "packard_bits_heldout": 0.5073
+  },
+  "mean": {
+   "top1": 0.1358,
+   "top10": 0.588,
+   "packard_bits_heldout": 0.5333
+  }
+ }
+}
