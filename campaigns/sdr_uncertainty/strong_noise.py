@@ -24,6 +24,11 @@ Amendment 1.4.5 does not refit this equation. partial-train, score-partial,
 and timing-control read the day-term decision recorded here. They do not
 count acquisition dates again. A kept feature that is non-finite still fails.
 See AMENDMENT_1.4.5.md.
+
+Amendment 1.5 does not change this candidate list or the 1.4 fit population.
+An optional flag lets a later fit keep undated trunk-unseen rows only when
+day terms are already inestimable. The default still refuses those rows.
+See AMENDMENT_1.5.md.
 """
 from __future__ import annotations
 
@@ -455,13 +460,18 @@ def _reduced_raw(rows, in_train_flags, *, train_days, windows_on, total_train_wi
     return raw, defined
 
 
-def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
+def assemble_features(rows: list[dict], *, train_split: str = "train", allow_undated_train_when_days_inestimable: bool = False) -> dict:
     """Build the clipped feature matrix. Statistics are fit on training rows only.
 
     Training rows need a real acquisition date. A non-training row may omit it.
     Amendment 1.4.2 then drops day_rank and day_distance for that row.
     Amendment 1.4.3 drops those two terms from the whole equation when the
     training rows contain fewer than two distinct acquisition dates.
+
+    Amendment 1.5 sets allow_undated_train_when_days_inestimable. Undated
+    coefficient rows are then kept only when the dated training rows have
+    fewer than two acquisition dates, because those day columns are absent.
+    A session ordinal is still not a date. The default leaves 1.4 unchanged.
     """
     if not rows:
         raise ProtocolError("no rows to assemble")
@@ -476,10 +486,19 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
     train_rows = [row for row in rows if row["split"] == train_split]
     if len(train_rows) < 2:
         raise ProtocolError("noise fit needs at least two training rows")
+    dated = []
+    undated_bases = []
     for row in train_rows:
-        if _date_text(row) is None:
-            raise ProtocolError(missing_acquisition_date(str(row["base"])))
-    train_days = sorted({_to_date(_date_text(row)) for row in train_rows})
+        text = _date_text(row)
+        if text is None:
+            undated_bases.append(str(row["base"]))
+            continue
+        dated.append(_to_date(text))
+    if undated_bases and not allow_undated_train_when_days_inestimable:
+        raise ProtocolError(missing_acquisition_date(undated_bases[0]))
+    train_days = sorted(set(dated))
+    if undated_bases and len(train_days) >= 2:
+        raise ProtocolError(missing_acquisition_date(undated_bases[0]))
     # One calendar day cannot identify day_rank or day_distance. Drop the terms.
     # Do not split a day by clock time, and do not borrow a non-training date.
     day_terms_inestimable = len(train_days) < 2
@@ -491,7 +510,10 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
         if row["base"] in seen_base:
             continue
         seen_base.add(row["base"])
-        day = _to_date(_date_text(row))
+        text = _date_text(row)
+        if text is None:
+            continue
+        day = _to_date(text)
         windows_on[day] = windows_on.get(day, 0) + int(row["group_windows"])
     total_train_windows = int(sum(windows_on.values()))
     names = _active_feature_names(day_terms_inestimable)
