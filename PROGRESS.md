@@ -222,3 +222,9 @@ form, so the novelty is the measured day term in Sigma, not the operation. Next:
 (cont_wh is global-Sigma; a per-run variant is a CPU rebuild) and the matched twin, both in queue_floor_gpu.sh.
 Built cont_whd (per-run Sigma^-1/2, label-free; held-out-day mean |sensor corr| 0.083 vs 0.206 raw, 0.182 global) and
 added it as a fourth arm (floor_whiten_day_s0) to scripts/queue_floor_gpu.sh, still NOT launched (~100 min GPU).
+
+## 2026-11-09 13:15 EST — timing-floor GPU screen queued (Rohit: after Enveda, then MICrONS)
+`scripts/wait_gpu_then_floor.sh` (detached) starts `scripts/queue_floor_gpu.sh` only after 30 continuous minutes with
+no GPU compute process (other than the streamer), so MICrONS can claim the GPU first when Enveda ends; each arm
+re-waits for 10 idle minutes and trains in a 6 GiB memory scope. Arms: matched-amplitude twin, global whitening,
+deconvolution, per-day whitening. Log: logs/floor/waiter.log, logs/floor/queue.log.
