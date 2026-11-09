@@ -19,7 +19,11 @@ from .strong_decoder import is_strong_decoder, load_strong_decoder
 from .strong_forward import alignment_for, forward_recording, load_events_safe
 from .strong_noise import (
     AMENDMENT,
+    AMENDMENT_142,
     CANDIDATES,
+    DATE_SOURCE,
+    DAY_TERMS,
+    UNDATED_DAY_TERMS,
     VAL_SUBJECTS,
     CHECKPOINT_BASENAME,
     CHECKPOINT_BYTES,
@@ -44,6 +48,7 @@ from .strong_noise import (
     log_variance,
     matched_partial_steps,
     measurement_status,
+    missing_acquisition_date,
     quarter_labels,
     select_on_validation,
     temperature_changes_top10,
@@ -129,6 +134,13 @@ def honesty(**extra) -> dict:
     payload["eval_subjects_are_pristine_confirmatory_holdout"] = False
     payload["lpp_pooled"] = False
     payload["full_retrain"] = dict(FULL_RETRAIN)
+    payload["amendment_1_4_2"] = AMENDMENT_142
+    payload["undated_day_terms"] = UNDATED_DAY_TERMS
+    payload["day_terms"] = list(DAY_TERMS)
+    payload["date_source"] = DATE_SOURCE
+    payload["dates_invented"] = False
+    payload["session_ordinal_used_as_day"] = False
+    payload["competition_holdout_read"] = False
     payload["numeric_precision"] = {
         "this_run": "fp32_cpu_when_cuda_hidden",
         "leaderboard_deep_c": "bf16_cuda_autocast",
@@ -211,11 +223,22 @@ def list_cache_bases(cache_cont: str) -> list[str]:
 
 
 def read_dates(data_root: str) -> dict:
+    """Acquisition dates from BIDS ``*_scans.tsv`` only.
+
+    Broad subjects have no public scans.tsv: ``pnpl/LibriBrain2`` embargos
+    Sherlock1 BIDS, and the released events tables have no date column.
+    Amendment 1.4.2 drops day terms for a base this map does not contain.
+    This function does not download, does not read a session ordinal as a
+    day, and does not open a path that mentions holdout.
+    """
     dates = {}
     if not data_root or not os.path.isdir(data_root):
         return dates
     scans = glob.glob(os.path.join(data_root, "*", "sub-*", "ses-*", "*_scans.tsv"))
     for path in scans:
+        lowered = path.lower()
+        if "holdout" in lowered or "competition_holdout" in lowered:
+            continue
         with open(path, encoding="utf-8-sig", newline="") as handle:
             for row in csv.reader(handle, delimiter="\t"):
                 if len(row) < 2 or not row[0].startswith("meg/"):
@@ -298,9 +321,11 @@ def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | Non
             raise ProtocolError(f"{base} logits are not {N_CLASSES}-way")
         if not (len(labels) == len(logits) == len(embedding)):
             raise ProtocolError(f"{base} forward arrays differ in length")
-        date = dates.get(base)
-        if not date:
-            raise ProtocolError(f"no acquisition date for {base}; refusing to invent day_rank")
+        date = dates.get(base) or None
+        if split == "train" and not date:
+            raise ProtocolError(missing_acquisition_date(base))
+        if split != "train" and not date and subject == 0:
+            raise ProtocolError(missing_acquisition_date(base))
         quarters = None
         extra = None
         if quarter is not None:
@@ -402,13 +427,18 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
     train = bundle["train_index"]
     if int(np.sum(train)) != n_fit:
         raise ProtocolError("selection rows leaked into the coefficient fit")
+    if not np.isfinite(bundle["z"]).all():
+        raise ProtocolError("noise features are non-finite; refusing to invent a day")
     params = {}
     val_nll = {}
     for name in CANDIDATES:
         matrix, feat_names = _candidate_matrix(bundle["z"], bundle["names"], name)
         params[name] = fit_noise(matrix[train], residual[train], name, feature_names=feat_names, seed=0)
         val_nll[name] = weighted_nll(residual[~train], matrix[~train], params[name])
+        if not np.isfinite(val_nll[name]):
+            raise ProtocolError(f"{name} validation NLL is non-finite")
     chosen = select_on_validation(val_nll)
+    dropped = sorted({row["base"] for row, known in zip(rows, bundle["day_defined"]) if not known})
     return {
         "objective": "gaussian_nll",
         "objective_note": (
@@ -428,7 +458,15 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
         "trunk_unseen_quarter": "Q3",
         "in_sample_trunk_trained_residual": False,
         "selection_population": "broad_val_subjects_1_5_10",
+        "selection_subjects": sorted({int(row["subject"]) for row in rows if row["split"] == "selection"}),
         "selection_rows_used_for_coefficients": False,
+        "amendment_1_4_2": AMENDMENT_142,
+        "undated_day_terms": UNDATED_DAY_TERMS,
+        "day_terms": list(DAY_TERMS),
+        "day_terms_dropped_bases": dropped,
+        "date_source": DATE_SOURCE,
+        "dates_invented": False,
+        "session_ordinal_used_as_day": False,
         "broad_eval_rows_used": False,
         "q4_not_used_for_fit_or_selection": True,
         "eval_files_read": False,
@@ -466,7 +504,10 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
     labels = np.concatenate(labels, axis=0)
     subjects = np.concatenate(subjects, axis=0)
     matrix_z = transform_with_state(rows, fit["state"])
+    if not np.isfinite(matrix_z).all():
+        raise ProtocolError("eval features are non-finite; refusing to invent a day")
     residual = decoder_residual(logits, labels)
+    dropped = sorted({row["base"] for row in rows if not row.get("date")})
     nll = {}
     changed = False
     for name in CANDIDATES:
@@ -495,6 +536,13 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
         "not_confirmatory": True,
         "independent_confirmation_required": True,
         "candidates_scored": list(CANDIDATES),
+        "amendment_1_4_2": AMENDMENT_142,
+        "undated_day_terms": UNDATED_DAY_TERMS,
+        "day_terms": list(DAY_TERMS),
+        "day_terms_dropped_bases": dropped,
+        "date_source": DATE_SOURCE,
+        "dates_invented": False,
+        "session_ordinal_used_as_day": False,
         "fit_rows": int(fit.get("fit_rows", fit.get("train_rows", 0))),
         "train_rows": int(fit["train_rows"]),
         "selection_rows": int(fit["selection_rows"]),
