@@ -13,6 +13,12 @@ a scans.tsv date. See AMENDMENT_1.4.2.md.
 Amendment 1.4.3: if the training rows contain fewer than two distinct acquisition
 dates, day_rank and day_distance are inestimable and leave the equation. The
 other features stay. Dates are not invented. See AMENDMENT_1.4.3.md.
+
+Amendment 1.4.4 does not change this equation, the estimand, or the caps.
+The runner merges the honesty mappings that score-frozen and later stages
+pass together. A claim flag that disagrees keeps the value that does not
+advance a claim. Any other disagreement raises ProtocolError.
+See AMENDMENT_1.4.4.md.
 """
 from __future__ import annotations
 
@@ -23,6 +29,7 @@ import numpy as np
 AMENDMENT = "1.4"
 AMENDMENT_142 = "1.4.2"
 AMENDMENT_143 = "1.4.3"
+AMENDMENT_144 = "1.4.4"
 PROTOCOL_ID = "strong-decoder-noise-1.4"
 # Pre-specified before any 1.4.2 result. Undated rows omit these terms.
 # They are not filled with a session ordinal or a calendar day.

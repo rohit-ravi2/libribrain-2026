@@ -2,6 +2,9 @@
 
 Does not start the 8-epoch deep_c fit. Does not overwrite deep_c_ep6.pt, the
 linear-probe caches, or an earlier score file. effect_claimed stays false.
+
+Amendment 1.4.4 merges honesty mappings. Two dicts are not splatted into the
+same call. A claim flag that disagrees keeps the non-claim value.
 """
 from __future__ import annotations
 
@@ -21,6 +24,7 @@ from .strong_noise import (
     AMENDMENT,
     AMENDMENT_142,
     AMENDMENT_143,
+    AMENDMENT_144,
     CANDIDATES,
     DATE_SOURCE,
     DAY_TERMS,
@@ -106,7 +110,74 @@ def lock_held() -> bool:
         return handle.read().strip() == LOCK_NAME
 
 
-def honesty(**extra) -> dict:
+# When two mappings name one of these flags and the values differ, keep the
+# value that does not advance a claim. Agreement is left as written; honesty()
+# still pins the same direction afterwards. A disagreement on any other key,
+# including a metric or an integrity admission such as dates_invented, raises.
+CLAIM_FLAGS = {
+    "effect_claimed": False,
+    "valid_scientific_claim": False,
+    "real_meg_scientific_validation": False,
+    "accuracy_claimed_from_temperature": False,
+    "frozen_trunk_subject0_days_are_holdout": False,
+    "eval_subjects_are_pristine_confirmatory_holdout": False,
+    "lpp_pooled": False,
+    "pooled_with_libribrain": False,
+    "full_retrain_launched": False,
+    "exploratory": True,
+    "not_confirmatory": True,
+    "independent_confirmation_required": True,
+}
+
+
+def _is_bool(value) -> bool:
+    return type(value) is bool or isinstance(value, np.bool_)
+
+
+def _values_agree(values: list) -> bool:
+    first = values[0]
+    return all(value == first for value in values[1:])
+
+
+def merge_honesty_sources(*sources, **explicit) -> dict:
+    """Combine mappings that cannot be passed as honesty(**left, **right).
+
+    Python raises TypeError before the callee runs when two splats share a key.
+    score_frozen_directory and measurement_status both set not_confirmatory.
+    """
+    provided: dict[str, list] = {}
+    for source in sources:
+        if source is None:
+            continue
+        if not isinstance(source, dict):
+            raise ProtocolError("honesty source is not a mapping")
+        for key, value in source.items():
+            provided.setdefault(key, []).append(value)
+    for key, value in explicit.items():
+        provided.setdefault(key, []).append(value)
+    merged = {}
+    for key, values in provided.items():
+        if len(values) == 1 or _values_agree(values):
+            merged[key] = values[-1]
+            continue
+        if key in CLAIM_FLAGS:
+            if not all(_is_bool(value) for value in values):
+                raise ProtocolError(f"honesty flag {key} is not a boolean")
+            merged[key] = CLAIM_FLAGS[key]
+            continue
+        raise ProtocolError(f"honesty sources disagree on {key}")
+    return merged
+
+
+def _merge_report(report: dict, incoming: dict) -> None:
+    """Update a report without letting an incoming flag flip toward a claim."""
+    merged = merge_honesty_sources(report, incoming)
+    report.clear()
+    report.update(merged)
+
+
+def honesty(*sources, **extra) -> dict:
+    merged = merge_honesty_sources(*sources, **extra)
     payload = {
         "amendment": AMENDMENT,
         "protocol_id": PROTOCOL_ID,
@@ -124,7 +195,7 @@ def honesty(**extra) -> dict:
         "competition_holdout_read": False,
         "licences": {"libribrain": "CC-BY-NC-4.0", "lpp": "PDDL"},
     }
-    payload.update(extra)
+    payload.update(merged)
     payload["effect_claimed"] = False
     payload["valid_scientific_claim"] = False
     payload["exploratory"] = True
@@ -137,6 +208,7 @@ def honesty(**extra) -> dict:
     payload["full_retrain"] = dict(FULL_RETRAIN)
     payload["amendment_1_4_2"] = AMENDMENT_142
     payload["amendment_1_4_3"] = AMENDMENT_143
+    payload["amendment_1_4_4"] = AMENDMENT_144
     payload["undated_day_terms"] = UNDATED_DAY_TERMS
     payload["day_terms"] = list(DAY_TERMS)
     payload["date_source"] = DATE_SOURCE
@@ -918,12 +990,12 @@ def run_next(root: str) -> dict:
         return report
     if action["stage"] == "forward":
         info = execute_forward(directory, root, action["base"], action["phase"])
-        report.update({"base": info["base"], "phase": info["phase"], "n_words": info["n_words"], "decoder": info["decoder"], "wrote": info["path"]})
+        _merge_report(report, {"base": info["base"], "phase": info["phase"], "n_words": info["n_words"], "decoder": info["decoder"], "wrote": info["path"]})
         return report
     if action["stage"] == "noise-fit":
         payload = fit_noise_directory(directory, dates)
         _save_json(os.path.join(directory, "noise", "fit.json"), payload)
-        report.update({
+        _merge_report(report, {
             "chosen_on_validation": payload["chosen_on_validation"],
             "val_nll": payload["val_nll"],
             "objective": "gaussian_nll",
@@ -950,9 +1022,10 @@ def run_next(root: str) -> dict:
             "lock_held": True,
             "fixture": False,
         })
-        payload = honesty(**payload, **status, checkpoint=ckpt)
+        # payload and status both carry not_confirmatory. Do not splat both.
+        payload = honesty(payload, status, checkpoint=ckpt)
         _save_json(os.path.join(directory, "score_frozen.json"), payload)
-        report.update({
+        _merge_report(report, {
             "measurement_complete": status["measurement_complete"],
             "valid_scientific_claim": False,
             "primary_bacc10_50": payload["primary_bacc10_50"],
@@ -965,12 +1038,12 @@ def run_next(root: str) -> dict:
         return report
     if action["stage"] == "partial-train":
         info = partial_train_directory(directory, root, action["steps"], dates)
-        report.update(info)
+        _merge_report(report, info)
         return report
     if action["stage"] == "score-partial":
-        payload = honesty(**score_partial_directory(directory))
+        payload = honesty(score_partial_directory(directory))
         _save_json(os.path.join(directory, "score_partial.json"), payload)
-        report.update({
+        _merge_report(report, {
             "learned_minus_uniform": payload["learned_minus_uniform"],
             "fifty_class_metric_defined": payload["fifty_class_metric_defined"],
             "matched_steps": payload["steps"],
@@ -1110,7 +1183,7 @@ def main(argv=None) -> int:
                 directory, root, int(SMOKE_SCHEDULE["steps_per_launch"]), read_dates(data_root),
                 schedule=SMOKE_SCHEDULE, state_name="smoke_state.npz",
             )
-            payload = honesty(**info, stage="smoke", next_action="smoke_is_not_the_substantive_schedule")
+            payload = honesty(info, stage="smoke", next_action="smoke_is_not_the_substantive_schedule")
         elif command in ("noise-fit", "partial-train", "score"):
             payload = run_next(root)
             if payload.get("stage") not in ("noise-fit", "partial-train", "score-frozen", "score-partial", "forward", "stop"):

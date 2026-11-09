@@ -23,13 +23,16 @@ from campaigns.sdr_uncertainty.strong_decoder import (
 )
 from campaigns.sdr_uncertainty.strong_decoder_runner import (
     _candidate_matrix,
+    _merge_report,
     _rows_from_forward,
     _write_forward,
     assert_output_dir,
     fit_noise_directory,
     honesty,
+    merge_honesty_sources,
     partial_train_directory,
     read_dates,
+    run_next,
     score_frozen_directory,
     score_partial_directory,
 )
@@ -54,6 +57,7 @@ from campaigns.sdr_uncertainty.strong_noise import (
     initial_partial_arms,
     log_variance,
     matched_partial_steps,
+    SUBSTANTIVE_SCHEDULE,
     measurement_claim,
     measurement_status,
     missing_acquisition_date,
@@ -1116,7 +1120,7 @@ class SplitAndNoiseTests(unittest.TestCase):
             handle.write(f"meg/{base}_meg.fif\t{date}T12:00:00\n")
         return path
 
-    def _write_cached_forward(self, folder, base, subject, labels, timechapter):
+    def _write_cached_forward(self, folder, base, subject, labels, timechapter, checkpoint_sha="abc"):
         os.makedirs(folder, exist_ok=True)
         labels = np.asarray(labels, dtype=np.int64)
         n = len(labels)
@@ -1131,7 +1135,7 @@ class SplitAndNoiseTests(unittest.TestCase):
             artifact_rms=np.linspace(0.5, 1.5, n),
             bandpower=np.linspace(0.1, 0.4, n),
             timechapter=np.asarray(timechapter, dtype=np.float64),
-            checkpoint_sha=np.array("abc"),
+            checkpoint_sha=np.array(checkpoint_sha),
             timing=np.array("zero"),
         )
 
@@ -1340,6 +1344,277 @@ class SplitAndNoiseTests(unittest.TestCase):
         with open(path, "rb") as handle:
             digest.update(handle.read())
         return digest.hexdigest()
+
+    def test_honesty_merge_keeps_the_non_claim_value(self):
+        agreed = merge_honesty_sources(
+            {"not_confirmatory": True, "independent_confirmation_required": True, "eval_rows": 4},
+            {"not_confirmatory": True, "independent_confirmation_required": True, "effect_claimed": False},
+            checkpoint="ckpt",
+        )
+        self.assertEqual(agreed["checkpoint"], "ckpt")
+        self.assertEqual(agreed["eval_rows"], 4)
+        self.assertTrue(agreed["not_confirmatory"])
+        disagreed = merge_honesty_sources(
+            {
+                "not_confirmatory": False,
+                "effect_claimed": True,
+                "exploratory": False,
+                "pooled_with_libribrain": True,
+                "independent_confirmation_required": False,
+            },
+            {
+                "not_confirmatory": True,
+                "effect_claimed": False,
+                "exploratory": True,
+                "pooled_with_libribrain": False,
+                "independent_confirmation_required": True,
+            },
+        )
+        self.assertTrue(disagreed["not_confirmatory"])
+        self.assertFalse(disagreed["effect_claimed"])
+        self.assertTrue(disagreed["exploratory"])
+        self.assertFalse(disagreed["pooled_with_libribrain"])
+        self.assertTrue(disagreed["independent_confirmation_required"])
+        # The merge does not rewrite a value the sources already agree on.
+        self.assertTrue(merge_honesty_sources(
+            {"pooled_with_libribrain": True},
+            {"pooled_with_libribrain": True},
+        )["pooled_with_libribrain"])
+        wrapped = honesty(
+            {"pooled_with_libribrain": True, "not_confirmatory": False, "effect_claimed": True, "eval_rows": 4},
+            {"pooled_with_libribrain": False, "not_confirmatory": True, "valid_scientific_claim": True, "eval_rows": 4},
+        )
+        self.assertFalse(wrapped["pooled_with_libribrain"])
+        self.assertTrue(wrapped["not_confirmatory"])
+        self.assertFalse(wrapped["effect_claimed"])
+        self.assertFalse(wrapped["valid_scientific_claim"])
+        self.assertTrue(wrapped["exploratory"])
+        self.assertTrue(wrapped["independent_confirmation_required"])
+        self.assertEqual(wrapped["eval_rows"], 4)
+        self.assertEqual(wrapped["amendment_1_4_4"], "1.4.4")
+        self.assertFalse(wrapped["competition_holdout_read"])
+        self.assertFalse(wrapped["dates_invented"])
+        self.assertFalse(wrapped["real_meg_scientific_validation"])
+        smoke = honesty(
+            {"steps": 2, "effect_claimed": True, "not_confirmatory": False, "schedule": "smoke"},
+            stage="smoke",
+            next_action="smoke_is_not_the_substantive_schedule",
+        )
+        self.assertEqual(smoke["stage"], "smoke")
+        self.assertEqual(smoke["next_action"], "smoke_is_not_the_substantive_schedule")
+        self.assertEqual(smoke["steps"], 2)
+        self.assertFalse(smoke["effect_claimed"])
+        self.assertTrue(smoke["not_confirmatory"])
+        with self.assertRaises(ProtocolError) as caught:
+            merge_honesty_sources({"primary_bacc10_50": 0.2}, {"primary_bacc10_50": 0.5})
+        self.assertIn("primary_bacc10_50", str(caught.exception))
+        with self.assertRaises(ProtocolError):
+            merge_honesty_sources({"dates_invented": True}, {"dates_invented": False})
+        with self.assertRaises(ProtocolError):
+            merge_honesty_sources({"competition_holdout_read": False}, {"competition_holdout_read": True})
+        with self.assertRaises(ProtocolError):
+            merge_honesty_sources(
+                {"temperature_applied_to_reported_logits": False},
+                {"temperature_applied_to_reported_logits": True},
+            )
+        with self.assertRaises(ProtocolError):
+            honesty({"not_confirmatory": "yes"}, {"not_confirmatory": True})
+        with self.assertRaises(ProtocolError):
+            honesty({"stage": "partial-train"}, stage="smoke")
+        report = honesty(stage="partial-train")
+        _merge_report(report, {
+            "effect_claimed": True,
+            "valid_scientific_claim": True,
+            "not_confirmatory": False,
+            "steps": 2,
+        })
+        self.assertEqual(report["stage"], "partial-train")
+        self.assertFalse(report["effect_claimed"])
+        self.assertFalse(report["valid_scientific_claim"])
+        self.assertTrue(report["not_confirmatory"])
+        self.assertEqual(report["steps"], 2)
+        with self.assertRaises(ProtocolError):
+            _merge_report(honesty(stage="smoke"), {"stage": "partial-train", "steps": 1})
+
+    def test_run_next_score_frozen_and_later_stages_write_json(self):
+        """The live crash: score and measurement_status both set not_confirmatory.
+
+        Fixture forwards are already on disk, as they were after the eight
+        successful forward launches. run_next then writes score_frozen.json,
+        takes the partial-train branch, and writes score_partial.json.
+        """
+
+        class _Array:
+            def __init__(self, value):
+                self._value = value
+
+            def detach(self):
+                return self
+
+            def cpu(self):
+                return self
+
+            def numpy(self):
+                return self._value
+
+        class _Head:
+            def __init__(self):
+                self.weight = _Array(np.zeros((50, 4), dtype=np.float64))
+                self.bias = _Array(np.zeros(50, dtype=np.float64))
+
+        class _Model:
+            def __init__(self):
+                self.head_ce = _Head()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_root = os.path.join(tmp, "data")
+            cache_cont = os.path.join(tmp, "cache", "cont")
+            directory = os.path.join(tmp, "sdr_out", "strong_decoder_1_4")
+            root = os.path.join(tmp, "repo")
+            os.makedirs(cache_cont)
+            os.makedirs(root)
+            ckpt = os.path.join(tmp, "fixture-checkpoint.bin")
+            with open(ckpt, "wb") as handle:
+                handle.write(b"fixture-checkpoint-not-deep-c")
+            sha = self._sha(ckpt)
+            rows = (
+                ("noise_pool", "sub-0_ses-11_task-Sherlock1_run-2", 0, "11",
+                 [0, 1, 2, 3], [10.0, 60.0, 62.0, 90.0], "2024-10-04T14:14:01.362854Z"),
+                ("noise_pool", "sub-0_ses-12_task-Sherlock1_run-2", 0, "12",
+                 [0, 1, 2, 3], [12.0, 58.0, 61.0, 95.0], "2024-10-04T14:54:33.544517Z"),
+                ("selection", "sub-1_ses-11_task-Sherlock1_run-1", 1, None,
+                 [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0], None),
+                ("selection", "sub-5_ses-11_task-Sherlock1_run-1", 5, None,
+                 [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0], None),
+                ("selection", "sub-10_ses-11_task-Sherlock1_run-1", 10, None,
+                 [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0], None),
+                ("eval", "sub-3_ses-11_task-Sherlock1_run-1", 3, None,
+                 [0, 1, 2, 3], [15.0, 25.0, 35.0, 45.0], None),
+                ("train", "sub-0_ses-1_task-Sherlock1_run-1", 0, "1",
+                 [0, 1, 2, 3], [5.0, 15.0, 25.0, 35.0], "2024-07-31T12:12:07.029345Z"),
+            )
+            written = []
+            for phase, base, subject, session, labels, times, acq in rows:
+                if acq is not None:
+                    self._write_scan_time(data_root, "Sherlock1", subject, session, base, acq)
+                self._write_cached_forward(
+                    os.path.join(directory, "forward", phase), base, subject, labels, times, sha,
+                )
+                written.append(os.path.join(directory, "forward", phase, base + ".npz"))
+                np.save(os.path.join(cache_cont, base + ".npy"), np.zeros(2, np.float32))
+                np.savez_compressed(os.path.join(cache_cont, base + "_ev.npz"), label=np.array([0]))
+            dates = read_dates(data_root)
+            self.assertEqual(dates["sub-0_ses-11_task-Sherlock1_run-2"], "2024-10-04")
+            self.assertEqual(dates["sub-0_ses-12_task-Sherlock1_run-2"], "2024-10-04")
+            fit = fit_noise_directory(directory, dates)
+            self.assertTrue(fit["day_terms_inestimable"])
+            self.assertEqual(fit["day_terms_dropped"], ["day_rank", "day_distance"])
+            os.makedirs(os.path.join(directory, "noise"), exist_ok=True)
+            fit_path = os.path.join(directory, "noise", "fit.json")
+            with open(fit_path, "w", encoding="utf-8") as handle:
+                json.dump(fit, handle)
+            fit_sha = self._sha(fit_path)
+            before = {path: self._sha(path) for path in written}
+            score = score_frozen_directory(directory, dates)
+            status = measurement_status({
+                "decoder": "src.v3lib.Model",
+                "checkpoint_bytes": os.path.getsize(ckpt),
+                "objective": score["objective"],
+                "candidates": score["candidates_scored"],
+                "eval_subjects_in_train": score["eval_subjects_in_train"],
+                "subject0_frozen_holdout": False,
+                "temperature_applied_to_reported_logits": False,
+                "in_sample_trunk_trained_residual": score.get("in_sample_trunk_trained_residual"),
+                "eval_rows": score["eval_rows"],
+                "fit_rows": score.get("fit_rows", 0),
+                "selection_rows": score["selection_rows"],
+                "lock_held": True,
+                "fixture": False,
+            })
+            overlap = set(score) & set(status)
+            self.assertIn("not_confirmatory", overlap)
+            self.assertIn("independent_confirmation_required", overlap)
+            with self.assertRaises(TypeError):
+                honesty(**score, **status, checkpoint=ckpt)
+            original = dict(SUBSTANTIVE_SCHEDULE)
+            tiny = {
+                "name": "substantive_head_finetune",
+                "max_steps": 2,
+                "steps_per_launch": 2,
+                "min_steps": 2,
+                "patience_checks": None,
+                "substantive": True,
+            }
+            env = {
+                "LIBRIBRAIN_SDR_OUT": os.path.join(tmp, "sdr_out"),
+                "LIBRIBRAIN_CACHE": os.path.join(tmp, "cache"),
+                "LIBRIBRAIN_DATA": data_root,
+                "LB_STRONG_CKPT": ckpt,
+            }
+            stages = []
+            try:
+                SUBSTANTIVE_SCHEDULE.clear()
+                SUBSTANTIVE_SCHEDULE.update(tiny)
+                with unittest.mock.patch.dict(os.environ, env, clear=False):
+                    with unittest.mock.patch(
+                        "campaigns.sdr_uncertainty.strong_decoder_runner.load_strong_decoder",
+                        return_value=_Model(),
+                    ):
+                        for _ in range(6):
+                            report = run_next(root)
+                            stages.append(report["stage"])
+                            self.assertFalse(report["effect_claimed"])
+                            self.assertFalse(report["valid_scientific_claim"])
+                            self.assertTrue(report["not_confirmatory"])
+                            self.assertTrue(report["exploratory"])
+                            self.assertTrue(report["independent_confirmation_required"])
+                            self.assertFalse(report["real_meg_scientific_validation"])
+                            self.assertEqual(report["amendment_1_4_4"], "1.4.4")
+                            if report["stage"] == "stop":
+                                self.assertTrue(report["runs_completed"])
+                                break
+                        else:
+                            self.fail(f"did not stop: {stages}")
+            finally:
+                SUBSTANTIVE_SCHEDULE.clear()
+                SUBSTANTIVE_SCHEDULE.update(original)
+            self.assertEqual(stages, ["score-frozen", "partial-train", "score-partial", "stop"])
+            self.assertEqual(before, {path: self._sha(path) for path in written})
+            self.assertEqual(fit_sha, self._sha(fit_path))
+            with open(os.path.join(directory, "score_frozen.json"), encoding="utf-8") as handle:
+                frozen = json.load(handle)
+            with open(os.path.join(directory, "score_partial.json"), encoding="utf-8") as handle:
+                partial = json.load(handle)
+            for saved in (frozen, partial):
+                self.assertFalse(saved["effect_claimed"])
+                self.assertFalse(saved["valid_scientific_claim"])
+                self.assertTrue(saved["not_confirmatory"])
+                self.assertTrue(saved["exploratory"])
+                self.assertTrue(saved["independent_confirmation_required"])
+                self.assertFalse(saved["dates_invented"])
+                self.assertFalse(saved["competition_holdout_read"])
+                self.assertFalse(saved["real_meg_scientific_validation"])
+                self.assertEqual(saved["amendment_1_4_4"], "1.4.4")
+            self.assertEqual(frozen["checkpoint"], ckpt)
+            self.assertTrue(os.path.isfile(os.path.join(directory, "partial", "state.npz")))
+            self.assertTrue(os.path.isfile(os.path.join(directory, "partial", "best_val.npz")))
+            self.assertTrue(os.path.isfile(os.path.join(directory, "partial", "val_curve.json")))
+            self.assertTrue(frozen["day_terms_inestimable"])
+            self.assertEqual(frozen["day_terms_dropped"], ["day_rank", "day_distance"])
+            self.assertFalse(frozen["measurement_complete"])
+            self.assertFalse(frozen["fifty_class_metric_defined"])
+            self.assertIsNone(frozen["primary_bacc10_50"])
+            self.assertNotIn("bacc10_50", frozen["eligible_metrics"])
+            self.assertEqual(set(frozen["eval_nll"]), set(CANDIDATES))
+            for value in frozen["eval_nll"].values():
+                self.assertTrue(np.isfinite(value))
+            self.assertEqual(frozen["eval_rows"], 4)
+            self.assertEqual(frozen["oov_excluded"]["sub-3_ses-11_task-Sherlock1_run-1"]["excluded_oov"], 0)
+            self.assertFalse(partial["fifty_class_metric_defined"])
+            self.assertEqual(partial["steps"], 2)
+            self.assertEqual(set(partial["primary_bacc10_50"]), {"uniform", "random_covariate", "learned_state"})
+            self.assertTrue(partial["not_a_full_retrain"])
+            self.assertEqual(SUBSTANTIVE_SCHEDULE["max_steps"], original["max_steps"])
 
 
 if __name__ == "__main__":
