@@ -62,8 +62,12 @@ def sentence_segments(sentence_idx: np.ndarray, onset: np.ndarray, maxw: int) ->
 
 
 def local_covariates(window: np.ndarray, onset_s: float, duration_s: float) -> dict:
-    """Inference features that do not need a date or a label. onset itself is not returned."""
-    signal = np.asarray(window, dtype=np.float64)
+    """Inference features that do not need a date or a label. onset itself is not returned.
+
+    Non-finite samples are zeros, the same replacement src.cont.normalize applies
+    before the trunk forward. A sensor dropout is not an acquisition date.
+    """
+    signal = np.nan_to_num(np.asarray(window, dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
     valid_energy = float(np.mean(signal ** 2))
     diff = np.diff(signal, axis=1)
     diff_energy = float(np.mean(diff ** 2)) if diff.size else 0.0
@@ -72,6 +76,46 @@ def local_covariates(window: np.ndarray, onset_s: float, duration_s: float) -> d
         "run_fraction": float(np.clip(float(onset_s) / duration, 0.0, 1.0)),
         "artifact_rms": float(np.sqrt(max(valid_energy, 0.0))),
         "bandpower": float(diff_energy / max(valid_energy, 1e-8)),
+    }
+
+
+def recording_covariates(meg: np.ndarray, events: dict, *, maxw: int = 12) -> dict:
+    """Sensor summaries in the same word order as forward_recording.
+
+    Does not load the decoder and does not write a cache file. maxw changes
+    how sentences are packed for the model; concatenating those packs restores
+    sentence order, so the covariate order does not depend on maxw.
+    """
+    for key in ("onset_s", "label", "sentenceidx", "sent_start_s", "sent_end_s"):
+        if key not in events:
+            raise ProtocolError(f"events are missing {key}")
+    onset = np.asarray(events["onset_s"], dtype=np.float64)
+    if len(onset) == 0:
+        raise ProtocolError("recording has no words")
+    duration = float(max(float(np.max(onset)), 1e-6))
+    segments = sentence_segments(np.asarray(events["sentenceidx"]), onset, maxw)
+    run_fraction = []
+    artifact_rms = []
+    bandpower = []
+    order = []
+    for seg in segments:
+        for word in seg:
+            window, _mask = slice_window(
+                meg,
+                float(onset[word]),
+                float(events["sent_start_s"][word]),
+                float(events["sent_end_s"][word]),
+            )
+            cov = local_covariates(window, float(onset[word]), duration)
+            run_fraction.append(cov["run_fraction"])
+            artifact_rms.append(cov["artifact_rms"])
+            bandpower.append(cov["bandpower"])
+            order.append(int(word))
+    return {
+        "index": np.asarray(order, dtype=np.int64),
+        "run_fraction": np.asarray(run_fraction, dtype=np.float64),
+        "artifact_rms": np.asarray(artifact_rms, dtype=np.float64),
+        "bandpower": np.asarray(bandpower, dtype=np.float64),
     }
 
 

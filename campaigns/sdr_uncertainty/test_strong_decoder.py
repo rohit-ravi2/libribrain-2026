@@ -33,10 +33,11 @@ from campaigns.sdr_uncertainty.strong_decoder_runner import (
     partial_train_directory,
     read_dates,
     run_next,
+    run_timing,
     score_frozen_directory,
     score_partial_directory,
 )
-from campaigns.sdr_uncertainty.strong_forward import forward_recording, slice_window
+from campaigns.sdr_uncertainty.strong_forward import forward_recording, recording_covariates, slice_window
 from campaigns.sdr_uncertainty.strong_noise import (
     CANDIDATES,
     CHECKPOINT_BYTES,
@@ -1615,6 +1616,354 @@ class SplitAndNoiseTests(unittest.TestCase):
             self.assertEqual(set(partial["primary_bacc10_50"]), {"uniform", "random_covariate", "learned_state"})
             self.assertTrue(partial["not_a_full_retrain"])
             self.assertEqual(SUBSTANTIVE_SCHEDULE["max_steps"], original["max_steps"])
+
+    def test_undated_rows_with_dropped_day_terms_reach_partial_and_score(self):
+        """The iter-18 blocker: day terms already dropped, then partial-train.
+
+        Head-train rows have no scans.tsv date. Their stored bandpower is
+        non-finite because the trunk zero-filled that sample and the summary
+        did not. The npz is not rewritten. The noise fit is not refit.
+        """
+
+        class _Array:
+            def __init__(self, value):
+                self._value = value
+
+            def detach(self):
+                return self
+
+            def cpu(self):
+                return self
+
+            def numpy(self):
+                return self._value
+
+        class _Head:
+            def __init__(self):
+                self.weight = _Array(np.zeros((50, 4), dtype=np.float64))
+                self.bias = _Array(np.zeros(50, dtype=np.float64))
+
+        class _Model:
+            def __init__(self):
+                self.head_ce = _Head()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_root = os.path.join(tmp, "data")
+            cache_cont = os.path.join(tmp, "cache", "cont")
+            directory = os.path.join(tmp, "sdr_out", "strong_decoder_1_4")
+            root = os.path.join(tmp, "repo")
+            os.makedirs(cache_cont)
+            os.makedirs(root)
+            ckpt = os.path.join(tmp, "fixture-checkpoint.bin")
+            with open(ckpt, "wb") as handle:
+                handle.write(b"fixture-checkpoint-not-deep-c")
+            sha = self._sha(ckpt)
+            rows = (
+                ("noise_pool", "sub-0_ses-11_task-Sherlock1_run-2", 0, "11",
+                 [0, 1, 2, 3], [10.0, 60.0, 62.0, 90.0], "2024-10-04T14:14:01.362854Z"),
+                ("noise_pool", "sub-0_ses-12_task-Sherlock1_run-2", 0, "12",
+                 [0, 1, 2, 3], [12.0, 58.0, 61.0, 95.0], "2024-10-04T14:54:33.544517Z"),
+                ("selection", "sub-1_ses-11_task-Sherlock1_run-1", 1, None,
+                 [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0], None),
+                ("selection", "sub-5_ses-11_task-Sherlock1_run-1", 5, None,
+                 [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0], None),
+                ("selection", "sub-10_ses-11_task-Sherlock1_run-1", 10, None,
+                 [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0], None),
+                ("eval", "sub-3_ses-11_task-Sherlock1_run-1", 3, None,
+                 [0, 1, 2, 3], [15.0, 25.0, 35.0, 45.0], None),
+                ("train", "sub-0_ses-1_task-Sherlock1_run-1", 0, None,
+                 [0, 1, 2, 3], [2.0, 2.2, 2.4, 2.6], None),
+            )
+            train_base = "sub-0_ses-1_task-Sherlock1_run-1"
+            meg = np.zeros((306, 500), dtype=np.float32)
+            meg[0, 80] = np.nan
+            meg[0, 100] = 5.0
+            events = {
+                "onset_s": np.array([2.0, 2.2, 2.4, 2.6]),
+                "label": np.array([0, 1, 2, 3]),
+                "sentenceidx": np.array([0, 0, 0, 0]),
+                "sent_start_s": np.array([1.0, 1.0, 1.0, 1.0]),
+                "sent_end_s": np.array([3.5, 3.5, 3.5, 3.5]),
+            }
+            fresh = recording_covariates(meg, events)
+            self.assertTrue(np.isfinite(fresh["bandpower"]).all())
+            self.assertGreater(float(np.max(fresh["artifact_rms"])), 0.0)
+            written = []
+            for phase, base, subject, session, labels, times, acq in rows:
+                if acq is not None:
+                    self._write_scan_time(data_root, "Sherlock1", subject, session, base, acq)
+                n = len(labels)
+                folder = os.path.join(directory, "forward", phase)
+                os.makedirs(folder, exist_ok=True)
+                band = np.linspace(0.1, 0.4, n)
+                rms = np.linspace(0.5, 1.5, n)
+                frac = np.linspace(0.1, 0.9, n)
+                if base == train_base:
+                    band = np.full(n, np.nan)
+                np.savez_compressed(
+                    os.path.join(folder, base + ".npz"),
+                    base=np.array(base),
+                    subject=np.int64(subject),
+                    embedding=np.zeros((n, 4), np.float32),
+                    logits=np.zeros((n, 50), np.float32),
+                    label=np.asarray(labels, dtype=np.int64),
+                    run_fraction=frac,
+                    artifact_rms=rms,
+                    bandpower=band,
+                    timechapter=np.asarray(times, dtype=np.float64),
+                    checkpoint_sha=np.array(sha),
+                    timing=np.array("zero"),
+                )
+                written.append(os.path.join(folder, base + ".npz"))
+                if base == train_base:
+                    np.save(os.path.join(cache_cont, base + ".npy"), meg)
+                    np.savez_compressed(os.path.join(cache_cont, base + "_ev.npz"), **events)
+                else:
+                    np.save(os.path.join(cache_cont, base + ".npy"), np.zeros(2, np.float32))
+                    np.savez_compressed(os.path.join(cache_cont, base + "_ev.npz"), label=np.array([0]))
+            dates = read_dates(data_root)
+            self.assertNotIn(train_base, dates)
+            fit = fit_noise_directory(directory, dates)
+            self.assertTrue(fit["day_terms_inestimable"])
+            self.assertEqual(fit["day_terms_dropped"], ["day_rank", "day_distance"])
+            os.makedirs(os.path.join(directory, "noise"), exist_ok=True)
+            fit_path = os.path.join(directory, "noise", "fit.json")
+            with open(fit_path, "w", encoding="utf-8") as handle:
+                json.dump(fit, handle)
+            frozen_path = os.path.join(directory, "score_frozen.json")
+            with open(frozen_path, "w", encoding="utf-8") as handle:
+                json.dump({"kept": True}, handle)
+            fit_sha = self._sha(fit_path)
+            frozen_sha = self._sha(frozen_path)
+            before = {path: self._sha(path) for path in written}
+            env = {
+                "LIBRIBRAIN_SDR_OUT": os.path.join(tmp, "sdr_out"),
+                "LIBRIBRAIN_CACHE": os.path.join(tmp, "cache"),
+                "LIBRIBRAIN_DATA": data_root,
+                "LB_STRONG_CKPT": ckpt,
+            }
+            with unittest.mock.patch.dict(os.environ, env, clear=False):
+                loaded = _rows_from_forward(
+                    os.path.join(directory, "forward", "train", train_base + ".npz"),
+                    "train",
+                    dates,
+                    require_acquisition_date=False,
+                )
+            self.assertIsNone(loaded["rows"][0]["date"])
+            self.assertTrue(np.allclose(
+                [row["artifact_rms"] for row in loaded["rows"]],
+                np.linspace(0.5, 1.5, 4),
+            ))
+            self.assertTrue(np.allclose(
+                [row["bandpower"] for row in loaded["rows"]],
+                fresh["bandpower"],
+            ))
+            self.assertFalse(np.allclose(fresh["bandpower"], np.linspace(0.1, 0.4, 4)))
+            with np.load(os.path.join(directory, "forward", "train", train_base + ".npz")) as handle:
+                self.assertTrue(np.isnan(handle["bandpower"]).all())
+            with self.assertRaises(ProtocolError) as caught:
+                transform_with_state(
+                    [{**row, "date": "11"} for row in loaded["rows"]],
+                    fit["state"],
+                )
+            self.assertIn("not YYYY-MM-DD", str(caught.exception))
+            self.assertNotIn("day_rank", str(caught.exception))
+            original = dict(SUBSTANTIVE_SCHEDULE)
+            tiny = {
+                "name": "substantive_head_finetune",
+                "max_steps": 2,
+                "steps_per_launch": 2,
+                "min_steps": 2,
+                "patience_checks": None,
+                "substantive": True,
+            }
+            stages = []
+
+            def _fail_refit(*_args, **_kwargs):
+                raise AssertionError("noise fit was refit")
+
+            try:
+                SUBSTANTIVE_SCHEDULE.clear()
+                SUBSTANTIVE_SCHEDULE.update(tiny)
+                with unittest.mock.patch.dict(os.environ, env, clear=False):
+                    with unittest.mock.patch(
+                        "campaigns.sdr_uncertainty.strong_decoder_runner.load_strong_decoder",
+                        return_value=_Model(),
+                    ):
+                        with unittest.mock.patch(
+                            "campaigns.sdr_uncertainty.strong_decoder_runner.assemble_features",
+                            side_effect=_fail_refit,
+                        ):
+                            for _ in range(4):
+                                report = run_next(root)
+                                stages.append(report["stage"])
+                                self.assertFalse(report["effect_claimed"])
+                                self.assertFalse(report["valid_scientific_claim"])
+                                self.assertTrue(report["not_confirmatory"])
+                                self.assertTrue(report["exploratory"])
+                                self.assertTrue(report["independent_confirmation_required"])
+                                self.assertFalse(report["dates_invented"])
+                                self.assertFalse(report["session_ordinal_used_as_day"])
+                                self.assertEqual(report["amendment_1_4_4"], "1.4.4")
+                                self.assertEqual(report["amendment_1_4_5"], "1.4.5")
+                                if report["stage"] == "partial-train":
+                                    self.assertTrue(report["day_terms_inestimable"])
+                                    self.assertEqual(report["day_terms_dropped"], ["day_rank", "day_distance"])
+                                    self.assertNotIn("day_rank", report["active_features"])
+                                if report["stage"] == "stop":
+                                    break
+            finally:
+                SUBSTANTIVE_SCHEDULE.clear()
+                SUBSTANTIVE_SCHEDULE.update(original)
+            self.assertEqual(stages, ["partial-train", "score-partial", "stop"])
+            self.assertEqual(before, {path: self._sha(path) for path in written})
+            self.assertEqual(fit_sha, self._sha(fit_path))
+            self.assertEqual(frozen_sha, self._sha(frozen_path))
+            with open(os.path.join(directory, "score_partial.json"), encoding="utf-8") as handle:
+                partial = json.load(handle)
+            self.assertTrue(partial["day_terms_inestimable"])
+            self.assertEqual(partial["day_terms_dropped"], ["day_rank", "day_distance"])
+            self.assertNotIn("day_rank", partial["active_features"])
+            self.assertNotIn("day_distance", partial["active_features"])
+            self.assertFalse(partial["dates_invented"])
+            self.assertFalse(partial["effect_claimed"])
+            self.assertTrue(partial["not_confirmatory"])
+            self.assertTrue(partial["independent_confirmation_required"])
+            self.assertEqual(partial["amendment_1_4_5"], "1.4.5")
+            with np.load(os.path.join(directory, "forward", "train", train_base + ".npz")) as handle:
+                self.assertTrue(np.isnan(handle["bandpower"]).all())
+
+            def _fake_forward(_directory, _root, base, _phase, *, timing="zero", write=True):
+                self.assertFalse(write)
+                return {
+                    "result": {
+                        "logits": np.zeros((4, 50)),
+                        "label": np.array([0, 1, 2, 3]),
+                    }
+                }
+
+            with unittest.mock.patch.dict(os.environ, env, clear=False):
+                with unittest.mock.patch(
+                    "campaigns.sdr_uncertainty.strong_decoder_runner.read_dates",
+                    side_effect=AssertionError("timing control re-read dates"),
+                ):
+                    with unittest.mock.patch(
+                        "campaigns.sdr_uncertainty.strong_decoder_runner.execute_forward",
+                        side_effect=_fake_forward,
+                    ):
+                        with unittest.mock.patch(
+                            "campaigns.sdr_uncertainty.strong_decoder_runner.assemble_features",
+                            side_effect=_fail_refit,
+                        ):
+                            timed = run_timing(root)
+            self.assertTrue(timed["day_terms_inestimable"])
+            self.assertEqual(timed["day_terms_dropped"], ["day_rank", "day_distance"])
+            self.assertNotIn("day_rank", timed["active_features"])
+            self.assertFalse(timed["dates_invented"])
+            self.assertFalse(timed["session_ordinal_used_as_day"])
+            self.assertFalse(timed["effect_claimed"])
+            self.assertTrue(timed["not_confirmatory"])
+            self.assertTrue(timed["independent_confirmation_required"])
+            self.assertEqual(timed["primary_timing"], "zero")
+            self.assertEqual(fit_sha, self._sha(fit_path))
+            self.assertEqual(before, {path: self._sha(path) for path in written})
+
+    def test_kept_day_terms_still_require_a_date_and_a_finite_sensor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out")
+            self._write_cached_forward(
+                os.path.join(out, "forward", "noise_pool"),
+                "sub-0_ses-11_task-Sherlock1_run-2", 0, [0, 1, 2, 3], [10.0, 60.0, 62.0, 90.0],
+            )
+            self._write_cached_forward(
+                os.path.join(out, "forward", "noise_pool"),
+                "sub-0_ses-12_task-Sherlock1_run-2", 0, [0, 1, 2, 3], [12.0, 58.0, 61.0, 95.0],
+            )
+            for subject in (1, 5, 10):
+                self._write_cached_forward(
+                    os.path.join(out, "forward", "selection"),
+                    f"sub-{subject}_ses-11_task-Sherlock1_run-1",
+                    subject, [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0],
+                )
+            dates = {
+                "sub-0_ses-11_task-Sherlock1_run-2": "2024-10-04",
+                "sub-0_ses-12_task-Sherlock1_run-2": "2024-07-31",
+            }
+            fit = fit_noise_directory(out, dates)
+            self.assertFalse(fit["day_terms_inestimable"])
+            os.makedirs(os.path.join(out, "noise"), exist_ok=True)
+            with open(os.path.join(out, "noise", "fit.json"), "w", encoding="utf-8") as handle:
+                json.dump(fit, handle)
+            train = "sub-0_ses-2_task-Sherlock1_run-1"
+            self._write_cached_forward(
+                os.path.join(out, "forward", "train"),
+                train, 0, [0, 1, 2, 3], [1.0, 2.0, 3.0, 4.0],
+            )
+            with self.assertRaises(ProtocolError) as caught:
+                partial_train_directory(out, tmp, 1, {}, schedule={
+                    "name": "substantive_head_finetune",
+                    "max_steps": 1,
+                    "steps_per_launch": 1,
+                    "min_steps": 1,
+                    "patience_checks": None,
+                    "substantive": True,
+                })
+            self.assertEqual(str(caught.exception), missing_acquisition_date(train))
+            nan_out = os.path.join(tmp, "nan")
+            self._write_cached_forward(
+                os.path.join(nan_out, "forward", "noise_pool"),
+                "sub-0_ses-11_task-Sherlock1_run-2", 0, [0, 1, 2, 3], [10.0, 60.0, 62.0, 90.0],
+            )
+            self._write_cached_forward(
+                os.path.join(nan_out, "forward", "noise_pool"),
+                "sub-0_ses-12_task-Sherlock1_run-2", 0, [0, 1, 2, 3], [12.0, 58.0, 61.0, 95.0],
+            )
+            for subject in (1, 5, 10):
+                self._write_cached_forward(
+                    os.path.join(nan_out, "forward", "selection"),
+                    f"sub-{subject}_ses-11_task-Sherlock1_run-1",
+                    subject, [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0],
+                )
+            one_day = {
+                "sub-0_ses-11_task-Sherlock1_run-2": "2024-10-04",
+                "sub-0_ses-12_task-Sherlock1_run-2": "2024-10-04",
+            }
+            dropped = fit_noise_directory(nan_out, one_day)
+            self.assertTrue(dropped["day_terms_inestimable"])
+            os.makedirs(os.path.join(nan_out, "noise"), exist_ok=True)
+            with open(os.path.join(nan_out, "noise", "fit.json"), "w", encoding="utf-8") as handle:
+                json.dump(dropped, handle)
+            bare = "sub-0_ses-1_task-Sherlock1_run-1"
+            n = 4
+            folder = os.path.join(nan_out, "forward", "train")
+            os.makedirs(folder, exist_ok=True)
+            np.savez_compressed(
+                os.path.join(folder, bare + ".npz"),
+                base=np.array(bare),
+                subject=np.int64(0),
+                embedding=np.zeros((n, 4), np.float32),
+                logits=np.zeros((n, 50), np.float32),
+                label=np.arange(n),
+                run_fraction=np.linspace(0.1, 0.9, n),
+                artifact_rms=np.linspace(0.5, 1.5, n),
+                bandpower=np.full(n, np.nan),
+                timechapter=np.linspace(1.0, 4.0, n),
+                checkpoint_sha=np.array("abc"),
+                timing=np.array("zero"),
+            )
+            with unittest.mock.patch.dict(os.environ, {"LIBRIBRAIN_CACHE": os.path.join(tmp, "empty-cache")}, clear=False):
+                with self.assertRaises(ProtocolError) as caught:
+                    partial_train_directory(nan_out, tmp, 1, {}, schedule={
+                        "name": "substantive_head_finetune",
+                        "max_steps": 1,
+                        "steps_per_launch": 1,
+                        "min_steps": 1,
+                        "patience_checks": None,
+                        "substantive": True,
+                    })
+            self.assertEqual(str(caught.exception), "used feature bandpower is non-finite")
+            with np.load(os.path.join(folder, bare + ".npz")) as handle:
+                self.assertTrue(np.isnan(handle["bandpower"]).all())
 
 
 if __name__ == "__main__":
