@@ -9,6 +9,10 @@ a frozen-trunk holdout.
 Amendment 1.4.2: a row with no BIDS acquisition date does not receive an invented
 day_rank or day_distance. Those two terms are omitted. Subject 0 still requires
 a scans.tsv date. See AMENDMENT_1.4.2.md.
+
+Amendment 1.4.3: if the training rows contain fewer than two distinct acquisition
+dates, day_rank and day_distance are inestimable and leave the equation. The
+other features stay. Dates are not invented. See AMENDMENT_1.4.3.md.
 """
 from __future__ import annotations
 
@@ -18,10 +22,13 @@ import numpy as np
 
 AMENDMENT = "1.4"
 AMENDMENT_142 = "1.4.2"
+AMENDMENT_143 = "1.4.3"
 PROTOCOL_ID = "strong-decoder-noise-1.4"
 # Pre-specified before any 1.4.2 result. Undated rows omit these terms.
 # They are not filled with a session ordinal or a calendar day.
 UNDATED_DAY_TERMS = "dropped"
+# Pre-specified before any 1.4.3 result. One training date cannot identify a day term.
+DAY_TERMS_WHEN_INESTIMABLE = "dropped"
 DATE_SOURCE = "bids_scans_tsv_only"
 LPP_NOTE = (
     "Le Petit Prince is a separate PDDL transfer stage. It is not pooled with LibriBrain. "
@@ -327,17 +334,35 @@ def _use_or_drop_date(row: dict, *, coefficient: bool) -> str | None:
     return None
 
 
+def _log_window_count(moment: Date | None, *, in_train: bool, train_days, windows_on, total_train_windows) -> float:
+    """Windows on earlier training days, or the training total for a non-training row.
+
+    A single training date has no earlier day, so every training row gets log1p(0).
+    That column stays in the equation. It is not a day rank and not a day distance.
+    """
+    if in_train:
+        if moment is None:
+            raise ProtocolError("training row is missing the date required to count earlier windows")
+        count = sum(windows_on[day] for day in train_days if day < moment)
+    else:
+        count = total_train_windows
+    return float(np.log1p(count))
+
+
 def _day_feature_values(moment: Date, *, in_train: bool, train_days, windows_on, total_train_windows):
     if in_train:
         others = [day for day in train_days if day != moment]
-        earlier = [day for day in train_days if day < moment]
-        count = sum(windows_on[day] for day in earlier)
     else:
         others = list(train_days)
-        count = total_train_windows
     return (
         _rank_in_train(moment, train_days),
-        float(np.log1p(count)),
+        _log_window_count(
+            moment,
+            in_train=in_train,
+            train_days=train_days,
+            windows_on=windows_on,
+            total_train_windows=total_train_windows,
+        ),
         _distance_days(moment, others),
     )
 
@@ -381,11 +406,50 @@ def _fill_feature_row(raw, defined, index, row, *, in_train: bool, coefficient: 
     raw[index, 5] = distance
 
 
+def _active_feature_names(day_terms_inestimable: bool) -> list[str]:
+    if not day_terms_inestimable:
+        return list(ALLOWED_INFERENCE_FEATURES)
+    return [name for name in ALLOWED_INFERENCE_FEATURES if name not in DAY_TERMS]
+
+
+def _reduced_raw(rows, in_train_flags, *, train_days, windows_on, total_train_windows) -> tuple[np.ndarray, np.ndarray]:
+    """Feature matrix with day_rank and day_distance omitted.
+
+    Subject 0 and coefficient rows still need a real scans.tsv date. A missing
+    date on those rows raises. It is not replaced with a session ordinal.
+    """
+    names = _active_feature_names(True)
+    columns = {name: index for index, name in enumerate(names)}
+    raw = np.zeros((len(rows), len(names)), dtype=np.float64)
+    defined = np.zeros(len(rows), dtype=bool)
+    for index, row in enumerate(rows):
+        for name in ("run_fraction", "artifact_rms", "bandpower", "base", "subject"):
+            if name not in row:
+                raise ProtocolError(f"row is missing {name}")
+        in_train = bool(in_train_flags[index])
+        text = _use_or_drop_date(row, coefficient=in_train)
+        moment = _to_date(text) if text is not None else None
+        defined[index] = text is not None
+        raw[index, columns["run_fraction"]] = float(row["run_fraction"])
+        raw[index, columns["artifact_rms"]] = float(row["artifact_rms"])
+        raw[index, columns["bandpower"]] = float(row["bandpower"])
+        raw[index, columns["log_train_window_count"]] = _log_window_count(
+            moment,
+            in_train=in_train,
+            train_days=train_days,
+            windows_on=windows_on,
+            total_train_windows=total_train_windows,
+        )
+    return raw, defined
+
+
 def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
     """Build the clipped feature matrix. Statistics are fit on training rows only.
 
     Training rows need a real acquisition date. A non-training row may omit it.
     Amendment 1.4.2 then drops day_rank and day_distance for that row.
+    Amendment 1.4.3 drops those two terms from the whole equation when the
+    training rows contain fewer than two distinct acquisition dates.
     """
     if not rows:
         raise ProtocolError("no rows to assemble")
@@ -404,8 +468,10 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
         if _date_text(row) is None:
             raise ProtocolError(missing_acquisition_date(str(row["base"])))
     train_days = sorted({_to_date(_date_text(row)) for row in train_rows})
-    if len(train_days) < 2:
-        raise ProtocolError("day_distance needs at least two distinct training acquisition dates")
+    # One calendar day cannot identify day_rank or day_distance. Drop the terms.
+    # Do not split a day by clock time, and do not borrow a non-training date.
+    day_terms_inestimable = len(train_days) < 2
+    day_terms_dropped = list(DAY_TERMS) if day_terms_inestimable else []
     # group_windows is repeated on every word of a run. Count a base once.
     windows_on = {}
     seen_base = set()
@@ -416,21 +482,37 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
         day = _to_date(_date_text(row))
         windows_on[day] = windows_on.get(day, 0) + int(row["group_windows"])
     total_train_windows = int(sum(windows_on.values()))
-    raw = np.zeros((len(rows), len(ALLOWED_INFERENCE_FEATURES)), dtype=np.float64)
-    defined = np.zeros(len(rows), dtype=bool)
-    for index, row in enumerate(rows):
-        _fill_feature_row(
-            raw, defined, index, row,
-            in_train=row["split"] == train_split,
-            coefficient=row["split"] == train_split,
+    names = _active_feature_names(day_terms_inestimable)
+    if day_terms_inestimable:
+        raw, defined = _reduced_raw(
+            rows,
+            [row["split"] == train_split for row in rows],
             train_days=train_days,
             windows_on=windows_on,
             total_train_windows=total_train_windows,
         )
+    else:
+        raw = np.zeros((len(rows), len(ALLOWED_INFERENCE_FEATURES)), dtype=np.float64)
+        defined = np.zeros(len(rows), dtype=bool)
+        for index, row in enumerate(rows):
+            _fill_feature_row(
+                raw, defined, index, row,
+                in_train=row["split"] == train_split,
+                coefficient=row["split"] == train_split,
+                train_days=train_days,
+                windows_on=windows_on,
+                total_train_windows=total_train_windows,
+            )
     train_index = np.array([row["split"] == train_split for row in rows])
     clip = NumericClip().fit(raw[train_index])
+    z = clip.transform(raw)
+    if day_terms_inestimable:
+        if not np.isfinite(z).all():
+            raise ProtocolError("noise features are non-finite; refusing to invent a day")
+    else:
+        z = drop_undefined_day_terms(z, defined)
     state = {
-        "names": list(ALLOWED_INFERENCE_FEATURES),
+        "names": names,
         "train_days": [day.isoformat() for day in train_days],
         "windows_on": {day.isoformat(): int(count) for day, count in windows_on.items()},
         "total_train_windows": int(total_train_windows),
@@ -438,21 +520,27 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
         "train_bases": sorted(seen_base),
         "n_train_days": len(train_days),
         "day_terms": list(DAY_TERMS),
+        "day_terms_inestimable": bool(day_terms_inestimable),
+        "day_terms_dropped": day_terms_dropped,
+        "day_terms_when_inestimable": DAY_TERMS_WHEN_INESTIMABLE,
         "undated_day_terms": UNDATED_DAY_TERMS,
         "amendment_1_4_2": AMENDMENT_142,
+        "amendment_1_4_3": AMENDMENT_143,
         "date_source": DATE_SOURCE,
         "dates_invented": False,
         "session_ordinal_used_as_day": False,
     }
     return {
         "names": state["names"],
-        "z": drop_undefined_day_terms(clip.transform(raw), defined),
+        "z": z,
         "day_defined": defined,
         "train_index": train_index,
         "clip": clip,
         "state": state,
         "n_train_days": len(train_days),
         "train_bases": state["train_bases"],
+        "day_terms_inestimable": bool(day_terms_inestimable),
+        "day_terms_dropped": list(day_terms_dropped),
     }
 
 
@@ -461,8 +549,25 @@ def transform_with_state(rows: list[dict], state: dict) -> np.ndarray:
 
     A non-subject-0 row with no date keeps the non-day features and drops
     day_rank and day_distance. Subject 0 and coefficient bases still refuse
-    a missing date.
+    a missing date. A state that recorded day_terms_inestimable keeps those
+    terms out of the matrix for every row, including a later real date.
     """
+    if state.get("day_terms_inestimable"):
+        train_days = sorted(_to_date(day) for day in state["train_days"])
+        windows_on = {_to_date(day): int(count) for day, count in state["windows_on"].items()}
+        total = int(state["total_train_windows"])
+        train_bases = set(state["train_bases"])
+        raw, _defined = _reduced_raw(
+            rows,
+            [row["base"] in train_bases for row in rows],
+            train_days=train_days,
+            windows_on=windows_on,
+            total_train_windows=total,
+        )
+        transformed = NumericClip.from_dict(state["clip"]).transform(raw)
+        if not np.isfinite(transformed).all():
+            raise ProtocolError("noise features are non-finite; refusing to invent a day")
+        return transformed
     train_days = sorted(_to_date(day) for day in state["train_days"])
     windows_on = {_to_date(day): int(count) for day, count in state["windows_on"].items()}
     total = int(state["total_train_windows"])
