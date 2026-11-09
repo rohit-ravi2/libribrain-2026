@@ -166,3 +166,19 @@ Reading: exact onset timing inside a fixed window predicts the word better than 
 (clean_iso 3 s: 0.073 / 0.458) and better than Jayalath & Parker Jones' isolated MEG (9.5% top-1). The synthetic
 twin CNN (0.159) sits near this floor, as it should. Whether real MEG makes this timing readable is the next test
 (`A/onset_readability.py`, running).
+
+## 2026-11-09 12:30 EST — stage 0a: real MEG barely carries the timing; the Nov 3 twin overstated it ~15x
+`A/onset_readability.py`: generic onset TRF fitted on 6 subject-0 runs, projected to one virtual channel, boosted
+classifier trained on 28 runs, tested on the held-out day/text (balanced over 50 words, chance 0.02 / 0.20).
+| stream | TRF peak (resid s.d.) | held-out var explained | 1 s top-1 / top-10 | 3 s top-1 / top-10 |
+| real MEG | 0.135 | 0.10% | 0.024 / 0.281 | 0.030 / 0.283 |
+| twin, amp 2 (Nov 3 kernel) | 1.97 | 11.4% | 0.099 / 0.594 | 0.122 / 0.543 |
+| twin, amp 0.5 | 0.49 | 0.79% | 0.091 / 0.500 | 0.073 / 0.467 |
+| twin, amp matched (0.135) | 0.136 | 0.05% | 0.048 / 0.316 | 0.029 / 0.303 |
+Exact onsets (timing_floor.json): 1 s 0.113 / 0.568, 3 s 0.136 / 0.588.
+Reading: the Nov 3 synthetic kernel was ~15x the real onset response, so its scores (0.159 top-1 on the screen, 0.580
+private on Kaggle Deep) are upper bounds far above a realistic floor. At matched amplitude, timing alone gives about
+0.03-0.05 top-1 and 0.30 top-10 through this one-channel readout (white noise, so still optimistic; a 306-channel CNN
+may read more). The clean 3 s real-MEG decoder (0.073 / 0.458) sits above that, so most of its score is probably
+not timing; confirming needs the matched-amplitude CNN twin (GPU, ~25 min). C1 as a headline weakens: fixed-window
+isolated decoding is close to timing-clean at realistic amplitude. Single seed, ~1,300 rows per session (top-1 SE ~0.006).

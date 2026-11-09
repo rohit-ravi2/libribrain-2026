@@ -31,7 +31,7 @@ def load(b, syn):
 
 
 res = {"fit_runs": FIT, "n_train_runs": len(TRAIN)}
-for syn in (False, True):
+for syn in ((False, True) if len(sys.argv) < 2 else (True,)):   # argv[1]: synthetic only, at LB_SYN_AMP
     tag = "synthetic_twin" if syn else "real_meg"
     B = fit_kernel([load(b, syn)[:2] for b in FIT], FS)                  # (L, C)
     U, S, Vt = np.linalg.svd(B, full_matrices=False); u = Vt[0]
@@ -60,4 +60,4 @@ for syn in (False, True):
             out.append((acc(1), acc(10)))
         r[f"W{W}"] = {"top1": round(float(np.mean([a for a, _ in out])), 4), "top10": round(float(np.mean([c for _, c in out])), 4), "n_train": int(len(ytr))}
     res[tag] = r; print(tag, json.dumps(r), flush=True)
-json.dump(res, open(os.path.join(R, "docs/writeups/analyses/onset_readability.json"), "w"), indent=1)
+json.dump(res, open(os.path.join(R, "docs/writeups/analyses", f"onset_readability{sys.argv[1] if len(sys.argv) > 1 else ''}.json"), "w"), indent=1)

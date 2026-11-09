@@ -1,0 +1,41 @@
+{
+ "fit_runs": [
+  "sub-0_ses-12_task-Sherlock9_run-1",
+  "sub-0_ses-12_task-Sherlock4_run-1",
+  "sub-0_ses-0_task-Sherlock9_run-1",
+  "sub-0_ses-21_task-TheMoth_run-1",
+  "sub-0_ses-3_task-MOCHATIMIT_run-1",
+  "sub-0_ses-3_task-Sherlock7_run-1"
+ ],
+ "n_train_runs": 28,
+ "real_meg": {
+  "trf_singular_share": 0.598,
+  "heldout_var_explained": 0.00104,
+  "peak_amp_resid_sd": 0.135,
+  "W1.0": {
+   "top1": 0.0238,
+   "top10": 0.281,
+   "n_train": 58488
+  },
+  "W3.0": {
+   "top1": 0.0298,
+   "top10": 0.2825,
+   "n_train": 58488
+  }
+ },
+ "synthetic_twin": {
+  "trf_singular_share": 0.999,
+  "heldout_var_explained": 0.11433,
+  "peak_amp_resid_sd": 1.968,
+  "W1.0": {
+   "top1": 0.0994,
+   "top10": 0.5936,
+   "n_train": 58488
+  },
+  "W3.0": {
+   "top1": 0.1222,
+   "top10": 0.543,
+   "n_train": 58488
+  }
+ }
+}
