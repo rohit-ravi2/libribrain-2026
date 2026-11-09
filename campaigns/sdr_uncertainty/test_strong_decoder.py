@@ -22,6 +22,7 @@ from campaigns.sdr_uncertainty.strong_decoder import (
     load_strong_decoder,
 )
 from campaigns.sdr_uncertainty.strong_decoder_runner import (
+    _candidate_matrix,
     _rows_from_forward,
     _write_forward,
     assert_output_dir,
@@ -174,8 +175,14 @@ class SplitAndNoiseTests(unittest.TestCase):
         leaked = _rows("sub-3_ses-11_task-Sherlock1_run-1", 3, "2024-02-01", "train")
         with self.assertRaises(ProtocolError):
             assemble_features(rows[:4] + leaked)
-        with self.assertRaises(ProtocolError):
-            assemble_features(_rows("only", 0, "2024-02-01", "train") + _rows("same-day", 0, "2024-02-01", "train"))
+        self.assertFalse(bundle["day_terms_inestimable"])
+        self.assertEqual(bundle["day_terms_dropped"], [])
+        self.assertEqual(bundle["state"]["day_terms_inestimable"], False)
+        self.assertEqual(bundle["state"]["day_terms_dropped"], [])
+        self.assertEqual(bundle["n_train_days"], 3)
+        self.assertEqual(bundle["names"][0], "day_rank")
+        self.assertIn("day_distance", bundle["names"])
+        self.assertEqual(len(bundle["names"]), 6)
 
     def test_undated_broad_rows_drop_day_terms_and_subject0_fails_closed(self):
         rows = []
@@ -223,6 +230,93 @@ class SplitAndNoiseTests(unittest.TestCase):
         with self.assertRaises(ProtocolError) as caught:
             assemble_features(rows[:8] + session_as_day)
         self.assertIn("not YYYY-MM-DD", str(caught.exception))
+
+    def test_one_training_date_drops_inestimable_day_terms(self):
+        rows = []
+        rows += _rows("sub-0_ses-11_task-Sherlock1_run-2", 0, "2024-10-04", "train")
+        rows += _rows("sub-0_ses-12_task-Sherlock1_run-2", 0, "2024-10-04", "train", scale=1.3)
+        rows += _rows("sub-1_ses-11_task-Sherlock1_run-1", 1, None, "selection")
+        rows += _rows("sub-5_ses-11_task-Sherlock1_run-1", 5, None, "selection", scale=1.2)
+        rows += _rows("sub-10_ses-11_task-Sherlock1_run-1", 10, "2030-01-01", "selection", scale=2.0)
+        bundle = assemble_features(rows)
+        self.assertTrue(bundle["day_terms_inestimable"])
+        self.assertEqual(bundle["day_terms_dropped"], ["day_rank", "day_distance"])
+        self.assertEqual(bundle["state"]["train_days"], ["2024-10-04"])
+        self.assertEqual(bundle["n_train_days"], 1)
+        self.assertEqual(
+            bundle["names"],
+            ["run_fraction", "artifact_rms", "bandpower", "log_train_window_count"],
+        )
+        self.assertNotIn("day_rank", bundle["names"])
+        self.assertNotIn("day_distance", bundle["names"])
+        self.assertEqual(bundle["z"].shape[1], 4)
+        self.assertFalse(bundle["state"]["dates_invented"])
+        self.assertFalse(bundle["state"]["session_ordinal_used_as_day"])
+        self.assertEqual(bundle["state"]["date_source"], "bids_scans_tsv_only")
+        train = bundle["train_index"]
+        self.assertGreater(float(np.std(bundle["z"][train, bundle["names"].index("run_fraction")])), 0.0)
+        self.assertGreater(float(np.std(bundle["z"][train, bundle["names"].index("artifact_rms")])), 0.0)
+        again = transform_with_state(rows, bundle["state"])
+        self.assertTrue(np.allclose(bundle["z"], again))
+        later = _rows("sub-0_ses-1_task-Sherlock1_run-1", 0, "2024-07-31", "train")
+        held = transform_with_state(later, bundle["state"])
+        self.assertEqual(held.shape[1], 4)
+        self.assertTrue(np.isfinite(held).all())
+        residual = np.linspace(0.2, 1.8, len(rows))
+        for name in CANDIDATES:
+            matrix, feat_names = _candidate_matrix(bundle["z"], bundle["names"], name)
+            params = fit_noise(matrix[train], residual[train], name, feature_names=feat_names, seed=0)
+            self.assertTrue(np.isfinite(weighted_nll(residual[~train], matrix[~train], params)))
+            self.assertNotIn("day_rank", feat_names)
+            self.assertNotIn("day_distance", feat_names)
+        _matrix_scaling, scaling_names = _candidate_matrix(bundle["z"], bundle["names"], "error_scaling")
+        self.assertEqual(scaling_names, ["log_train_window_count"])
+        with self.assertRaises(ProtocolError):
+            assemble_features(rows[:1])
+        leaked_val = _rows("sub-1_ses-11_task-Sherlock1_run-1", 1, "2024-10-04", "train")
+        leaked_eval = _rows("sub-3_ses-11_task-Sherlock1_run-1", 3, "2024-10-04", "train")
+        for leaked in (leaked_val, leaked_eval):
+            with self.assertRaises(ProtocolError) as caught:
+                assemble_features(rows[:8] + leaked)
+            self.assertIn("leaked into the noise fit", str(caught.exception))
+        missing = _rows("sub-0_ses-11_task-Sherlock1_run-2", 0, None, "train")
+        missing += _rows("sub-0_ses-12_task-Sherlock1_run-2", 0, "2024-10-04", "train")
+        with self.assertRaises(ProtocolError) as caught:
+            assemble_features(missing)
+        self.assertEqual(
+            str(caught.exception),
+            missing_acquisition_date("sub-0_ses-11_task-Sherlock1_run-2"),
+        )
+        session_as_day = _rows("sub-1_ses-11_task-Sherlock1_run-1", 1, "11", "selection")
+        with self.assertRaises(ProtocolError) as caught:
+            assemble_features(rows[:8] + session_as_day)
+        self.assertIn("not YYYY-MM-DD", str(caught.exception))
+
+    def test_two_training_dates_keep_day_terms(self):
+        rows = []
+        rows += _rows("sub-0_ses-11_task-Sherlock1_run-2", 0, "2024-10-04", "train")
+        rows += _rows("sub-0_ses-1_task-Sherlock1_run-1", 0, "2024-07-31", "train", scale=0.8)
+        rows += _rows("sub-1_ses-11_task-Sherlock1_run-1", 1, None, "selection")
+        bundle = assemble_features(rows)
+        self.assertFalse(bundle["day_terms_inestimable"])
+        self.assertEqual(bundle["day_terms_dropped"], [])
+        self.assertEqual(bundle["state"]["train_days"], ["2024-07-31", "2024-10-04"])
+        self.assertEqual(bundle["n_train_days"], 2)
+        self.assertEqual(bundle["names"][0], "day_rank")
+        self.assertEqual(bundle["names"][-1], "day_distance")
+        self.assertEqual(bundle["z"].shape[1], 6)
+        train = bundle["train_index"]
+        day_rank = bundle["z"][train, bundle["names"].index("day_rank")]
+        self.assertGreater(float(np.std(day_rank)), 0.0)
+        self.assertTrue(np.isfinite(bundle["z"][:, bundle["names"].index("day_distance")]).all())
+        undated = np.array([row["date"] is None for row in rows])
+        day_idx = [bundle["names"].index(name) for name in DAY_TERMS]
+        self.assertTrue(np.all(bundle["z"][undated][:, day_idx] == 0.0))
+        self.assertFalse(np.allclose(bundle["z"][undated, bundle["names"].index("bandpower")], 0.0))
+        again = transform_with_state(rows, bundle["state"])
+        self.assertTrue(np.allclose(bundle["z"], again))
+        self.assertFalse(bundle["state"]["dates_invented"])
+        self.assertFalse(bundle["state"]["session_ordinal_used_as_day"])
 
     def test_session_interval_is_undefined_for_one_recording(self):
         wide = session_bootstrap(["a", "a", "b", "b"], [0.1, 0.2, 0.3, 0.4], seed=0, draws=50)
@@ -1097,7 +1191,16 @@ class SplitAndNoiseTests(unittest.TestCase):
             self.assertFalse(fit["dates_invented"])
             self.assertFalse(fit["session_ordinal_used_as_day"])
             self.assertEqual(fit["amendment_1_4_2"], "1.4.2")
+            self.assertEqual(fit["amendment_1_4_3"], "1.4.3")
             self.assertEqual(fit["undated_day_terms"], "dropped")
+            self.assertFalse(fit["day_terms_inestimable"])
+            self.assertEqual(fit["day_terms_dropped"], [])
+            self.assertEqual(fit["state"]["n_train_days"], 2)
+            self.assertEqual(fit["state"]["train_days"], ["2024-05-01", "2024-06-01"])
+            self.assertEqual(
+                fit["candidates"]["error_scaling"]["feature_names"],
+                ["log_train_window_count", "day_distance"],
+            )
             self.assertFalse(fit["eval_files_read"])
             self.assertEqual(set(fit["val_nll"]), set(CANDIDATES))
             for value in fit["val_nll"].values():
@@ -1112,6 +1215,8 @@ class SplitAndNoiseTests(unittest.TestCase):
                 json.dump(fit, handle)
             score = score_frozen_directory(out, fit_dates)
             self.assertEqual(score["day_terms_dropped_bases"], ["sub-3_ses-11_task-Sherlock1_run-1"])
+            self.assertFalse(score["day_terms_inestimable"])
+            self.assertEqual(score["day_terms_dropped"], [])
             for value in score["eval_nll"].values():
                 self.assertTrue(np.isfinite(value))
             self.assertFalse(honesty(**score)["effect_claimed"])
@@ -1128,6 +1233,113 @@ class SplitAndNoiseTests(unittest.TestCase):
             )
             self.assertIsNone(loaded["rows"][0]["date"])
             self.assertGreater(len(loaded["rows"]), 0)
+
+    def test_shared_sherlock_one_calendar_day_fits_without_inventing_a_date(self):
+        """ses-11 and ses-12 run-2 are both 2024-10-04. Clock time is not a second day.
+
+        A non-shared subject-0 scan with another date stays out of the coefficient rows.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            self._write_scan_time(
+                tmp, "Sherlock1", 0, "11",
+                "sub-0_ses-11_task-Sherlock1_run-2", "2024-10-04T14:14:01.362854Z",
+            )
+            self._write_scan_time(
+                tmp, "Sherlock1", 0, "12",
+                "sub-0_ses-12_task-Sherlock1_run-2", "2024-10-04T14:54:33.544517Z",
+            )
+            self._write_scan_time(
+                tmp, "Sherlock1", 0, "1",
+                "sub-0_ses-1_task-Sherlock1_run-1", "2024-07-31T12:12:07.029345Z",
+            )
+            dates = read_dates(tmp)
+            self.assertEqual(dates["sub-0_ses-11_task-Sherlock1_run-2"], "2024-10-04")
+            self.assertEqual(dates["sub-0_ses-12_task-Sherlock1_run-2"], "2024-10-04")
+            self.assertEqual(dates["sub-0_ses-1_task-Sherlock1_run-1"], "2024-07-31")
+            out = os.path.join(tmp, "out")
+            shared = (
+                ("sub-0_ses-11_task-Sherlock1_run-2", [10.0, 60.0, 62.0, 90.0]),
+                ("sub-0_ses-12_task-Sherlock1_run-2", [12.0, 58.0, 61.0, 95.0]),
+            )
+            written = []
+            for base, times in shared:
+                self._write_cached_forward(
+                    os.path.join(out, "forward", "noise_pool"),
+                    base, 0, [0, 1, 2, 3], times,
+                )
+                written.append(os.path.join(out, "forward", "noise_pool", base + ".npz"))
+            self._write_cached_forward(
+                os.path.join(out, "forward", "train"),
+                "sub-0_ses-1_task-Sherlock1_run-1", 0, [0, 1, 2, 3], [5.0, 15.0, 25.0, 35.0],
+            )
+            for subject in (1, 5, 10):
+                base = f"sub-{subject}_ses-11_task-Sherlock1_run-1"
+                self._write_cached_forward(
+                    os.path.join(out, "forward", "selection"),
+                    base, subject, [0, 1, 2, 3], [20.0, 30.0, 40.0, 50.0],
+                )
+            eval_base = "sub-3_ses-11_task-Sherlock1_run-1"
+            self._write_cached_forward(
+                os.path.join(out, "forward", "eval"),
+                eval_base, 3, [0, 1, 2, 3], [15.0, 25.0, 35.0, 45.0],
+            )
+            before = {path: self._sha(path) for path in written}
+            fit = fit_noise_directory(out, dates)
+            self.assertEqual(before, {path: self._sha(path) for path in written})
+            self.assertEqual(fit["train_subjects"], [0])
+            self.assertEqual(fit["eval_subjects_in_train"], [])
+            self.assertEqual(fit["selection_subjects"], [1, 5, 10])
+            self.assertFalse(fit["selection_rows_used_for_coefficients"])
+            self.assertEqual(fit["residual_fit_population"], "subject0_shared_sherlock_Q3")
+            self.assertTrue(fit["day_terms_inestimable"])
+            self.assertEqual(fit["day_terms_dropped"], ["day_rank", "day_distance"])
+            self.assertEqual(fit["state"]["train_days"], ["2024-10-04"])
+            self.assertEqual(fit["state"]["n_train_days"], 1)
+            self.assertNotIn("2024-07-31", fit["state"]["train_days"])
+            self.assertEqual(
+                fit["state"]["names"],
+                ["run_fraction", "artifact_rms", "bandpower", "log_train_window_count"],
+            )
+            self.assertEqual(fit["candidates"]["error_scaling"]["feature_names"], ["log_train_window_count"])
+            self.assertEqual(fit["candidates"]["learned_state"]["feature_names"], fit["state"]["names"])
+            self.assertFalse(fit["dates_invented"])
+            self.assertFalse(fit["session_ordinal_used_as_day"])
+            self.assertFalse(fit["eval_files_read"])
+            self.assertEqual(set(fit["val_nll"]), set(CANDIDATES))
+            for value in fit["val_nll"].values():
+                self.assertTrue(np.isfinite(value))
+            claimed = honesty(**fit)
+            self.assertFalse(claimed["effect_claimed"])
+            self.assertFalse(claimed["valid_scientific_claim"])
+            self.assertTrue(claimed["exploratory"])
+            self.assertTrue(claimed["not_confirmatory"])
+            self.assertFalse(claimed["dates_invented"])
+            os.makedirs(os.path.join(out, "noise"), exist_ok=True)
+            with open(os.path.join(out, "noise", "fit.json"), "w", encoding="utf-8") as handle:
+                json.dump(fit, handle)
+            score = score_frozen_directory(out, dates)
+            self.assertTrue(score["day_terms_inestimable"])
+            self.assertEqual(score["day_terms_dropped"], ["day_rank", "day_distance"])
+            self.assertEqual(score["day_terms_dropped_bases"], [eval_base])
+            for value in score["eval_nll"].values():
+                self.assertTrue(np.isfinite(value))
+            self.assertFalse(honesty(**score)["valid_scientific_claim"])
+
+    def _write_scan_time(self, root, dataset, subject, session, base, acq_time):
+        folder = os.path.join(root, dataset, f"sub-{subject}", f"ses-{session}")
+        os.makedirs(folder, exist_ok=True)
+        path = os.path.join(folder, f"sub-{subject}_ses-{session}_scans.tsv")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("filename\tacq_time\n")
+            handle.write(f"meg/{base}_meg.fif\t{acq_time}\n")
+        return path
+
+    @staticmethod
+    def _sha(path):
+        digest = hashlib.sha256()
+        with open(path, "rb") as handle:
+            digest.update(handle.read())
+        return digest.hexdigest()
 
 
 if __name__ == "__main__":

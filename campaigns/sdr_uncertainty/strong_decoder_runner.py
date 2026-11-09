@@ -20,6 +20,7 @@ from .strong_forward import alignment_for, forward_recording, load_events_safe
 from .strong_noise import (
     AMENDMENT,
     AMENDMENT_142,
+    AMENDMENT_143,
     CANDIDATES,
     DATE_SOURCE,
     DAY_TERMS,
@@ -135,6 +136,7 @@ def honesty(**extra) -> dict:
     payload["lpp_pooled"] = False
     payload["full_retrain"] = dict(FULL_RETRAIN)
     payload["amendment_1_4_2"] = AMENDMENT_142
+    payload["amendment_1_4_3"] = AMENDMENT_143
     payload["undated_day_terms"] = UNDATED_DAY_TERMS
     payload["day_terms"] = list(DAY_TERMS)
     payload["date_source"] = DATE_SOURCE
@@ -380,8 +382,12 @@ def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | Non
 
 def _candidate_matrix(z: np.ndarray, names: list[str], candidate: str):
     if candidate == "error_scaling":
-        columns = [names.index(feature) for feature in ERROR_SCALING_FEATURES]
-        return z[:, columns], list(ERROR_SCALING_FEATURES)
+        # day_distance is absent when amendment 1.4.3 dropped the inestimable day terms.
+        features = [feature for feature in ERROR_SCALING_FEATURES if feature in names]
+        if not features:
+            raise ProtocolError("error_scaling has no remaining features")
+        columns = [list(names).index(feature) for feature in features]
+        return z[:, columns], features
     return z, list(names)
 
 
@@ -461,8 +467,11 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
         "selection_subjects": sorted({int(row["subject"]) for row in rows if row["split"] == "selection"}),
         "selection_rows_used_for_coefficients": False,
         "amendment_1_4_2": AMENDMENT_142,
+        "amendment_1_4_3": AMENDMENT_143,
         "undated_day_terms": UNDATED_DAY_TERMS,
         "day_terms": list(DAY_TERMS),
+        "day_terms_inestimable": bool(bundle["day_terms_inestimable"]),
+        "day_terms_dropped": list(bundle["day_terms_dropped"]),
         "day_terms_dropped_bases": dropped,
         "date_source": DATE_SOURCE,
         "dates_invented": False,
@@ -537,8 +546,11 @@ def score_frozen_directory(directory: str, dates: dict) -> dict:
         "independent_confirmation_required": True,
         "candidates_scored": list(CANDIDATES),
         "amendment_1_4_2": AMENDMENT_142,
+        "amendment_1_4_3": fit.get("amendment_1_4_3", AMENDMENT_143),
         "undated_day_terms": UNDATED_DAY_TERMS,
         "day_terms": list(DAY_TERMS),
+        "day_terms_inestimable": bool(fit.get("day_terms_inestimable", False)),
+        "day_terms_dropped": list(fit.get("day_terms_dropped") or []),
         "day_terms_dropped_bases": dropped,
         "date_source": DATE_SOURCE,
         "dates_invented": False,
@@ -916,6 +928,8 @@ def run_next(root: str) -> dict:
             "val_nll": payload["val_nll"],
             "objective": "gaussian_nll",
             "oov_excluded": payload["oov_excluded"],
+            "day_terms_inestimable": payload["day_terms_inestimable"],
+            "day_terms_dropped": payload["day_terms_dropped"],
         })
         return report
     if action["stage"] == "score-frozen":
@@ -945,6 +959,8 @@ def run_next(root: str) -> dict:
             "eligible_metrics": payload.get("eligible_metrics"),
             "paired_vs_uniform": payload["paired_vs_uniform"],
             "oov_excluded": payload["oov_excluded"],
+            "day_terms_inestimable": payload["day_terms_inestimable"],
+            "day_terms_dropped": payload["day_terms_dropped"],
         })
         return report
     if action["stage"] == "partial-train":
@@ -1125,6 +1141,9 @@ def main(argv=None) -> int:
         }
         if payload.get("oov_excluded") is not None:
             status["oov_excluded"] = payload["oov_excluded"]
+        if "day_terms_inestimable" in payload:
+            status["day_terms_inestimable"] = bool(payload["day_terms_inestimable"])
+            status["day_terms_dropped"] = list(payload.get("day_terms_dropped") or [])
         print(json.dumps(status))
         return 0
     except (CgroupError, ProtocolError, FileNotFoundError, OSError) as exc:
