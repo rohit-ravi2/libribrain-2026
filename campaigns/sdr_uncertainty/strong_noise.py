@@ -19,6 +19,11 @@ The runner merges the honesty mappings that score-frozen and later stages
 pass together. A claim flag that disagrees keeps the value that does not
 advance a claim. Any other disagreement raises ProtocolError.
 See AMENDMENT_1.4.4.md.
+
+Amendment 1.4.5 does not refit this equation. partial-train, score-partial,
+and timing-control read the day-term decision recorded here. They do not
+count acquisition dates again. A kept feature that is non-finite still fails.
+See AMENDMENT_1.4.5.md.
 """
 from __future__ import annotations
 
@@ -30,6 +35,7 @@ AMENDMENT = "1.4"
 AMENDMENT_142 = "1.4.2"
 AMENDMENT_143 = "1.4.3"
 AMENDMENT_144 = "1.4.4"
+AMENDMENT_145 = "1.4.5"
 PROTOCOL_ID = "strong-decoder-noise-1.4"
 # Pre-specified before any 1.4.2 result. Undated rows omit these terms.
 # They are not filled with a session ordinal or a calendar day.
@@ -322,8 +328,7 @@ def drop_undefined_day_terms(z: np.ndarray, defined: np.ndarray) -> np.ndarray:
     missing = ~defined
     if np.any(missing):
         out[np.ix_(missing, _day_term_index())] = 0.0
-    if not np.isfinite(out).all():
-        raise ProtocolError("day terms left a non-finite feature; refusing to invent a day")
+    assert_finite_used_features(out, ALLOWED_INFERENCE_FEATURES)
     return out
 
 
@@ -422,31 +427,31 @@ def _active_feature_names(day_terms_inestimable: bool) -> list[str]:
 def _reduced_raw(rows, in_train_flags, *, train_days, windows_on, total_train_windows) -> tuple[np.ndarray, np.ndarray]:
     """Feature matrix with day_rank and day_distance omitted.
 
-    Subject 0 and coefficient rows still need a real scans.tsv date. A missing
-    date on those rows raises. It is not replaced with a session ordinal.
+    The omission was recorded when the training rows had fewer than two
+    acquisition dates. This does not read a date to rebuild those columns.
+    A date string that is present must still be YYYY-MM-DD, so a session
+    ordinal cannot sit in the date field. It is not used as a feature.
+    One training date has no earlier day, so an in-training row's
+    log_train_window_count is log1p(0) without consulting that row's date.
     """
+    del train_days, windows_on
     names = _active_feature_names(True)
     columns = {name: index for index, name in enumerate(names)}
     raw = np.zeros((len(rows), len(names)), dtype=np.float64)
     defined = np.zeros(len(rows), dtype=bool)
+    outside = float(np.log1p(total_train_windows))
     for index, row in enumerate(rows):
         for name in ("run_fraction", "artifact_rms", "bandpower", "base", "subject"):
             if name not in row:
                 raise ProtocolError(f"row is missing {name}")
-        in_train = bool(in_train_flags[index])
-        text = _use_or_drop_date(row, coefficient=in_train)
-        moment = _to_date(text) if text is not None else None
+        text = _date_text(row)
+        if text is not None:
+            _to_date(text)
         defined[index] = text is not None
         raw[index, columns["run_fraction"]] = float(row["run_fraction"])
         raw[index, columns["artifact_rms"]] = float(row["artifact_rms"])
         raw[index, columns["bandpower"]] = float(row["bandpower"])
-        raw[index, columns["log_train_window_count"]] = _log_window_count(
-            moment,
-            in_train=in_train,
-            train_days=train_days,
-            windows_on=windows_on,
-            total_train_windows=total_train_windows,
-        )
+        raw[index, columns["log_train_window_count"]] = 0.0 if in_train_flags[index] else outside
     return raw, defined
 
 
@@ -514,8 +519,7 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
     clip = NumericClip().fit(raw[train_index])
     z = clip.transform(raw)
     if day_terms_inestimable:
-        if not np.isfinite(z).all():
-            raise ProtocolError("noise features are non-finite; refusing to invent a day")
+        assert_finite_used_features(z, names)
     else:
         z = drop_undefined_day_terms(z, defined)
     state = {
@@ -551,15 +555,85 @@ def assemble_features(rows: list[dict], *, train_split: str = "train") -> dict:
     }
 
 
+def _recorded_bool(value, label: str) -> bool:
+    if type(value) is bool or isinstance(value, np.bool_):
+        return bool(value)
+    raise ProtocolError(f"{label} is not a boolean")
+
+
+def assert_finite_used_features(values: np.ndarray, names) -> None:
+    """Refuse a non-finite value in a column that is actually in the matrix.
+
+    A dropped day term is not a column. A non-finite day column that is still
+    present is a refused invention. Any other non-finite column is named.
+    """
+    matrix = np.asarray(values, dtype=np.float64)
+    names = list(names)
+    if matrix.ndim == 1:
+        matrix = matrix.reshape(1, -1)
+    if matrix.shape[1] != len(names):
+        raise ProtocolError(f"feature width {matrix.shape} != {len(names)}")
+    for index, name in enumerate(names):
+        if np.isfinite(matrix[:, index]).all():
+            continue
+        if name in DAY_TERMS:
+            raise ProtocolError("noise features are non-finite; refusing to invent a day")
+        raise ProtocolError(f"used feature {name} is non-finite")
+
+
+def frozen_day_term_decision(fit: dict) -> dict:
+    """Return the day-term decision stored on the noise fit.
+
+    Does not look at the rows being scored and does not count their dates.
+    """
+    if not isinstance(fit, dict):
+        raise ProtocolError("noise fit did not record a day-term decision")
+    nested = fit.get("state") if isinstance(fit.get("state"), dict) else None
+    if nested is not None and "day_terms_inestimable" in fit and "day_terms_inestimable" in nested:
+        if _recorded_bool(fit["day_terms_inestimable"], "day_terms_inestimable") != _recorded_bool(
+            nested["day_terms_inestimable"], "day_terms_inestimable"
+        ):
+            raise ProtocolError("frozen day-term decision disagrees with the noise fit")
+        if set(fit.get("day_terms_dropped") or []) != set(nested.get("day_terms_dropped") or []):
+            raise ProtocolError("frozen day-term decision disagrees with the noise fit")
+    source = nested if nested is not None and "day_terms_inestimable" in nested else fit
+    if "day_terms_inestimable" not in source:
+        raise ProtocolError("noise fit did not record a day-term decision")
+    inestimable = _recorded_bool(source["day_terms_inestimable"], "day_terms_inestimable")
+    dropped = list(source.get("day_terms_dropped") or [])
+    names = list(source.get("names") or [])
+    if not names:
+        raise ProtocolError("frozen day-term decision has no feature names")
+    if inestimable:
+        if set(dropped) != set(DAY_TERMS):
+            raise ProtocolError("frozen day-term drop does not match the recorded decision")
+        if any(name in DAY_TERMS for name in names):
+            raise ProtocolError("frozen day-term drop still lists a day column")
+        recorded_days = source.get("train_days")
+        if recorded_days is not None and len(recorded_days) >= 2:
+            raise ProtocolError("frozen day-term drop does not match the recorded training dates")
+    elif dropped:
+        raise ProtocolError("frozen day-term decision keeps day terms and also drops them")
+    return {
+        "day_terms_inestimable": inestimable,
+        "day_terms_dropped": list(DAY_TERMS) if inestimable else [],
+        "active_features": names,
+        "dates_invented": False,
+        "session_ordinal_used_as_day": False,
+    }
+
+
 def transform_with_state(rows: list[dict], state: dict) -> np.ndarray:
     """Apply a frozen training feature state. Does not refit on these rows.
 
     A non-subject-0 row with no date keeps the non-day features and drops
     day_rank and day_distance. Subject 0 and coefficient bases still refuse
-    a missing date. A state that recorded day_terms_inestimable keeps those
-    terms out of the matrix for every row, including a later real date.
+    a missing date when those terms are in the equation. A state that recorded
+    day_terms_inestimable keeps those terms out for every row. That recorded
+    flag is not recomputed from the dates on these rows.
     """
-    if state.get("day_terms_inestimable"):
+    decision = frozen_day_term_decision(state)
+    if decision["day_terms_inestimable"]:
         train_days = sorted(_to_date(day) for day in state["train_days"])
         windows_on = {_to_date(day): int(count) for day, count in state["windows_on"].items()}
         total = int(state["total_train_windows"])
@@ -571,9 +645,10 @@ def transform_with_state(rows: list[dict], state: dict) -> np.ndarray:
             windows_on=windows_on,
             total_train_windows=total,
         )
+        if raw.shape[1] != len(state["names"]) or list(state["names"]) != list(decision["active_features"]):
+            raise ProtocolError("frozen feature width does not match the noise fit")
         transformed = NumericClip.from_dict(state["clip"]).transform(raw)
-        if not np.isfinite(transformed).all():
-            raise ProtocolError("noise features are non-finite; refusing to invent a day")
+        assert_finite_used_features(transformed, state["names"])
         return transformed
     train_days = sorted(_to_date(day) for day in state["train_days"])
     windows_on = {_to_date(day): int(count) for day, count in state["windows_on"].items()}

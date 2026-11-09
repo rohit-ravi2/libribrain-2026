@@ -5,6 +5,10 @@ linear-probe caches, or an earlier score file. effect_claimed stays false.
 
 Amendment 1.4.4 merges honesty mappings. Two dicts are not splatted into the
 same call. A claim flag that disagrees keeps the non-claim value.
+
+Amendment 1.4.5 reads the noise fit's recorded day-term drop in partial-train,
+score-partial, and timing-control. It does not refit the noise model and does
+not rewrite score_frozen.json or a forward cache.
 """
 from __future__ import annotations
 
@@ -19,12 +23,13 @@ import numpy as np
 
 from .cgroup import CgroupError, verify_live_hardware
 from .strong_decoder import is_strong_decoder, load_strong_decoder
-from .strong_forward import alignment_for, forward_recording, load_events_safe
+from .strong_forward import alignment_for, forward_recording, load_events_safe, recording_covariates
 from .strong_noise import (
     AMENDMENT,
     AMENDMENT_142,
     AMENDMENT_143,
     AMENDMENT_144,
+    AMENDMENT_145,
     CANDIDATES,
     DATE_SOURCE,
     DAY_TERMS,
@@ -47,8 +52,10 @@ from .strong_noise import (
     assemble_features,
     bacc10_from_logits,
     coverage_report,
+    assert_finite_used_features,
     decoder_residual,
     fit_noise,
+    frozen_day_term_decision,
     initial_partial_arms,
     log_variance,
     matched_partial_steps,
@@ -209,6 +216,7 @@ def honesty(*sources, **extra) -> dict:
     payload["amendment_1_4_2"] = AMENDMENT_142
     payload["amendment_1_4_3"] = AMENDMENT_143
     payload["amendment_1_4_4"] = AMENDMENT_144
+    payload["amendment_1_4_5"] = AMENDMENT_145
     payload["undated_day_terms"] = UNDATED_DAY_TERMS
     payload["day_terms"] = list(DAY_TERMS)
     payload["date_source"] = DATE_SOURCE
@@ -379,7 +387,49 @@ def _stimulus_tmax(paths: list[str]) -> dict:
     return tmax
 
 
-def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, t_max: float | None = None) -> dict:
+def _repair_nonfinite_covariates(base: str, run_fraction, artifact_rms, bandpower) -> dict:
+    """Replace non-finite sensor summaries from the cache. Do not write the npz.
+
+    The trunk forward already zero-filled non-finite samples before the logits
+    were saved. The stored summary was computed before that fill, so it can be
+    non-finite while the checkpoint exists. A finite stored value is kept.
+    A missing cache is not filled with a zero and is not turned into a date.
+    """
+    arrays = {
+        "run_fraction": np.asarray(run_fraction, dtype=np.float64).copy(),
+        "artifact_rms": np.asarray(artifact_rms, dtype=np.float64).copy(),
+        "bandpower": np.asarray(bandpower, dtype=np.float64).copy(),
+    }
+    if all(np.isfinite(value).all() for value in arrays.values()):
+        return arrays
+    cache = os.path.join(os.environ.get("LIBRIBRAIN_CACHE", "/mnt/ssd4tb/data/libribrain_cache"), "cont")
+    meg_path = os.path.join(cache, base + ".npy")
+    events_path = os.path.join(cache, base + "_ev.npz")
+    if not (os.path.isfile(meg_path) and os.path.isfile(events_path)):
+        return arrays
+    meg = np.load(meg_path, mmap_mode="r")
+    fresh = recording_covariates(meg, load_events_safe(events_path))
+    for name, stored in arrays.items():
+        if len(fresh[name]) != len(stored):
+            raise ProtocolError(f"recomputed covariates for {base} do not match the checkpointed forward")
+        bad = ~np.isfinite(stored)
+        if np.any(bad):
+            stored[bad] = fresh[name][bad]
+    return arrays
+
+
+def _stamp_day_decision(payload: dict, fit: dict) -> dict:
+    """Copy the recorded day-term decision. Does not recompute it."""
+    decision = frozen_day_term_decision(fit)
+    payload["day_terms_inestimable"] = decision["day_terms_inestimable"]
+    payload["day_terms_dropped"] = list(decision["day_terms_dropped"])
+    payload["active_features"] = list(decision["active_features"])
+    payload["dates_invented"] = False
+    payload["session_ordinal_used_as_day"] = False
+    return payload
+
+
+def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, t_max: float | None = None, require_acquisition_date: bool = True) -> dict:
     """Load one cached forward and keep the same in-vocabulary rows for every arm.
 
     The npz is not rewritten. Labels outside 0..49 stay in the file and are
@@ -396,10 +446,17 @@ def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | Non
         if not (len(labels) == len(logits) == len(embedding)):
             raise ProtocolError(f"{base} forward arrays differ in length")
         date = dates.get(base) or None
-        if split == "train" and not date:
-            raise ProtocolError(missing_acquisition_date(base))
-        if split != "train" and not date and subject == 0:
-            raise ProtocolError(missing_acquisition_date(base))
+        if require_acquisition_date:
+            if split == "train" and not date:
+                raise ProtocolError(missing_acquisition_date(base))
+            if split != "train" and not date and subject == 0:
+                raise ProtocolError(missing_acquisition_date(base))
+        covariates = _repair_nonfinite_covariates(
+            base,
+            np.asarray(handle["run_fraction"], dtype=np.float64),
+            np.asarray(handle["artifact_rms"], dtype=np.float64),
+            np.asarray(handle["bandpower"], dtype=np.float64),
+        )
         quarters = None
         extra = None
         if quarter is not None:
@@ -415,9 +472,9 @@ def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | Non
             {
                 "logits": logits,
                 "embedding": embedding,
-                "run_fraction": np.asarray(handle["run_fraction"], dtype=np.float64),
-                "artifact_rms": np.asarray(handle["artifact_rms"], dtype=np.float64),
-                "bandpower": np.asarray(handle["bandpower"], dtype=np.float64),
+                "run_fraction": covariates["run_fraction"],
+                "artifact_rms": covariates["artifact_rms"],
+                "bandpower": covariates["bandpower"],
             },
             extra_keep=extra,
         )
@@ -505,8 +562,7 @@ def fit_noise_directory(directory: str, dates: dict) -> dict:
     train = bundle["train_index"]
     if int(np.sum(train)) != n_fit:
         raise ProtocolError("selection rows leaked into the coefficient fit")
-    if not np.isfinite(bundle["z"]).all():
-        raise ProtocolError("noise features are non-finite; refusing to invent a day")
+    assert_finite_used_features(bundle["z"], bundle["names"])
     params = {}
     val_nll = {}
     for name in CANDIDATES:
@@ -731,6 +787,7 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict, 
     fit_path = os.path.join(directory, "noise", "fit.json")
     with open(fit_path, encoding="utf-8") as handle:
         fit = json.load(handle)
+    day_decision = frozen_day_term_decision(fit)
     paths = sorted(glob.glob(os.path.join(directory, "forward", "train", "*.npz")))
     if not paths:
         raise ProtocolError("partial train needs cached train embeddings from the real forward")
@@ -746,7 +803,9 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict, 
                 sha = file_sha
             elif file_sha != sha:
                 raise ProtocolError("train forwards came from different checkpoints")
-        loaded = _rows_from_forward(path, "train", dates)
+        loaded = _rows_from_forward(
+            path, "train", dates, require_acquisition_date=not day_decision["day_terms_inestimable"],
+        )
         oov_excluded[loaded["oov"]["base"]] = loaded["oov"]
         if len(loaded["labels"]) == 0:
             continue
@@ -812,14 +871,14 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict, 
     val_embeddings = np.concatenate(val_embeddings, axis=0)
     val_labels = np.concatenate(val_labels, axis=0)
     if done >= int(schedule["max_steps"]):
-        return {
+        return _stamp_day_decision({
             "steps": done, "advanced": 0, "target": int(schedule["max_steps"]),
             "schedule": schedule["name"], "substantive": bool(schedule["substantive"]),
             "trunk_frozen": True, "stopped": True,
             "oov_excluded": oov_excluded,
             "train_rows_in_vocab": int(len(labels)),
             "selection_rows_in_vocab": int(len(val_labels)),
-        }
+        }, fit)
     advancing = min(int(steps), int(schedule["max_steps"]) - done)
     learned_params = _params_from_json(fit["candidates"]["learned_state"])
     random_params = _params_from_json(fit["candidates"]["random_covariate"])
@@ -876,7 +935,7 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict, 
     temporary = state_path + ".tmp.npz"
     np.savez_compressed(temporary, **payload)
     os.replace(temporary, state_path)
-    return {
+    return _stamp_day_decision({
         "steps": step_now,
         "advanced": advancing,
         "target": int(schedule["max_steps"]),
@@ -899,10 +958,15 @@ def partial_train_directory(directory: str, root: str, steps: int, dates: dict, 
         "oov_excluded": oov_excluded,
         "train_rows_in_vocab": int(len(labels)),
         "selection_rows_in_vocab": int(len(val_labels)),
-    }
+    }, fit)
 
 
 def score_partial_directory(directory: str) -> dict:
+    fit_path = os.path.join(directory, "noise", "fit.json")
+    if not os.path.isfile(fit_path):
+        raise ProtocolError("partial score needs the frozen noise fit; not inventing a day")
+    with open(fit_path, encoding="utf-8") as handle:
+        fit = json.load(handle)
     state_path = os.path.join(directory, "partial", "state.npz")
     best_path = os.path.join(directory, "partial", "best_val.npz")
     paths = sorted(glob.glob(os.path.join(directory, "forward", "eval", "*.npz")))
@@ -946,7 +1010,7 @@ def score_partial_directory(directory: str) -> dict:
         scores[name] = bacc10_from_logits(arm_logits(arm, embeddings), labels)
     defined = all(value is not None for value in scores.values())
     paired = None if not defined else float(scores["learned_state"] - scores["uniform"])
-    return {
+    return _stamp_day_decision({
         "steps": scored_step,
         "trained_through_step": steps,
         "best_validation_step": best_step,
@@ -962,7 +1026,7 @@ def score_partial_directory(directory: str) -> dict:
         "effect_claimed": False,
         "eval_rows": int(len(labels)),
         "oov_excluded": oov_excluded,
-    }
+    }, fit)
 
 
 def _cache_paths(root: str):
@@ -1055,6 +1119,12 @@ def run_next(root: str) -> dict:
 
 def run_timing(root: str) -> dict:
     directory = out_dir(root)
+    fit_path = os.path.join(directory, "noise", "fit.json")
+    if not os.path.isfile(fit_path):
+        raise ProtocolError("timing control needs the frozen noise fit; not inventing a day")
+    with open(fit_path, encoding="utf-8") as handle:
+        fit = json.load(handle)
+    day_decision = frozen_day_term_decision(fit)
     paths = sorted(glob.glob(os.path.join(directory, "forward", "eval", "*.npz")))
     if not paths:
         raise ProtocolError("timing control needs one exploratory eval forward already checkpointed")
@@ -1087,6 +1157,9 @@ def run_timing(root: str) -> dict:
         shuffle_is_a_control=True,
         objective="mean_cross_entropy",
         oov_excluded={base: oov_excluded},
+        day_terms_inestimable=day_decision["day_terms_inestimable"],
+        day_terms_dropped=list(day_decision["day_terms_dropped"]),
+        active_features=list(day_decision["active_features"]),
     )
     _save_json(out, payload)
     return payload
