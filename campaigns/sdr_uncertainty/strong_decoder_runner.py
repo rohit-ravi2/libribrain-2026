@@ -429,7 +429,7 @@ def _stamp_day_decision(payload: dict, fit: dict) -> dict:
     return payload
 
 
-def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, t_max: float | None = None, require_acquisition_date: bool = True) -> dict:
+def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | None = None, keep_quarters: tuple[str, ...] | None = None, t_max: float | None = None, require_acquisition_date: bool = True) -> dict:
     """Load one cached forward and keep the same in-vocabulary rows for every arm.
 
     The npz is not rewritten. Labels outside 0..49 stay in the file and are
@@ -459,13 +459,18 @@ def _rows_from_forward(path: str, split: str, dates: dict, *, quarter: str | Non
         )
         quarters = None
         extra = None
-        if quarter is not None:
+        if quarter is not None and keep_quarters is not None:
+            raise ProtocolError("pass quarter or keep_quarters, not both")
+        if quarter is not None or keep_quarters is not None:
             if "timechapter" not in handle.files:
                 raise ProtocolError(f"{base} has no timechapter; refusing to invent a quarter")
             if len(handle["timechapter"]) != len(labels):
                 raise ProtocolError(f"{base} timechapter does not match the rows")
             quarters = quarter_labels(handle["timechapter"], t_max)
-            extra = quarters == quarter
+            if keep_quarters is not None:
+                extra = np.isin(quarters, list(keep_quarters))
+            else:
+                extra = quarters == quarter
         view = vocab_view(
             base,
             labels,
