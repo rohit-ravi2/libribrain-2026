@@ -199,3 +199,10 @@ the unseen day weakly (r = 0.04-0.07, ~2-3 SE at n = 2,672), driven by log pre-o
 stable across budgets). OPEN, not closed: the test needs a decoder well above the floor (the CNN, 0.073 / 0.458) with
 the precision weights inside its loss, plus the matched twin; that needs a GPU slot. Feature cache 0.4 GB in
 /mnt/ssd4tb/data/libribrain_cache/noise_eq.
+
+## 2026-11-09 12:50 EST — whitened cache built; GPU screen written, NOT launched
+`scripts/whiten_cache.py` -> /mnt/ssd4tb/data/libribrain_cache/cont_wh (226 runs, 11 GB, 4 GiB cap, ~5 min): one
+Sigma^-1/2 from 20 subject-0 training runs (shrinkage 0.1), applied to every run. On the held-out day it lowers the
+mean absolute inter-sensor correlation only from 0.206 to 0.182: the spatial noise covariance is largely
+day-specific, which is itself a point for the noise equation (a day term in Sigma, estimable label-free per day).
+`scripts/queue_floor_gpu.sh` (matched-amplitude CNN twin, whitened CNN, deconvolved CNN; ~75 min GPU) awaits Rohit.
