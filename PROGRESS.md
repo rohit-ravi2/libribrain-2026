@@ -182,3 +182,20 @@ private on Kaggle Deep) are upper bounds far above a realistic floor. At matched
 may read more). The clean 3 s real-MEG decoder (0.073 / 0.458) sits above that, so most of its score is probably
 not timing; confirming needs the matched-amplitude CNN twin (GPU, ~25 min). C1 as a headline weakens: fixed-window
 isolated decoding is close to timing-clean at realistic amplitude. Single seed, ~1,300 rows per session (top-1 SE ~0.006).
+
+## 2026-11-09 12:25 EST — noise-equation pilot, decoding rung (linear decoder, CPU, peak 3.0 GB under a 4 GiB cap)
+`A/noise_eq_pilot.py`, seed 0: softmax regression on 64 spatial PCs x 10 bins of [onset, onset+1 s), subject 0, test =
+held-out day and text (ses-11/12 run-2). Balanced top-1 / top-10 (chance 0.02 / 0.20):
+| train runs (rows) | uniform | whiten (Sigma^-1/2) | state precision | state permuted | state->test CE corr |
+| 15 (24k)  | 0.031 / 0.313 | 0.033 / 0.309 | 0.026 / 0.297 | 0.027 / 0.296 | 0.068 |
+| 38 (69k)  | 0.047 / 0.352 | 0.049 / 0.354 | 0.043 / 0.354 | 0.045 / 0.345 | 0.058 |
+| 76 (139k) | 0.049 / 0.333 | 0.038 / 0.349 | 0.044 / 0.346 | 0.046 / 0.348 | 0.043 |
+| 152 (300k)| 0.045 / 0.326 | 0.039 / 0.347 | 0.039 / 0.327 | 0.035 / 0.340 | 0.038 |
+Grade: null in this operationalization, and underpowered. The linear decoder saturates by ~70k rows and sits at the
+amplitude-matched timing floor (0.03-0.05 / 0.30), so it cannot show a precision gain or fit an exponent alpha (the
+curve is flat after 25%). Whitening: top-10 +0.02, top-1 -0.01 at full data, within noise (top-1 SE ~0.006). State
+weights vs their permutation: no difference. Prediction rung: pre-onset state predicts the decoder's per-word loss on
+the unseen day weakly (r = 0.04-0.07, ~2-3 SE at n = 2,672), driven by log pre-onset power (positive coefficient,
+stable across budgets). OPEN, not closed: the test needs a decoder well above the floor (the CNN, 0.073 / 0.458) with
+the precision weights inside its loss, plus the matched twin; that needs a GPU slot. Feature cache 0.4 GB in
+/mnt/ssd4tb/data/libribrain_cache/noise_eq.

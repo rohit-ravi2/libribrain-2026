@@ -1,0 +1,45 @@
+{
+ "args": {
+  "row_frac": 0.05,
+  "fracs": "0.1",
+  "seed": 0,
+  "P": 64,
+  "tag": "smoke",
+  "feat_dir": "/mnt/ssd4tb/data/libribrain_cache/noise_eq"
+ },
+ "n_train_runs": 152,
+ "curve": {
+  "0.1": {
+   "n_runs": 15,
+   "n_rows": 1646,
+   "state_coef": [
+    1.4482,
+    0.0881,
+    -0.0116,
+    0.0307,
+    -0.0051
+   ],
+   "uniform": {
+    "top1": 0.0212,
+    "top10": 0.253,
+    "wd": 0.1
+   },
+   "whiten": {
+    "top1": 0.0216,
+    "top10": 0.2425,
+    "wd": 0.01
+   },
+   "state_pred_corr_test": 0.0686,
+   "state": {
+    "top1": 0.021,
+    "top10": 0.2368,
+    "wd": 0.1
+   },
+   "state_perm": {
+    "top1": 0.0185,
+    "top10": 0.2529,
+    "wd": 0.1
+   }
+  }
+ }
+}
