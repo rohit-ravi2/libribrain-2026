@@ -206,3 +206,17 @@ Sigma^-1/2 from 20 subject-0 training runs (shrinkage 0.1), applied to every run
 mean absolute inter-sensor correlation only from 0.206 to 0.182: the spatial noise covariance is largely
 day-specific, which is itself a point for the noise equation (a day term in Sigma, estimable label-free per day).
 `scripts/queue_floor_gpu.sh` (matched-amplitude CNN twin, whitened CNN, deconvolved CNN; ~75 min GPU) awaits Rohit.
+
+## 2026-11-09 12:50 EST — seeded: day-level spatial noise equation helps top-10; state weights do not
+Linear pilot, full data, 4 seeds per condition, paired by seed (seed sets run order and init). Mean ± s.d.:
+| arm | global Sigma (top-1 / top-10) | day Sigma, label-free per run (top-1 / top-10) | day - global top-10 (t, 3 df) |
+| uniform    | 0.046 / 0.350 ± 0.022 | 0.042 / 0.383 ± 0.012 | +0.033 (t 6.9) |
+| whiten     | 0.051 / 0.354 ± 0.007 | 0.047 / 0.371 ± 0.010 | +0.018 (t 5.4) |
+| state      | 0.043 / 0.356 ± 0.024 | 0.049 / 0.391 ± 0.025 | +0.035 (t 1.5) |
+| state_perm | 0.053 / 0.353 ± 0.017 | 0.054 / 0.387 ± 0.025 | +0.034 (t 2.2) |
+Grade: whitening each recording day with its own covariance (no labels) raises top-10 by about 0.02-0.035,
+consistently across seeds; top-1 does not move (diffs within ±0.006). State-dependent precision weights are
+indistinguishable from their permutation under both whitenings: that candidate equation is null at this decoder
+strength (OPEN for the CNN). The method itself is Euclidean alignment (He & Wu 2019, EEG transfer) in noise-model
+form, so the novelty is the measured day term in Sigma, not the operation. Next: the same day term in the CNN
+(cont_wh is global-Sigma; a per-run variant is a CPU rebuild) and the matched twin, both in queue_floor_gpu.sh.

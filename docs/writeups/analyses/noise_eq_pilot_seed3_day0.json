@@ -1,0 +1,46 @@
+{
+ "args": {
+  "row_frac": 1.0,
+  "fracs": "1",
+  "seed": 3,
+  "P": 64,
+  "tag": "seed3_day0",
+  "day": 0,
+  "feat_dir": "/mnt/ssd4tb/data/libribrain_cache/noise_eq"
+ },
+ "n_train_runs": 152,
+ "curve": {
+  "1.0": {
+   "n_runs": 152,
+   "n_rows": 300010,
+   "state_coef": [
+    1.3557,
+    0.0538,
+    -0.0126,
+    0.0068,
+    0.0033
+   ],
+   "uniform": {
+    "top1": 0.0649,
+    "top10": 0.3383,
+    "wd": 0.1
+   },
+   "whiten": {
+    "top1": 0.0647,
+    "top10": 0.3624,
+    "wd": 0.01
+   },
+   "state_pred_corr_test": 0.0155,
+   "state": {
+    "top1": 0.06,
+    "top10": 0.3458,
+    "wd": 0.01
+   },
+   "state_perm": {
+    "top1": 0.0583,
+    "top10": 0.3767,
+    "wd": 0.1
+   }
+  }
+ }
+}

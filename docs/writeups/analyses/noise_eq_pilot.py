@@ -20,6 +20,7 @@ from scipy.ndimage import maximum_filter1d
 R = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
 ap = argparse.ArgumentParser(); ap.add_argument("--row_frac", type=float, default=1.0); ap.add_argument("--fracs", default="0.1,0.25,0.5,1")
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--P", type=int, default=64); ap.add_argument("--tag", default="full")
+ap.add_argument("--day", type=int, default=0, help="1 = per-run (day) whitening of every run, test included")
 ap.add_argument("--feat_dir", default="/mnt/ssd4tb/data/libribrain_cache/noise_eq"); a = ap.parse_args()
 torch.set_num_threads(2); torch.manual_seed(a.seed); g = np.random.default_rng(a.seed)
 D = "/mnt/ssd4tb/data/libribrain_cache/cont"; FS = 50; NB, BW = 10, 5; PRE = 25
@@ -58,8 +59,18 @@ def feats(b):
     X, S = X.astype(np.float16), S.astype(np.float32); np.savez(f, X=X, S=S, y=lab); return X, S, lab
 
 
+def day_whiten(X):
+    """Day-level spatial noise equation: whiten the P components with this run's OWN covariance (label-free, per run)."""
+    Z = X.astype(np.float32).reshape(len(X), a.P, NB).transpose(0, 2, 1).reshape(-1, a.P); Z = Z - Z.mean(0)
+    C = Z.T @ Z / len(Z); C = 0.9 * C + 0.1 * np.trace(C) / a.P * np.eye(a.P); e, U = np.linalg.eigh(C); Wd = (U * e ** -0.5) @ U.T
+    Y = (X.astype(np.float32).reshape(len(X), a.P, NB).transpose(0, 2, 1) @ Wd.T).transpose(0, 2, 1).reshape(len(X), -1)
+    return (Y / scale).astype(np.float16)            # divide by the global scale so the "whiten" path leaves it as is
+
+
 def stack(bs, frac=1.0):
-    out = [feats(b) for b in bs]; X = np.concatenate([o[0] for o in out]); S = np.concatenate([o[1] for o in out]); y = np.concatenate([o[2] for o in out])
+    out = [feats(b) for b in bs]
+    if a.day: out = [(day_whiten(X), S, y) for X, S, y in out]
+    X = np.concatenate([o[0] for o in out]); S = np.concatenate([o[1] for o in out]); y = np.concatenate([o[2] for o in out])
     if frac < 1: k = g.random(len(y)) < frac; X, S, y = X[k], S[k], y[k]
     return X, S, y
 
