@@ -4,6 +4,7 @@
 #   twin_matched: synthetic onset kernel at the REAL onset amplitude (0.135 resid s.d.; onset_readability.json)
 #   whiten:       real MEG through the spatial noise equation (cont_wh, Sigma^-1/2 from training runs)
 #   deconv:       real MEG with the generic onset response removed (cont_dc)
+#   whiten_day:   real MEG whitened per run with its own covariance (cont_whd; day-level noise equation, label-free)
 cd ~/projects/libribrain-2026; PY=~/venvs/libribrain/bin/python; mkdir -p logs/floor
 export LB_MMAP=1 OMP_NUM_THREADS=4 LB_WIN=0,3 LB_NOCLIP=1
 PXR="sub-0_ses-1[12]_task-Sherlock1"; C="--win 3s --ctx 0 --t5 1.0 --epochs 8 --deep 1 --broad_frac 0.0 --exclude $PXR --seed 0"
@@ -14,4 +15,5 @@ arm() { t=$1; shift; [ -f runs/$t.json ] || env "$@" flock /tmp/gpu-8gb.lock $PY
 arm floor_twin_matched_s0 LB_NOISE=3 LB_SYN_AMP=0.135
 arm floor_whiten_s0 LB_CONTDIR=cont_wh
 arm floor_deconv_s0 LB_CONTDIR=cont_dc
+arm floor_whiten_day_s0 LB_CONTDIR=cont_whd
 ~/bin/notify "Timing-floor GPU screen done: $(cut -c22-150 logs/floor/queue.log | tr '\n' ' ')" "LibriBrain"

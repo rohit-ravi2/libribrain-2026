@@ -220,3 +220,5 @@ indistinguishable from their permutation under both whitenings: that candidate e
 strength (OPEN for the CNN). The method itself is Euclidean alignment (He & Wu 2019, EEG transfer) in noise-model
 form, so the novelty is the measured day term in Sigma, not the operation. Next: the same day term in the CNN
 (cont_wh is global-Sigma; a per-run variant is a CPU rebuild) and the matched twin, both in queue_floor_gpu.sh.
+Built cont_whd (per-run Sigma^-1/2, label-free; held-out-day mean |sensor corr| 0.083 vs 0.206 raw, 0.182 global) and
+added it as a fourth arm (floor_whiten_day_s0) to scripts/queue_floor_gpu.sh, still NOT launched (~100 min GPU).

@@ -6,7 +6,7 @@ import os, sys, glob
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.common import CACHE
-SRC = f"{CACHE}/cont"; dst = f"{CACHE}/{sys.argv[1]}"; os.makedirs(dst, exist_ok=True)
+PER_RUN = "--per_run" in sys.argv; SRC = f"{CACHE}/cont"; dst = f"{CACHE}/{sys.argv[1]}"; os.makedirs(dst, exist_ok=True)
 clean = lambda Y: np.nan_to_num(np.asarray(Y, np.float32), nan=0.0, posinf=0.0, neginf=0.0)
 mp = f"{dst}/_whitener.npz"
 if not os.path.exists(mp):
@@ -23,5 +23,8 @@ for ev in sorted(glob.glob(f"{SRC}/*_ev.npz")):
     if not os.path.exists(f"{dst}/{b}_ev.npz"): os.symlink(ev, f"{dst}/{b}_ev.npz")
     if os.path.exists(out): continue
     Y = clean(np.load(f"{SRC}/{b}.npy", mmap_mode="r")); sd = Y.std(1, keepdims=True) + 1e-6; mu = Y.mean(1, keepdims=True)
-    Z = W @ np.clip((Y - mu) / sd, -10, 10)          # same per-run z-scoring as the fit, then Sigma^-1/2
+    Yz = np.clip((Y - mu) / sd, -10, 10)
+    if PER_RUN:                                        # day-level noise equation: this run's own covariance (label-free)
+        C = Yz @ Yz.T / Yz.shape[1]; C = 0.9 * C + 0.1 * np.trace(C) / 306 * np.eye(306); e, U = np.linalg.eigh(C); Wr = ((U * e ** -0.5) @ U.T).astype(np.float32)
+    Z = (Wr if PER_RUN else W) @ Yz                    # same per-run z-scoring as the fit, then Sigma^-1/2
     np.save(out + ".tmp.npy", Z.astype(np.float16)); os.replace(out + ".tmp.npy", out); print(b, flush=True)
