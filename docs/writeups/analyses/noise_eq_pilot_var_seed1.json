@@ -1,0 +1,81 @@
+{
+ "args": {
+  "row_frac": 1.0,
+  "fracs": "0.1,1",
+  "seed": 1,
+  "P": 64,
+  "tag": "var_seed1",
+  "day": 0,
+  "arms": "whiten,var,var_perm,var_oracle",
+  "feat_dir": "/mnt/ssd4tb/data/libribrain_cache/noise_eq"
+ },
+ "n_train_runs": 152,
+ "curve": {
+  "0.1": {
+   "n_runs": 15,
+   "n_rows": 30247,
+   "state_coef": [
+    1.4158,
+    0.0794,
+    -0.0223,
+    0.0144,
+    -0.0007
+   ],
+   "var_R2_crossfit": 0.7577,
+   "whiten": {
+    "top1": 0.0263,
+    "top10": 0.2972,
+    "wd": 0.001
+   },
+   "state_pred_corr_test": 0.0515,
+   "var": {
+    "top1": 0.0288,
+    "top10": 0.2876,
+    "wd": 0.001
+   },
+   "var_perm": {
+    "top1": 0.0258,
+    "top10": 0.2816,
+    "wd": 0.001
+   },
+   "var_oracle": {
+    "top1": 0.0292,
+    "top10": 0.2876,
+    "wd": 0.01
+   }
+  },
+  "1.0": {
+   "n_runs": 152,
+   "n_rows": 300010,
+   "state_coef": [
+    1.3545,
+    0.0511,
+    -0.012,
+    0.0069,
+    0.0025
+   ],
+   "var_R2_crossfit": 0.7799,
+   "whiten": {
+    "top1": 0.0452,
+    "top10": 0.343,
+    "wd": 0.01
+   },
+   "state_pred_corr_test": 0.0313,
+   "var": {
+    "top1": 0.0542,
+    "top10": 0.3611,
+    "wd": 0.1
+   },
+   "var_perm": {
+    "top1": 0.0366,
+    "top10": 0.3227,
+    "wd": 0.01
+   },
+   "var_oracle": {
+    "top1": 0.0415,
+    "top10": 0.3192,
+    "wd": 0.001
+   }
+  }
+ }
+}

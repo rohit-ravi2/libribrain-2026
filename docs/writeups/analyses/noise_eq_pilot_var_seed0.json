@@ -1,0 +1,81 @@
+{
+ "args": {
+  "row_frac": 1.0,
+  "fracs": "0.1,1",
+  "seed": 0,
+  "P": 64,
+  "tag": "var_seed0",
+  "day": 0,
+  "arms": "whiten,var,var_perm,var_oracle",
+  "feat_dir": "/mnt/ssd4tb/data/libribrain_cache/noise_eq"
+ },
+ "n_train_runs": 152,
+ "curve": {
+  "0.1": {
+   "n_runs": 15,
+   "n_rows": 24394,
+   "state_coef": [
+    1.4143,
+    0.0971,
+    -0.0235,
+    0.0032,
+    -0.0028
+   ],
+   "var_R2_crossfit": 0.7159,
+   "whiten": {
+    "top1": 0.0297,
+    "top10": 0.2936,
+    "wd": 0.1
+   },
+   "state_pred_corr_test": 0.0754,
+   "var": {
+    "top1": 0.0419,
+    "top10": 0.3021,
+    "wd": 0.001
+   },
+   "var_perm": {
+    "top1": 0.0314,
+    "top10": 0.2833,
+    "wd": 0.1
+   },
+   "var_oracle": {
+    "top1": 0.0378,
+    "top10": 0.2983,
+    "wd": 0.1
+   }
+  },
+  "1.0": {
+   "n_runs": 152,
+   "n_rows": 300010,
+   "state_coef": [
+    1.3621,
+    0.0657,
+    -0.0194,
+    0.0103,
+    0.0022
+   ],
+   "var_R2_crossfit": 0.7799,
+   "whiten": {
+    "top1": 0.0469,
+    "top10": 0.3413,
+    "wd": 0.01
+   },
+   "state_pred_corr_test": 0.0303,
+   "var": {
+    "top1": 0.048,
+    "top10": 0.3667,
+    "wd": 0.1
+   },
+   "var_perm": {
+    "top1": 0.0339,
+    "top10": 0.3096,
+    "wd": 0.1
+   },
+   "var_oracle": {
+    "top1": 0.0393,
+    "top10": 0.3246,
+    "wd": 0.01
+   }
+  }
+ }
+}

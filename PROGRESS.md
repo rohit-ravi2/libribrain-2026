@@ -268,3 +268,15 @@ so it was tested directly as the noise equation: cross-fitted R2 of log v linear
 splines + pairwise 0.776; H 3.16 / 2.92 / 2.56. No gain from nonlinearity: the linear equation already captures what
 these covariates carry. Verdict: KANDy is not a lever here; possible later use is interpretable read-out of a fitted
 noise equation, not accuracy.
+
+## 2026-11-12 — variance-weighting pilot, 4 seeds (noise_eq_pilot_var_seed{0..3}.json)
+Paired vs whiten (uniform weights), mean diff (se), top-1 / top-10:
+10% data: var +0.002 (0.004) / -0.019 (0.012); var_oracle +0.005 (0.001) / -0.010 (0.007); var_perm -0.000 / -0.025.
+100% data: var -0.009 (0.009) / +0.003 (0.012); var_oracle -0.012 (0.005) / -0.017 (0.004); var_perm -0.017 / -0.042.
+Reading: weighting rows by noise level, even by the true (oracle) level, does not beat uniform weights for this
+linear decoder; it only beats random weights of the same spread. Matches the pre-stated criterion: the oracle not moving
+the score means the linear decoder is feature-limited at the timing floor, not data-limited, so the H ~3 ceiling cannot
+show up here. Row weighting: null for the linear decoder. OPEN for the CNN (precision-weighted loss, GPU).
+Also: both local_cov.py OOM kills at 16:49/16:50 were inside this session's own memory-capped scopes (kernel:
+CONSTRAINT_MEMCG); no other process was affected. One run used ~10 cores (BLAS threads unset); stopped and relaunched
+with 2 threads via scripts/run_local_cov.sh.
