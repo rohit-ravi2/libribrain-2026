@@ -1,0 +1,16 @@
+{
+ "n_rows": 313068,
+ "linear": {
+  "R2_crossfit": 0.7788,
+  "H": 3.1607
+ },
+ "kan_additive_splines": {
+  "R2_crossfit": 0.7849,
+  "H": 2.9208
+ },
+ "splines_plus_pairwise": {
+  "R2_crossfit": 0.7758,
+  "H": 2.5635
+ },
+ "H_oracle": 4.2432
+}

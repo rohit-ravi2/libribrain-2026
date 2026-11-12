@@ -257,3 +257,14 @@ to decoder cross-entropy, which at the timing floor is nearly flat (test r 0.04-
 H is artifact down-weighting, which is standard practice.
 Launched scripts/queue_noise_var.sh: arms whiten / var (1/v_hat from state) / var_perm / var_oracle, 10% and 100%
 data, seeds 0-3, CPU 4 GiB cap -> noise_eq_pilot_var_seed{0..3}.json.
+
+## 2026-11-12 — KANDy review and KAN-form noise equation (noise_eq_kan.py/.json)
+Reviewed KANDy (Slote, Fish, Bollt, arXiv 2602.20413; repo Center-For-Complex-Systems-Science/kandy) and
+Higher-Order-KANDy (arXiv 2610.02637). Both are built for and tested on synthetic, low-dimensional, deterministic systems
+(Lorenz, Henon, KS, Burgers, sine-Gordon) with at most ~10% measurement noise and no neural data. MEG word decoding
+violates each assumption (306 mixed channels, stochastic background, word signal ~0.2% of variance). EEG KAN
+benchmarks match MLP heads and overfit at fine spline grids. KANDy's one-layer KAN is an additive spline model (a GAM),
+so it was tested directly as the noise equation: cross-fitted R2 of log v linear 0.779, additive splines 0.785,
+splines + pairwise 0.776; H 3.16 / 2.92 / 2.56. No gain from nonlinearity: the linear equation already captures what
+these covariates carry. Verdict: KANDy is not a lever here; possible later use is interpretable read-out of a fitted
+noise equation, not accuracy.
