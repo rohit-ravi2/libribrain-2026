@@ -228,3 +228,19 @@ added it as a fourth arm (floor_whiten_day_s0) to scripts/queue_floor_gpu.sh, st
 no GPU compute process (other than the streamer), so MICrONS can claim the GPU first when Enveda ends; each arm
 re-waits for 10 idle minutes and trains in a 6 GiB memory scope. Arms: matched-amplitude twin, global whitening,
 deconvolution, per-day whitening. Log: logs/floor/waiter.log, logs/floor/queue.log.
+
+## 2026-11-12 — timing-floor GPU screen results (ran Nov 9 15:05 to Nov 10 05:26 EDT, between Enveda jobs)
+Held-out day (sub-0 Sherlock1 ses-11/12 run-2), 3 s window, ctx 0, seed 0, mean of the two sessions, top-1 / top-10.
+Baseline clean_iso_s0: base 0.0725 / 0.458; +Sinkhorn 0.079 / 0.472.
+- floor_twin_matched_s0 (noise + kernel at amp 0.135): base 0.119 / 0.611; +sk 0.117 / 0.606. ABOVE real MEG.
+  P1 (0.03-0.10) is outside its range. P1-P3 were NOT hashed before these results were written (the waiter started
+  first); recorded here as a miss, not re-gated. Reading: amplitude was matched per channel, but the twin's background
+  is white and spatially independent, so a 306-channel CNN integrates the fixed pattern far better than through real,
+  spatially correlated MEG background (one virtual channel at the same amplitude gave 0.029-0.048). The twin is still
+  an upper bound; the realistic floor is bracketed 0.03-0.12 top-1, not pinned. Next: twin with real-covariance noise.
+- floor_whiten_s0 (global Sigma^-1/2): 0.064 / 0.406; +sk 0.071 / 0.404. Hurts (top-10 -0.05).
+- floor_deconv_s0: 0.063 / 0.469; +sk 0.071 / 0.506; adabn+sk 0.076 / 0.509. Top-1 down ~0.01, top-10 up 0.01-0.03.
+- floor_whiten_day_s0 (per-run Sigma^-1/2): 0.073 / 0.450; +sk 0.078 / 0.510. Top-1 flat, top-10 +0.04 with Sinkhorn.
+Grade: single seed; sampling SE about 0.005 top-1 and 0.01 top-10 per arm, seed variance unmeasured. Day > global
+whitening replicates the linear pilot's direction. No arm shows a top-1 lift over baseline; P3 (deconv >= 1 point
+real-minus-floor) cannot be scored until the floor is pinned. All OPEN.

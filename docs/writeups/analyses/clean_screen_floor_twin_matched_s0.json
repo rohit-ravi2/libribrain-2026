@@ -1,0 +1,73 @@
+{
+ "ckpt": "runs/floor_twin_matched_s0_ep6.pt",
+ "ses11": {
+  "n_rows": 1308,
+  "n_words": 47,
+  "base": {
+   "top1": 0.123,
+   "top10": 0.6115,
+   "null_top1": 0.0174
+  },
+  "base+sk": {
+   "top1": 0.1124,
+   "top10": 0.609,
+   "null_top1": 0.0181
+  },
+  "base_T": 2.0,
+  "adabn": {
+   "top1": 0.1226,
+   "top10": 0.5967,
+   "null_top1": 0.0165
+  },
+  "adabn+sk": {
+   "top1": 0.1176,
+   "top10": 0.6269,
+   "null_top1": 0.0148
+  },
+  "adabn_T": 3.0
+ },
+ "ses12": {
+  "n_rows": 1364,
+  "n_words": 45,
+  "base": {
+   "top1": 0.1158,
+   "top10": 0.6094,
+   "null_top1": 0.021
+  },
+  "base+sk": {
+   "top1": 0.1213,
+   "top10": 0.6023,
+   "null_top1": 0.0223
+  },
+  "base_T": 2.0,
+  "adabn": {
+   "top1": 0.1181,
+   "top10": 0.6009,
+   "null_top1": 0.0196
+  },
+  "adabn+sk": {
+   "top1": 0.1167,
+   "top10": 0.6079,
+   "null_top1": 0.023
+  },
+  "adabn_T": 3.0
+ },
+ "mean": {
+  "base": {
+   "top1": 0.1194,
+   "top10": 0.6105
+  },
+  "base+sk": {
+   "top1": 0.1169,
+   "top10": 0.6057
+  },
+  "adabn": {
+   "top1": 0.1203,
+   "top10": 0.5988
+  },
+  "adabn+sk": {
+   "top1": 0.1172,
+   "top10": 0.6174
+  }
+ }
+}
