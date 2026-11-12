@@ -280,3 +280,12 @@ show up here. Row weighting: null for the linear decoder. OPEN for the CNN (prec
 Also: both local_cov.py OOM kills at 16:49/16:50 were inside this session's own memory-capped scopes (kernel:
 CONSTRAINT_MEMCG); no other process was affected. One run used ~10 cores (BLAS threads unset); stopped and relaunched
 with 2 threads via scripts/run_local_cov.sh.
+
+## 2026-11-12 — noise covariance drifts within runs (local_cov.json)
+24 sub-0 runs, 1440 word windows [onset, onset+1 s), 64 training PCs, covariances estimated excluding [onset-1, onset+2) s.
+Gaussian NLL per sample per dim, vs the run's covariance: local +-10 s -0.092 (se 0.006), +-30 s -0.095 (0.005),
++-60 s -0.083 (0.004). Rescaling the run covariance to the local trace (level only, shape fixed): +1.10 to +1.18 (worse).
+Reading: the spatial SHAPE of the noise drifts on a tens-of-seconds scale; a single scalar level is the wrong model (the
+trace is dominated by a few large components). Supports a covariance-regression / local-whitening noise equation.
+Whitened off-diagonal |corr| barely changes (0.163 -> 0.157; 50-sample windows floor this metric). Next decoder test:
+local (+-30 s, label-free) whitening arm in the linear pilot.
