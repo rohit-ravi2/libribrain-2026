@@ -1,0 +1,16 @@
+{
+ "n_rows": 313068,
+ "n_runs": 162,
+ "H_oracle_row": 4.2432,
+ "H_run_level": 1.3292,
+ "H_within_run": 8.7023,
+ "H_state_predicted": 3.1608,
+ "state_R2_logv_crossfit": 0.7788,
+ "v_quantiles_5_50_95_99": [
+  0.058,
+  0.199,
+  0.751,
+  2.1
+ ],
+ "signal_share": 0.0019
+}

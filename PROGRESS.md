@@ -244,3 +244,16 @@ Baseline clean_iso_s0: base 0.0725 / 0.458; +Sinkhorn 0.079 / 0.472.
 Grade: single seed; sampling SE about 0.005 top-1 and 0.01 top-10 per arm, seed variance unmeasured. Day > global
 whitening replicates the linear pilot's direction. No arm shows a top-1 lift over baseline; P3 (deconv >= 1 point
 real-minus-floor) cannot be scored until the floor is pinned. All OPEN.
+
+## 2026-11-12 — noise-equation ceiling (noise_eq_bound.py/.json) and variance-weighting arms launched
+Question: was the noise-equation line ruled out prematurely? Ceiling under y = A z + b + eps: precision weighting gives
+n_eff = n * H, H = E[v] E[1/v], v = per-row whitened residual energy (313k rows, 162 sub-0 runs).
+H oracle 4.24; H run-level 1.33; H from pre-onset state, cross-fitted 3.16 (state predicts log v with R2 0.78).
+Reading: the noise is strongly heteroscedastic and predictable from state, so a row-weighting equation could in
+principle buy up to ~3x effective labelled data. Two pilot flaws mean the Nov 9 null did not test this: (1) its state equation was fitted
+to decoder cross-entropy, which at the timing floor is nearly flat (test r 0.04-0.07), not to noise variance;
+(2) its weights were shrunk halfway and clipped to [0.2, 5]. Also open: the linear decoder is at the timing floor
+(signal share 0.0019), so the gain may not reach top-1 even if real. Caveat: v's tail is partly artifacts, so part of
+H is artifact down-weighting, which is standard practice.
+Launched scripts/queue_noise_var.sh: arms whiten / var (1/v_hat from state) / var_perm / var_oracle, 10% and 100%
+data, seeds 0-3, CPU 4 GiB cap -> noise_eq_pilot_var_seed{0..3}.json.

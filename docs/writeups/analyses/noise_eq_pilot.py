@@ -21,6 +21,7 @@ R = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..
 ap = argparse.ArgumentParser(); ap.add_argument("--row_frac", type=float, default=1.0); ap.add_argument("--fracs", default="0.1,0.25,0.5,1")
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--P", type=int, default=64); ap.add_argument("--tag", default="full")
 ap.add_argument("--day", type=int, default=0, help="1 = per-run (day) whitening of every run, test included")
+ap.add_argument("--arms", default="uniform,whiten,state,state_perm")
 ap.add_argument("--feat_dir", default="/mnt/ssd4tb/data/libribrain_cache/noise_eq"); a = ap.parse_args()
 torch.set_num_threads(2); torch.manual_seed(a.seed); g = np.random.default_rng(a.seed)
 D = "/mnt/ssd4tb/data/libribrain_cache/cont"; FS = 50; NB, BW = 10, 5; PRE = 25
@@ -100,6 +101,18 @@ def fit(X, y, w, whiten, Xv, yv):
     return train(X, y, w, best[1], whiten), best[1]
 
 
+def var_weights(Xtr, Str, ytr, runid, clip=(0.05, 20.0)):
+    """Noise-energy equation (added 2026-11-12): predict each row's noise variance v (whitened residual energy about
+    its word's mean, train rows only) from phi(s) by OLS on log v, cross-fitted over run halves; weight = 1/v_hat.
+    Also returns the oracle weights 1/v (true train-row noise energy) as an upper-bound arm."""
+    Z = Xtr.astype(np.float32) * scale; M = np.stack([Z[ytr == c].mean(0) if (ytr == c).any() else np.zeros(Z.shape[1], np.float32) for c in range(50)])
+    lv = np.log(((Z - M[ytr]) ** 2).mean(1) + 1e-6); mu, sd = Str.mean(0), Str.std(0) + 1e-6; A = np.c_[np.ones(len(Str)), (Str - mu) / sd]
+    vh = np.zeros_like(lv); half = (runid % 2 == 0)
+    for m in (half, ~half): vh[m] = A[m] @ np.linalg.lstsq(A[~m], lv[~m], rcond=None)[0]
+    nz = lambda w: np.clip(w / w.mean(), *clip) / np.clip(w / w.mean(), *clip).mean()
+    r2 = float(1 - np.var(lv - vh) / np.var(lv)); return nz(np.exp(-vh)), nz(np.exp(-lv)), r2
+
+
 def state_weights(Xtr, Str, ytr, runid):
     """Cross-fitted state noise equation: OLS of log out-of-fold CE on standardised phi(s)."""
     half = (runid % 2 == 0); ce = np.zeros(len(ytr), np.float32)
@@ -120,8 +133,12 @@ for fr in [float(x) for x in a.fracs.split(",")]:
     parts = [stack([b], a.row_frac) for b in bs]; Xtr = np.concatenate([p[0] for p in parts]); Str = np.concatenate([p[1] for p in parts])
     ytr = np.concatenate([p[2] for p in parts]); runid = np.concatenate([np.full(len(p[2]), i) for i, p in enumerate(parts)])
     w_s, pred, coef = state_weights(Xtr, Str, ytr, runid); w_p = g.permutation(w_s)
-    r = {"n_runs": len(bs), "n_rows": int(len(ytr)), "state_coef": [round(float(c), 4) for c in coef]}
-    for arm, w, wh in (("uniform", np.ones(len(ytr)), False), ("whiten", np.ones(len(ytr)), True), ("state", w_s, True), ("state_perm", w_p, True)):
+    w_v, w_o, r2v = var_weights(Xtr, Str, ytr, runid); w_vp = g.permutation(w_v)
+    r = {"n_runs": len(bs), "n_rows": int(len(ytr)), "state_coef": [round(float(c), 4) for c in coef], "var_R2_crossfit": round(r2v, 4)}
+    ARMS = {"uniform": (np.ones(len(ytr)), False), "whiten": (np.ones(len(ytr)), True), "state": (w_s, True), "state_perm": (w_p, True),
+            "var": (w_v, True), "var_perm": (w_vp, True), "var_oracle": (w_o, True)}
+    for arm in a.arms.split(","):
+        w, wh = ARMS[arm]
         f, wd = fit(Xtr, ytr, w, wh, Xv, yv); sc = [(bacc(f(X), y, 1), bacc(f(X), y, 10)) for X, _, y in TE]
         r[arm] = {"top1": round(float(np.mean([s[0] for s in sc])), 4), "top10": round(float(np.mean([s[1] for s in sc])), 4), "wd": wd}
         if arm == "whiten":   # prediction rung: does the state equation predict where the decoder fails on the test day?
