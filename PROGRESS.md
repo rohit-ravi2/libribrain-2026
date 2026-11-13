@@ -324,3 +324,14 @@ Plan and fact sheet: docs/writeups/OVERNIGHT_2026-11-12.md. Done: README + GitHu
 philosophy note) + project-page section; toolkit/ (libribrain-floor); public Kaggle notebook (event-only timing floor,
 run on Kaggle, no submission); Kaggle solution writeups (drafts; posting route to be checked). Then adversarial review,
 hardening, push. Hugging Face skipped; organiser outreach deferred to Rohit (Nov 13).
+
+## 2026-11-12 late — review pass 1 and an issue for Rohit
+Built: toolkit (9f0e5d3, 6 tests pass), Kaggle writeups (drafts; the Kaggle CLI cannot post writeups or topics, so Rohit pastes
+them), four posts + project-page section (site build passes, 138 pages). Adversarial review pass 1 found 56 items
+(6 severe: Zhang et al. misattributed, philosophy title copied Zhang's paper title, Jayalath & Parker Jones' Timing
+condition and following-word point not credited, the 0.0725 screening model presented as the competition decoder, Kaggle
+writeups claiming no timing input despite the clipped-window/mask duration leak ~0.06-0.07 top-10). Fixes in progress.
+FOR ROHIT: 118 commits already on origin/master (2026-10-18..20) carry an AI co-author trailer, against the binding rule;
+the earlier note that the history was clean was wrong for those. Removing them needs a history rewrite + force push of
+the public repo: his decision. The 59+ unpushed local commits are clean. The website repo also has such trailers (not on
+LibriBrain files).
