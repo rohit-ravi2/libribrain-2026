@@ -369,3 +369,14 @@ Reading: the +11% reliable-signal gain from local whitening does not reach top-1
 a small top-1 gain. The best transform is whole-run whitening of the CONTINUOUS PCs, +0.014 top-10 (se 0.005) over
 per-run whitening of epoch features (+0.040 over global). OPEN: whether this ordering holds in the CNN (needs a GPU slot).
 Summary: docs/writeups/analyses/loc_whiten_summary.json; raw: noise_eq_pilot_loc{10,30,100000}_seed{0..3}.json.
+
+## 2026-11-13 — realistic twin and whitening seed replication launched; cleanup prepared
+Rohit: run (6) and (7), then push and deploy the cleaned repo and site with the old AI co-author lines cut.
+(6) per-run continuous whitening is the existing cont_whd arm (seed 0: 0.073/0.450, +Sinkhorn 0.078/0.510 vs baseline
+0.0725/0.458, 0.079/0.472); replicating with seeds 1 and 2 of both cont_whd and the clean baseline.
+(7) scripts/rtwin_cache.py -> cont_rtwin: per sub-0 run, MEG minus its fitted onset response, circularly shifted by
+U[T/4, 3T/4), plus the run's real onset response at the true onsets (real noise, real amplitude, no word identity).
+Queue scripts/queue_rtwin_seeds.sh: cache build (CPU, 2 threads), then floor_rtwin_s0, floor_whiten_day_s{1,2},
+clean_iso_s{1,2} on the shared /tmp/gpu-8gb.lock (behind Enveda). Results: logs/floor/queue2.log.
+History rewrite verified in a scratch clone (118 trailers and two vendor strings removed, tree identical); the
+procedure is kept untracked in scripts/maint/ and runs only at push time.
