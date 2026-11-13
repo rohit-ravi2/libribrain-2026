@@ -4,7 +4,8 @@ from a delay embedding by (a) a linear VAR (ridge) = linear SDE dx = Ax dt + B d
 prediction (local constant, k-NN) and (c) local linear (Farmer-Sidorowich: a linear fit on each point's k neighbours).
 If (b)/(c) do not beat (a) at any horizon, the background is well described by a linear SDE, and its innovations
 (Kalman/VAR residuals) are the temporally whitened signal; nonlinear ODE discovery (SINDy, KANDy, HAVOK, reservoirs)
-then has nothing to find. State: top-10 training PCs x 6 delays (20 ms); horizons 1, 5, 10 samples (20-200 ms).
+then has nothing to find. Sharper check (added): k-NN on the VAR residuals - any nonlinear structure left after the
+linear model shows up as var_plus_knn_residual > var_linear. Note local_linear_FS is under-determined (K=40 < 61 params). State: top-10 training PCs x 6 delays (20 ms); horizons 1, 5, 10 samples (20-200 ms).
 Within each run: fit on the first 70%, test on the last 30%. -> bg_nonlinearity.json"""
 import os, glob, json
 import numpy as np
@@ -17,7 +18,7 @@ runs = sorted(os.path.basename(f)[:-7] for f in glob.glob(f"{D}/sub-0_*_ev.npz")
 g = np.random.default_rng(1); runs = list(g.choice(runs, 10, replace=False)); out = {"runs": runs}
 r2 = lambda yt, yp: float(1 - ((yt - yp) ** 2).sum() / ((yt - yt.mean(0)) ** 2).sum())
 for h in (1, 5, 10):
-    acc = {"var_linear": [], "knn_local_constant": [], "local_linear_FS": [], "persistence": []}
+    acc = {"var_linear": [], "knn_local_constant": [], "local_linear_FS": [], "persistence": [], "var_plus_knn_residual": []}
     for b in runs:
         Y = np.nan_to_num(np.load(f"{D}/{b}.npy", mmap_mode="r").astype(np.float32), nan=0, posinf=0, neginf=0)
         Y = np.clip((Y - Y.mean(1, keepdims=True)) / (Y.std(1, keepdims=True) + 1e-6), -10, 10); Z = (V.T @ Y).T; del Y
@@ -33,6 +34,8 @@ for h in (1, 5, 10):
             A = np.c_[np.ones(K), E[tr][j] - E[te][i]]; B = tgt[tr][j]
             w = np.linalg.solve(A.T @ A + 1e-1 * np.eye(A.shape[1]), A.T @ B); pl[i] = w[0]
         acc["local_linear_FS"].append(r2(tgt[te], pl))
+        res_tr = tgt[tr] - lin.predict(E[tr]); pr = lin.predict(E[te]) + res_tr[idx].mean(1)   # k-NN on the VAR residuals
+        acc["var_plus_knn_residual"].append(r2(tgt[te], pr))
     out[f"h{h}"] = {k: {"mean_R2": round(float(np.mean(v)), 4), "per_run": [round(x, 3) for x in v]} for k, v in acc.items()}
     print(h, {k: out[f"h{h}"][k]["mean_R2"] for k in acc}, flush=True)
     json.dump(out, open(f"{R}/docs/writeups/analyses/bg_nonlinearity.json", "w"), indent=1)

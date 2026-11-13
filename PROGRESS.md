@@ -289,3 +289,12 @@ Reading: the spatial SHAPE of the noise drifts on a tens-of-seconds scale; a sin
 trace is dominated by a few large components). Supports a covariance-regression / local-whitening noise equation.
 Whitened off-diagonal |corr| barely changes (0.163 -> 0.157; 50-sample windows floor this metric). Next decoder test:
 local (+-30 s, label-free) whitening arm in the linear pilot.
+
+## 2026-11-12 — MEG background is a linear stochastic system (bg_nonlinearity.json; v1 kept as _v1)
+10 sub-0 runs, top-10 PCs x 6 delays, fit first 70% / test last 30% of each run. Forecast R2 at 20 / 100 / 200 ms:
+linear VAR 0.541 / 0.368 / 0.268; k-NN 0.242 / 0.165 / 0.115; persistence 0.299 / 0.009 / -0.235;
+VAR + k-NN on VAR residuals 0.543 / 0.368 / 0.267 (+0.001 / 0.000 / -0.002). Local-linear (Farmer-Sidorowich) arm was
+under-determined (K=40 < 61 parameters) and is not informative. Reading: no nonlinear predictable structure beyond the
+linear model, so the noise ODE is a linear SDE; nonlinear discovery (SINDy, KANDy, HAVOK, reservoirs) has nothing to find.
+The linear model removes about half the background variance one step ahead: temporal whitening (VAR innovations) is the
+untested lever. Next: decoder arms with VAR-innovation inputs and local (+-30 s) spatial whitening.
