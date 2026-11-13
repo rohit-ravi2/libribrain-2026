@@ -389,3 +389,15 @@ when present (scripts/tmajor_cache.py; sub-0 of cont, cont_whd, cont_rtwin). Win
 0.34-0.42 s vs 4-12.7 s. Arms restarted: step 200 at ~60 s (Nov 9: 217 s), GPU 91%; ~1 h per arm, 3 in parallel.
 Seed-0 arms share the step-200 loss 12.401 across caches (same batch order); seeds 1 and 2 differ, as expected.
 Rohit stopped the movement-law pool and had the qcc chem jobs killed to free CPU.
+
+## 2026-11-13 ~15:20 EST — realistic twin and whitening seeds: results (docs/writeups/analyses/rtwin_seeds_summary.json)
+Held-out day, 3 s window, ctx 0, top-1 / top-10, chance 0.02 / 0.20.
+(7) Realistic twin (real background shifted off the events + the run's own fitted onset response at true onsets),
+seed 0: 0.031 / 0.251 (+Sinkhorn 0.024 / 0.257; label-permutation null top-1 0.019). Real MEG, same model, 3 seeds:
+0.071 / 0.453. The timing channel at real amplitude through real noise accounts for about a fifth of the decoder's
+above-chance margin (top-10 +0.05 of +0.25; top-1 +0.011 of +0.051). The white-noise matched twin (0.119 / 0.611) was
+an artefact of independent background. Floor now pinned near 0.03 top-1, not bracketed 0.03-0.12. Caveats: one seed;
+linear generic onset response only (interval-dependent amplitude or other nonlinear timing effects are not in the twin).
+(6) Per-run continuous whitening (cont_whd) vs baseline, seeds 0-2, paired: base top-10 +0.004 (se 0.016), top-1
++0.002; with Sinkhorn top-10 +0.017 (se 0.014; +0.039, +0.021, -0.010) and top-1 -0.014. The seed-0 +0.04 does not
+replicate as a reliable gain; whitening is not established in the CNN. Speed: time-major reads, ~55 min per arm.

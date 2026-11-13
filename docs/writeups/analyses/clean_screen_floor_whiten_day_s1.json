@@ -1,0 +1,73 @@
+{
+ "ckpt": "runs/floor_whiten_day_s1_ep7.pt",
+ "ses11": {
+  "n_rows": 1308,
+  "n_words": 47,
+  "base": {
+   "top1": 0.0712,
+   "top10": 0.4338,
+   "null_top1": 0.0198
+  },
+  "base+sk": {
+   "top1": 0.0876,
+   "top10": 0.4872,
+   "null_top1": 0.0158
+  },
+  "base_T": 3.0,
+  "adabn": {
+   "top1": 0.0622,
+   "top10": 0.4268,
+   "null_top1": 0.0229
+  },
+  "adabn+sk": {
+   "top1": 0.0751,
+   "top10": 0.45,
+   "null_top1": 0.0119
+  },
+  "adabn_T": 1.0
+ },
+ "ses12": {
+  "n_rows": 1364,
+  "n_words": 45,
+  "base": {
+   "top1": 0.0773,
+   "top10": 0.507,
+   "null_top1": 0.021
+  },
+  "base+sk": {
+   "top1": 0.0692,
+   "top10": 0.5301,
+   "null_top1": 0.0174
+  },
+  "base_T": 1.0,
+  "adabn": {
+   "top1": 0.061,
+   "top10": 0.4526,
+   "null_top1": 0.0258
+  },
+  "adabn+sk": {
+   "top1": 0.0708,
+   "top10": 0.4967,
+   "null_top1": 0.0194
+  },
+  "adabn_T": 1.0
+ },
+ "mean": {
+  "base": {
+   "top1": 0.0742,
+   "top10": 0.4704
+  },
+  "base+sk": {
+   "top1": 0.0784,
+   "top10": 0.5087
+  },
+  "adabn": {
+   "top1": 0.0616,
+   "top10": 0.4397
+  },
+  "adabn+sk": {
+   "top1": 0.073,
+   "top10": 0.4733
+  }
+ }
+}
