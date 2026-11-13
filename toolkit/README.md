@@ -34,7 +34,7 @@ Work on LibriBrain word decoding reports accuracy on classifying which word was 
 
 ## Caveats
 
-- A twin with white, spatially independent noise and a per-channel amplitude matched to the real onset response is optimistic: real background is coloured, spatially correlated and non-stationary, which makes a kernel harder to read out. A realistic twin needs real background, passed through the `noise` argument.
+- A twin with white, spatially independent noise and a per-channel amplitude matched to the real onset response is optimistic: real background is coloured, spatially correlated and non-stationary, which makes a kernel harder to read out. A realistic twin needs real background, passed through the `noise` argument. On LibriBrain's held-out day, a twin with real MEG background (circularly shifted off the events) and the real onset response scored 0.031 top-1 and 0.251 top-10 with the screening network, against 0.119 and 0.611 for the white-noise twin at the same amplitude.
 - The timing floor is for fixed windows from onset. It is what an exact-onset classifier of this capacity extracts from the onsets; it is neither a lower nor an upper bound for a given MEG model, and it does not measure a particular model's use of timing.
 - The floor depends on the train/test split. Use held-out recordings, and ideally a held-out text, or the floor will absorb memorised sequences.
 - Packard information with many cells is noisy at small sample sizes; the add-1/2 smoothing and cross-fitting limit but do not remove this.
