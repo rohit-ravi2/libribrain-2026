@@ -317,3 +317,10 @@ their own past as the background is), so temporal subtraction hurts. Tracking th
 subtraction that raises SNR, by ~11%: a modest gain, consistent with per-day whitening's +0.03 top-10. Caveat: class-
 mean differences can include timing-correlated structure (next-onset responses), so share is an upper bound on content.
 Noise subtraction is not a route to a much better decoder on this data. Local whitening remains the arm worth a decoder test.
+
+## 2026-11-12 evening — overnight publication run started (Rohit's go)
+Plan and fact sheet: docs/writeups/OVERNIGHT_2026-11-12.md. Done: README + GitHub description now give private ranks
+(17th/53 Broad, 26th/91 Deep). Running in parallel: posts (timing twin, leaderboard shake-up, noise as an equation,
+philosophy note) + project-page section; toolkit/ (libribrain-floor); public Kaggle notebook (event-only timing floor,
+run on Kaggle, no submission); Kaggle solution writeups (drafts; posting route to be checked). Then adversarial review,
+hardening, push. Hugging Face skipped; organiser outreach deferred to Rohit (Nov 13).
