@@ -9,14 +9,14 @@ the website repo is shared with another session: add and commit only LibriBrain 
 
 ## Checklist
 - [x] README rank wording (63a139d) and GitHub description
-- [ ] Toolkit `toolkit/` (pip-installable `libribrain-floor`): timing floor, timing twin, onset TRF deconvolution,
+- [x] Toolkit `toolkit/` (pip-installable `libribrain-floor`): timing floor, timing twin, onset TRF deconvolution,
       balanced top-k, Sinkhorn balancing; tests; README
-- [ ] Kaggle notebook (public, internet on, CPU): timing floor from event files only + Sinkhorn demo; run on Kaggle
+- [x] Kaggle notebook (public, internet on, CPU): timing floor from event files only + Sinkhorn demo; run on Kaggle
 - [x] Kaggle solution writeups drafted (CLI cannot post; Rohit pastes them on Kaggle): docs/writeups/kaggle/
-- [ ] Posts: timing twin; leaderboard shake-up; noise as an equation; philosophy note
-- [ ] Website: posts in src/content/posts/{libribrain,philosophy}/, project page section and links, build passes
-- [ ] Adversarial review pass 1 (facts vs sources, voice, claims), fixes
-- [ ] Hardening pass 2, push repo + website, final notify
+- [x] Posts: timing twin; leaderboard shake-up; noise as an equation; philosophy note
+- [x] Website: posts in src/content/posts/{libribrain,philosophy}/, project page section and links, build passes
+- [x] Adversarial review pass 1 (facts vs sources, voice, claims), fixes
+- [x] Hardening pass 2, push repo + website, final notify
 
 ## Fact sheet (verified against files in this repo; cite these, nothing else)
 Competition: PNPL LibriBrain 2026, Kaggle pnpl-competition-2026-{broad,deep}; 50 words, top-10 balanced accuracy, chance

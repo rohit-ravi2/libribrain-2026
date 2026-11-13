@@ -335,3 +335,20 @@ FOR ROHIT: 118 commits already on origin/master (2026-10-18..20) carry an AI co-
 the earlier note that the history was clean was wrong for those. Removing them needs a history rewrite + force push of
 the public repo: his decision. The 59+ unpushed local commits are clean. The website repo also has such trailers (not on
 LibriBrain files).
+
+## 2026-11-13 ~00:30 EST — overnight publication run complete
+Live:
+- rohitravi.com: posts the-timing-twin, eighth-in-public-seventeenth-in-private, noise-as-an-equation;
+  philosophy/the-baseline-is-part-of-the-claim; "After the competition" section with notebook and toolkit links
+  (website commits dea8ef9 + link commit; only LibriBrain files committed).
+- Kaggle notebook (public, v4, no submission): kaggle.com/code/rohitravi2/libribrain-how-much-of-the-label-is-timing.
+  It reproduces timing_floor.json (bits exact, classifier within 0.02; sklearn 1.6.1 vs 1.9.1). New finding: Sinkhorn
+  LOWERS top-10 for the class-weighted event classifier (0.586 -> 0.53) and raises it for the unweighted one
+  (0.472 -> 0.54), so balancing must be credited against an equally prior-corrected baseline.
+- GitHub libribrain-2026: README and description give the private ranks; toolkit/, kaggle_notebook/ and the writeup
+  drafts pushed (68 commits, no trailers).
+Reviews: pass 1 (56 items, 6 severe) and pass 2 (0 high, 7 medium) applied, plus the notebook v4 corrections.
+For Rohit (Nov 13):
+- Paste docs/writeups/kaggle/{broad,deep}_solution_writeup.md into Kaggle by hand; the CLI cannot post.
+- Decide on the 118 AI-trailer commits on origin/master (needs a history rewrite and force push).
+- Organiser outreach.
