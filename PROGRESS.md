@@ -401,3 +401,10 @@ linear generic onset response only (interval-dependent amplitude or other nonlin
 (6) Per-run continuous whitening (cont_whd) vs baseline, seeds 0-2, paired: base top-10 +0.004 (se 0.016), top-1
 +0.002; with Sinkhorn top-10 +0.017 (se 0.014; +0.039, +0.021, -0.010) and top-1 -0.014. The seed-0 +0.04 does not
 replicate as a reliable gain; whitening is not established in the CNN. Speed: time-major reads, ~55 min per arm.
+
+## 2026-11-13 ~15:35 EST — repo history cleaned and pushed; site deployed
+Per Rohit: history rewritten (scratch clone, filter-repo) to remove the 118 AI co-author trailers and two vendor strings
+in old file contents; tree identical; force-pushed with lease (origin/master 258 commits, 0 matches). Live repo reset
+--soft onto the new history; other sessions' uncommitted src/models.py and src/v3lib.py untouched. Website: series hub,
+reading order, cross-links, corrections, realistic-twin and whitening-seed results; rebased onto the other session's
+ann-bnn commits, pushed, live (all 8 LibriBrain pages HTTP 200). Website repo history NOT rewritten (shared; Rohit).
