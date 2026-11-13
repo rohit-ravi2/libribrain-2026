@@ -1,0 +1,45 @@
+{
+ "n_eval_runs": 60,
+ "fit_runs": [
+  "sub-0_ses-14_task-TIMIT_run-1",
+  "sub-0_ses-10_task-Sherlock3_run-1",
+  "sub-0_ses-1_task-Sherlock9_run-1",
+  "sub-0_ses-3_task-Sherlock3_run-1",
+  "sub-0_ses-14_task-Sherlock7_run-1",
+  "sub-0_ses-5_task-Sherlock7_run-1",
+  "sub-0_ses-14_task-Sherlock6_run-1",
+  "sub-0_ses-30_task-TheMoth_run-1",
+  "sub-0_ses-10_task-Sherlock8_run-1",
+  "sub-0_ses-9_task-Sherlock2_run-1"
+ ],
+ "raw": {
+  "reliable_signal_share": 0.001083,
+  "split_half_corr": 0.2496,
+  "n_rows": 101794,
+  "n_classes": 50
+ },
+ "global_wh": {
+  "reliable_signal_share": 0.001083,
+  "split_half_corr": 0.2496,
+  "n_rows": 101794,
+  "n_classes": 50
+ },
+ "innov": {
+  "reliable_signal_share": 0.000539,
+  "split_half_corr": 0.1453,
+  "n_rows": 101794,
+  "n_classes": 50
+ },
+ "innov_loc": {
+  "reliable_signal_share": 0.000486,
+  "split_half_corr": 0.1325,
+  "n_rows": 101794,
+  "n_classes": 50
+ },
+ "loc": {
+  "reliable_signal_share": 0.0012,
+  "split_half_corr": 0.2746,
+  "n_rows": 101794,
+  "n_classes": 50
+ }
+}

@@ -306,3 +306,14 @@ Innovation (drive) covariance, trace-normalised log-Euclidean distance: within-r
 2.69 / 2.80. Reading: the noise equation is x(t+1) = A x(t) + B(t) w(t) with A a single constant shared across days,
 and the drive covariance B B^T drifting within runs and differing more between days. One fitted A whitens every run in
 time; the state-dependent part of the noise equation lives only in the drive covariance.
+
+## 2026-11-12 — does subtracting modelled noise raise word SNR? (snr_subtraction.json)
+Sub-0, 60 eval runs (101,794 word epochs, 50 words), constant VAR fitted on 10 other runs; label-free transforms.
+Reliable (split-half) word-signal share of variance / split-half corr of class means:
+raw 0.00108 / 0.250 (global whitening identical after per-feature standardisation); local +-30 s whitening
+0.00120 / 0.275 (+11%); VAR innovations 0.00054 / 0.145 (-50%); innovations + local whitening 0.00049 / 0.133.
+Reading: the constant-dynamics forecast removes word signal faster than noise (evoked responses are as predictable from
+their own past as the background is), so temporal subtraction hurts. Tracking the drifting spatial covariance is the one
+subtraction that raises SNR, by ~11%: a modest gain, consistent with per-day whitening's +0.03 top-10. Caveat: class-
+mean differences can include timing-correlated structure (next-onset responses), so share is an upper bound on content.
+Noise subtraction is not a route to a much better decoder on this data. Local whitening remains the arm worth a decoder test.
