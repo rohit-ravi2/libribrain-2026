@@ -380,3 +380,6 @@ Queue scripts/queue_rtwin_seeds.sh: cache build (CPU, 2 threads), then floor_rtw
 clean_iso_s{1,2} on the shared /tmp/gpu-8gb.lock (behind Enveda). Results: logs/floor/queue2.log.
 History rewrite verified in a scratch clone (118 trailers and two vendor strings removed, tree identical); the
 procedure is kept untracked in scripts/maint/ and runs only at push time.
+2026-11-13 ~13:25 EST: GPU free per Rohit; arms run without the shared lock, three in parallel (scripts/arm_worker.sh)
+because each arm is CPU-bound (~3.5 h, GPU ~5%), ~1.2 GB GPU and ~1.8 GB anon RAM in a 6 GiB scope. Workers:
+rtwin_s0 then whiten_day_s1; clean_iso_s1 then s2; whiten_day_s2. Expected ~7 h wall.
