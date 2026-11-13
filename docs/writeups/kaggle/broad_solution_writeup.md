@@ -6,10 +6,10 @@ This is my writeup for the Broad track of PNPL LibriBrain 2026. The task is to n
 306 channels of MEG, scored as top-10 balanced accuracy, so chance is 0.20. Broad has 39 listeners, most with ten to forty
 minutes of labelled data and seven with none. My selected submission scored 0.72230 on the public leaderboard, eighth at the
 close, and 0.67846 on the private leaderboard, which placed 17th of 53. The private winner scored 0.758. A file I submitted
-but did not select scored 0.68037 privately, and I come back to that below, because the gap between my public and private
-positions is mostly explained by one test-time step that I trusted too far.
+but did not select scored 0.68037 privately, and I come back to that below, because part of the gap between my public and
+private positions comes from one test-time step that I trusted too far.
 
-The code, the experiment log with predictions written before each run, and every submission with its public and private
+The code, the experiment log with predictions written before most runs, and every submission with its public and private
 score are in the repository at https://github.com/rohit-ravi2/libribrain-2026. A longer account is on the project page,
 https://www.rohitravi.com/projects/libribrain-2026/.
 
@@ -31,7 +31,10 @@ normalised over their valid samples only.
 
 I excluded relative word timing as an input. A model given inter-word intervals rose from 0.30 to 0.51 locally, which says
 more about the stimulus metadata than about the brain, so the feature was removed and the transformer described below has its
-timing inputs zeroed.
+timing inputs zeroed. That did not make the recipe timing-free. After the competition I found that the sentence-clipped
+windows and the validity-mask channel still expose word duration: trained and scored on shared noise in place of MEG, the
+same recipe reaches 0.272 top-10 against 0.374 on real MEG, so roughly 0.06 to 0.07 of a score in this family comes from
+window geometry rather than the brain.
 
 ## Model and training target
 
@@ -41,8 +44,9 @@ of a sentence. Two heads sit on top. One is a 50-way classifier. The other is a 
 SigLIP loss against the block-12 encoder states of T5-large for every word in the training audiobooks, about a million words,
 whether or not the word is in the competition vocabulary.
 
-The target was the largest single change in the project. Moving from a plain classifier to the contextual T5 target, with
-sentence-clipped windows and the sentence transformer, took the public Broad score from 0.225 to 0.428. Transformer depth,
+The target was one of the two largest steps in the project, though it arrived bundled. Moving to the contextual T5 target
+together with sentence-clipped windows and the sentence transformer took the public Broad score from 0.225 to 0.428
+(+0.203); training on subject 0 alone, described next, added +0.227. Transformer depth,
 window length and training time each moved it by a point or two afterwards. Larger targets (T5-3B, −0.016), acoustic
 wav2vec2 targets (+0.005), 100 Hz input (−0.052) and wider windows (−0.022) did not help. Logits are corrected by half the
 log training prior before averaging.
@@ -59,8 +63,10 @@ information about words, whereas about eighty hours of one brain yields a mappin
 The Broad listeners' labelled minutes were more useful for alignment than for training. In the final pipeline each labelled
 subject gets its own input layer fitted on its labelled data, with a low-rank form for subjects under thirty minutes. The
 seven unlabelled subjects receive the average of six donor subjects' input layers applied to their own MEG. On the public
-board these two steps added +0.001 each, but the per-subject input layer turned out to matter more privately than publicly
-(+0.0013 public, +0.0304 private, measured between two otherwise matched files).
+board these two steps added +0.001 each, but the per-subject input layer looked better privately (+0.0013 public, +0.0304
+private). That file pair is not a clean comparison, since the two files also differ in seed count (five against ten) and in
+how the subjects without labels were handled. The direction is supported locally, where the per-subject layer was positive
+in all 36 configurations tested over four checkpoints, by +0.030 to +0.068.
 
 ## Test-time steps
 
@@ -93,15 +99,22 @@ Changes on the boards are differences between two submitted files that differ on
 | Self-learned sentence prior, κ = 20 | +0.016 | +0.0174 | −0.0363 |
 | Trigram rerank from a vocabulary text corpus | | −0.1114 | −0.0898 |
 
-Sinkhorn balancing is the cleanest result in the project. The local estimate, the public change and the private change agree
-to within a thousandth or so, and the refinement that fits the offsets on sentence rows held up in the same way.
+Sinkhorn balancing is the cleanest result in the project. The public and private changes agree to within a thousandth, the
+local estimate was +0.030, and the refinement that fits the offsets on sentence rows held up in the same way.
 
-The sentence prior is the opposite case. Its public gain of +0.017 was predicted almost exactly by a holdout simulator built
-from real held-out posteriors arranged into vocabulary-only sentences (+0.016), which is why I trusted it. On the private
-split it cost 0.036. The damage scales with the prior's strength: across the κ values I submitted, the private scores were
+The sentence prior is the opposite case. Measured against the ten-seed balanced file without it, its public gain was
++0.0174, and a holdout simulator built from real held-out posteriors arranged into vocabulary-only sentences reproduced it
+(+0.016). That agreement was weaker evidence than it looked, because I had calibrated the simulator against public
+leaderboard effects. A local test of the prior on held-out prose had shown it losing, and I set that aside on the grounds
+that prose was a poor model of the constructed test sentences. On the private split the prior cost 0.036. The damage scales with the prior's strength: across the κ values I submitted, the private scores were
 0.665 at κ = 200, 0.646 at 50, 0.634 at 20, 0.616 at 10 and 0.590 at 5, against 0.671 for the same ensemble with no prior.
-Publicly κ = 20 looked best. I chose κ with public feedback, and the private numbers suggest the self-learned transitions
-fitted something specific to the public rows; I do not yet have a clean explanation beyond that. An external text trigram was
+Publicly κ = 20 looked best. The public-private gaps also suggest the split is not exchangeable with respect to this step.
+Among Broad files scoring at least 0.60 publicly, the seven without the prior had gaps between −0.009 and −0.022 and the
+eighteen with it had gaps between −0.024 and −0.102, with no overlap. The prior acts unevenly across row types: at κ = 20,
+counting words that enter or leave a row's top ten, it changes isolated-word rows by 3.14 words per row against 1.42 for
+sentence rows, because the balancing that follows it is fitted over both. A private split that weights isolated words,
+subjects or sentences differently from the public one would see the prior differently. I cannot check which rows are
+private, so this is a reading of the evidence rather than a confirmed cause. An external text trigram was
 worse still, since a text prior overrides good brain evidence as readily as bad.
 
 AdaBN generalised only in part. The full version hurt on both boards, while a half-strength version (α = 0.5) lost a little
@@ -115,12 +128,12 @@ after silence, though it depends on position and cannot be used at test time.
 
 ## Public versus private, and final selection
 
-Every Broad file built on the sentence prior with κ of 50 or below lost between 0.04 and 0.10 going from public to private
-(the weak κ = 200 version lost 0.024), while the late files without it lost about 0.01 to 0.02. My selected file (public 0.72230, private 0.67846) carries the prior. The best file I submitted
-privately was an AdaBN α = 0.5 ensemble with Sinkhorn balancing at T = 2 and no prior, which scored 0.68904 publicly and
-0.68037 privately; that would have placed about 16th. The margin is small on Broad, but it is the same lesson as on Deep,
-where it cost eight places. A step whose public gain came through a parameter tuned against the public board deserved a
-hedge in final selection, and the safer second slot would have been the strongest file without it.
+My selected file (public 0.72230, private 0.67846) carries the prior. The best file I submitted privately was an AdaBN
+α = 0.5 ensemble with Sinkhorn balancing at T = 2 and no prior, which scored 0.68908 publicly and 0.68037 privately; that
+would have placed about 16th. The margin is small on Broad, one place, while on Deep the same choice cost eight. A step
+whose support came from the public split, or from a tool calibrated to it, amounted to a single measurement however many
+submissions seemed to confirm it, and one of the two final slots should have gone to the strongest file without such
+steps.
 
 ## Compute
 
@@ -132,7 +145,8 @@ selected Broad file averages five seeds.
 Every subject heard the same 156 holdout sentences, so absolute onset times and the shuffle seed would allow rows to be
 matched across subjects and across the two tracks. The organisers disqualify teams that do this. Nothing in this entry uses
 that correspondence or any other cross-subject or cross-track information about the holdout; each test-time computation reads
-a single subject's rows. As noted above, I also excluded relative word timing as a model input. The audit is in
+a single subject's rows. As noted above, I also excluded relative word timing as a model input, although the clipped windows
+and validity mask still carry some duration information. The audit is in
 `docs/COMPLIANCE.md` in the repository.
 
 ## Links
