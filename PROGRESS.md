@@ -383,3 +383,9 @@ procedure is kept untracked in scripts/maint/ and runs only at push time.
 2026-11-13 ~13:25 EST: GPU free per Rohit; arms run without the shared lock, three in parallel (scripts/arm_worker.sh)
 because each arm is CPU-bound (~3.5 h, GPU ~5%), ~1.2 GB GPU and ~1.8 GB anon RAM in a 6 GiB scope. Workers:
 rtwin_s0 then whiten_day_s1; clean_iso_s1 then s2; whiten_day_s2. Expected ~7 h wall.
+2026-11-13 ~14:00 EST: training was disk-bound. Windows were read from (306, T) memmaps as 306 strided row slices
+(one page fault per channel per word). src/cont.py gains LB_TMAJOR=1: read {CONTDIR}_tm/ time-major copies (T, 306)
+when present (scripts/tmajor_cache.py; sub-0 of cont, cont_whd, cont_rtwin). Windows byte-identical; 512-word batch
+0.34-0.42 s vs 4-12.7 s. Arms restarted: step 200 at ~60 s (Nov 9: 217 s), GPU 91%; ~1 h per arm, 3 in parallel.
+Seed-0 arms share the step-200 loss 12.401 across caches (same batch order); seeds 1 and 2 differ, as expected.
+Rohit stopped the movement-law pool and had the qcc chem jobs killed to free CPU.

@@ -3,7 +3,7 @@
 # Usage: arm_worker.sh [--wait PID] tag:seed:contdir ...   (contdir '-' = default cont)
 cd ~/projects/libribrain-2026; PY=~/venvs/libribrain/bin/python; mkdir -p logs/floor
 CAP="systemd-run --user --scope -q -p MemoryMax=6G -p MemorySwapMax=0"
-export LB_MMAP=1 OMP_NUM_THREADS=4 LB_WIN=0,3 LB_NOCLIP=1; PXR="sub-0_ses-1[12]_task-Sherlock1"
+export LB_TMAJOR=1 LB_MMAP=1 OMP_NUM_THREADS=4 LB_WIN=0,3 LB_NOCLIP=1; PXR="sub-0_ses-1[12]_task-Sherlock1"
 [ "$1" = --wait ] && { while kill -0 $2 2>/dev/null; do sleep 30; done; shift 2; }
 for spec in "$@"; do IFS=: read t s cd <<< "$spec"; E=LB_X=0; [ "$cd" != - ] && E=LB_CONTDIR=$cd
   C="--win 3s --ctx 0 --t5 1.0 --epochs 8 --deep 1 --broad_frac 0.0 --exclude $PXR --seed $s"

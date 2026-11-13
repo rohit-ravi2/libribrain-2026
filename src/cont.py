@@ -11,6 +11,7 @@ from .split import parse, T_MAX, SHARED
 import os as _os
 FS = int(_os.environ.get("LB_FS", 50)); TAIL = 1.0                 # cache rate: 50 (cont/) or 100 (cont100/)
 CONT = f"{CACHE}/{_os.environ['LB_CONTDIR']}" if _os.environ.get("LB_CONTDIR") else (f"{CACHE}/cont" if FS == 50 else f"{CACHE}/cont{FS}")   # LB_CONTDIR: alternative cache (e.g. cont_dc, onset-deconvolved)
+TMAJOR = _os.environ.get("LB_TMAJOR") == "1"                   # read windows from {CONT}_tm/ time-major copies when present
 MMAP = _os.environ.get("LB_MMAP") == "1"                          # keep MEG on disk (memmap) instead of RAM
 PRE, POST = [float(x) for x in _os.environ.get("LB_WIN", "1.0,2.0").split(",")]   # context window around onset, seconds (env LB_WIN="pre,post")
 WIN = int((PRE + POST) * FS); ON = int(PRE * FS)            # 150 samples, onset at sample 50
@@ -51,7 +52,7 @@ class Words:
         if runs is not None:
             keep = [i for i, b in enumerate(self.bases) if b in set(runs)]; evs = [evs[i] for i in keep]; self.bases = [self.bases[i] for i in keep]
         cols = {k: [] for k in ("run", "sub", "onset", "label", "tc", "sent", "s0", "s1", "li", "ntimes")}
-        self.meg, self.t5, self.w2v = [], [], []
+        self.meg, self.t5, self.w2v, self.tmaj = [], [], [], []
         gs = 0
         for r, (b, f) in enumerate(zip(self.bases, evs)):
             d = np.load(f, allow_pickle=True); n = len(d["label"]); sub, ses = parse(b)
@@ -61,7 +62,10 @@ class Words:
             cols["sent"].append(si + gs); gs += int(si.max()) + 10 ** 6 + 1
             cols["s0"].append(d["sent_start_s"]); cols["s1"].append(d["sent_end_s"]); cols["li"].append(np.arange(n))
             cols["ntimes"].append(np.full(n, int(d["n_times50"])))
-            if load_meg: self.meg.append(np.load(f"{CONT}/{b}.npy", mmap_mode="r" if MMAP else None))
+            if load_meg:
+                tm = f"{CONT}_tm/{b}.npy"                   # LB_TMAJOR=1: time-major copy (T, 306), one contiguous read per window
+                if TMAJOR and _os.path.exists(tm): self.meg.append(np.load(tm, mmap_mode="r" if MMAP else None)); self.tmaj.append(True)
+                else: self.meg.append(np.load(f"{CONT}/{b}.npy", mmap_mode="r" if MMAP else None)); self.tmaj.append(False)
             if load_t5: self.t5.append(np.load(f"{CACHE}/{_os.environ.get('LB_T5DIR', 'runs_t5')}/{b}.npy", mmap_mode="r"))
             if load_w2v: self.w2v.append(np.load(f"{CACHE}/runs_w2v/{b}.npy", mmap_mode="r"))
         for k, v in cols.items(): setattr(self, k, np.concatenate(v))
@@ -109,10 +113,10 @@ class Words:
             lo = np.maximum(lo, on - np.round(clip[0] * FS).astype(int)); hi = np.minimum(hi, on + np.round(clip[1] * FS).astype(int))
         if NOCLIP: lo, hi = start, start + WIN          # fixed window geometry: valid span never depends on sentence or neighbours
         for j in range(B):
-            r = int(self.run[idx[j]]); T = self.meg[r].shape[1]
+            r = int(self.run[idx[j]]); tmj = self.tmaj[r] if self.tmaj else False; T = self.meg[r].shape[0 if tmj else 1]
             a, b = max(start[j], 0), min(start[j] + WIN, T)
             if b <= a: continue
-            if NOISE == 0: seg = np.ascontiguousarray(self.meg[r][:, a:b])
+            if NOISE == 0: seg = np.ascontiguousarray(self.meg[r][a:b].T if tmj else self.meg[r][:, a:b])
             elif NOISE == 1: seg = _NB[:, (np.arange(a, b) + r * 7919) % _NB.shape[1]]      # shared noise: overlapping windows see the same samples
             elif NOISE == 3:
                 if not hasattr(self, "_ons"): self._ons = {}; self._K = synth_kernel(FS)
