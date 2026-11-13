@@ -1,0 +1,16 @@
+{
+  "id": "rohitravi2/libribrain-how-much-of-the-label-is-timing",
+  "title": "LibriBrain: How Much of the Label Is Timing?",
+  "code_file": "timing-floor-libribrain.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": ["pnpl-competition-2026-deep"],
+  "kernel_sources": [],
+  "model_sources": [],
+  "keywords": ["neuroscience", "classification"]
+}

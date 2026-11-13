@@ -1,0 +1,37 @@
+[{"stream_name":"stderr","time":8.324937445,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.324994474,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.325001693,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.325007114,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.106327404,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.106365848,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.106371941,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.106377138,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":14.928741287,"data":"scikit-learn 1.6.1 | numpy 2.1.3 | pandas 2.3.3\n"}
+,{"stream_name":"stderr","time":15.624259557,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":15.624294433,"data":"\n"}
+,{"stream_name":"stderr","time":15.624300549,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":24.401312416,"data":"162 event files downloaded in 10 s\n"}
+,{"stream_name":"stdout","time":29.339478767,"data":"162 runs, 780,277 word events, 313,068 vocabulary tokens (40.1%)\n"}
+,{"stream_name":"stdout","time":29.339522235,"data":"training runs: 160 | test runs: ('sub-0_ses-11_task-Sherlock1_run-2', 'sub-0_ses-12_task-Sherlock1_run-2')\n"}
+,{"stream_name":"stdout","time":153.766476937,"data":"W = 0.5 s  n_train 310,396  0.657 bits  seed 0: top-1 0.1015  top-10 0.5688  |  seeds (0, 1, 2): top-1 0.102-0.107  top-10 0.549-0.569  (124 s)\n"}
+,{"stream_name":"stdout","time":261.443050821,"data":"W = 1.0 s  n_train 310,396  0.596 bits  seed 0: top-1 0.0918  top-10 0.5805  |  seeds (0, 1, 2): top-1 0.092-0.113  top-10 0.561-0.581  (108 s)\n"}
+,{"stream_name":"stdout","time":363.286067969,"data":"W = 2.0 s  n_train 310,396  0.560 bits  seed 0: top-1 0.1047  top-10 0.5855  |  seeds (0, 1, 2): top-1 0.097-0.105  top-10 0.586-0.599  (102 s)\n"}
+,{"stream_name":"stdout","time":464.585941259,"data":"W = 3.0 s  n_train 310,396  0.533 bits  seed 0: top-1 0.1219  top-10 0.5864  |  seeds (0, 1, 2): top-1 0.113-0.129  top-10 0.581-0.587  (102 s)\n"}
+,{"stream_name":"stdout","time":464.709932504,"data":"48 vocabulary words occur on the held-out day; 29 occur at least 20 times\n"}
+,{"stream_name":"stdout","time":464.709972604,"data":"best: a 0.92, to 0.89, the 0.84, of 0.79, out 0.75, not 0.73, so 0.71, this 0.70\n"}
+,{"stream_name":"stdout","time":464.709980113,"data":"worst: have 0.30, all 0.33, on 0.36, but 0.38, had 0.41, and 0.41, that 0.43, for 0.45\n"}
+,{"stream_name":"stdout","time":503.250114389,"data":"balanced weights  largest share of top-1 predictions on ses-11: 0.122 raw, 0.074 after Sinkhorn (uniform would be 0.020)\n"}
+,{"stream_name":"stdout","time":503.250163009,"data":"no class weights  largest share of top-1 predictions on ses-11: 0.320 raw, 0.070 after Sinkhorn (uniform would be 0.020)\n"}
+,{"stream_name":"stdout","time":504.576869665,"data":"total runtime 490 s\n"}
+,{"stream_name":"stderr","time":508.417452421,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":508.417510282,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":508.631206665,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":508.631236208,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":509.600488885,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":509.725551882,"data":"[NbConvertApp] Writing 290699 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":513.347788884,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":514.135135528,"data":"[NbConvertApp] Support files will be in __results___files/\n"}
+,{"stream_name":"stderr","time":514.135168892,"data":"[NbConvertApp] Making directory __results___files\n"}
+,{"stream_name":"stderr","time":514.135389506,"data":"[NbConvertApp] Making directory __results___files\n"}
+,{"stream_name":"stderr","time":514.135638527,"data":"[NbConvertApp] Writing 446524 bytes to __results__.html\n"}
+]
