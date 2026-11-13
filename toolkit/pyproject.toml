@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "libribrain-floor"
+version = "0.1.0"
+description = "Tools for measuring how much of a MEG word-decoding score comes from word timing."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Rohit Ravi", email = "rohit.ravi2@gmail.com" }]
+dependencies = ["numpy", "scipy", "scikit-learn", "pandas"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
