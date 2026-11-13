@@ -1,0 +1,39 @@
+{
+ "args": {
+  "row_frac": 1.0,
+  "fracs": "1",
+  "seed": 3,
+  "P": 64,
+  "tag": "loc100000_seed3",
+  "day": 0,
+  "arms": "uniform,whiten",
+  "loc": 100000,
+  "feat_dir": "/mnt/ssd4tb/data/libribrain_cache/noise_eq"
+ },
+ "n_train_runs": 152,
+ "curve": {
+  "1.0": {
+   "n_runs": 152,
+   "n_rows": 300010,
+   "state_coef": [
+    1.348,
+    0.0123,
+    0.0068,
+    0.0037,
+    0.0033
+   ],
+   "var_R2_crossfit": 0.1321,
+   "uniform": {
+    "top1": 0.0458,
+    "top10": 0.3853,
+    "wd": 0.01
+   },
+   "whiten": {
+    "top1": 0.0399,
+    "top10": 0.3864,
+    "wd": 0.001
+   },
+   "state_pred_corr_test": 0.0686
+  }
+ }
+}

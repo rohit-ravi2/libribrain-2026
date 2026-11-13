@@ -1,0 +1,70 @@
+{
+ "note": "linear noise-eq pilot, full data, 4 seeds; each cell = mean of the uniform and whiten fits (identical inputs for loc*, replicate fits); deltas paired by seed vs per-run (epoch-feature) whitening",
+ "results": {
+  "glob": {
+   "top1": 0.0486,
+   "top10": 0.3517,
+   "d_top10_vs_run": [
+    -0.0293,
+    -0.0198,
+    -0.0244,
+    -0.0287
+   ],
+   "d_top10_mean": -0.0255,
+   "d_top10_se": 0.0022,
+   "d_top1_mean": 0.0041
+  },
+  "run": {
+   "top1": 0.0445,
+   "top10": 0.3773,
+   "d_top10_vs_run": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "d_top10_mean": 0.0,
+   "d_top10_se": 0.0,
+   "d_top1_mean": 0.0
+  },
+  "loc100000": {
+   "top1": 0.05,
+   "top10": 0.3915,
+   "d_top10_vs_run": [
+    0.0248,
+    0.021,
+    0.0042,
+    0.0069
+   ],
+   "d_top10_mean": 0.0142,
+   "d_top10_se": 0.0051,
+   "d_top1_mean": 0.0056
+  },
+  "loc30": {
+   "top1": 0.0531,
+   "top10": 0.3768,
+   "d_top10_vs_run": [
+    0.0099,
+    -0.0045,
+    -0.0096,
+    0.0024
+   ],
+   "d_top10_mean": -0.0005,
+   "d_top10_se": 0.0042,
+   "d_top1_mean": 0.0086
+  },
+  "loc10": {
+   "top1": 0.0569,
+   "top10": 0.3826,
+   "d_top10_vs_run": [
+    0.0145,
+    0.0081,
+    -0.0058,
+    0.0045
+   ],
+   "d_top10_mean": 0.0053,
+   "d_top10_se": 0.0043,
+   "d_top1_mean": 0.0124
+  }
+ }
+}

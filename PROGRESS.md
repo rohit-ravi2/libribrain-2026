@@ -359,3 +359,13 @@ signal at +-30 s). noise_eq_pilot.py gains `--loc LW`: features from continuous 
 the local +-LW s covariance, then epoched; same linear decoder, split, seeds. Queue scripts/queue_loc_whiten.sh: LW 30,
 10, whole run (100000) x seeds 0-3, full data, CPU 2 threads, 4 GiB scope. Baselines: existing seed{0..3}_day{0,1}
 (global and per-run whitening of epoch features). Smoke (10% data) ran clean in 90 s.
+
+## 2026-11-13 — local-whitening decoder test: result
+Linear pilot, full data, 4 seeds, held-out day (top-1 / top-10; each cell the mean of two replicate fits):
+global epoch whitening 0.049/0.352; per-run epoch whitening 0.045/0.377; continuous whole-run whitening 0.050/0.392;
+local +-30 s 0.053/0.377; local +-10 s 0.057/0.383. Paired against the whole-run control (same pipeline, window only):
++-30 s top-10 -0.015 (se 0.004), top-1 +0.003 (se 0.005); +-10 s top-10 -0.009 (se 0.002), top-1 +0.007 (se 0.003).
+Reading: the +11% reliable-signal gain from local whitening does not reach top-10 in this decoder; it trades top-10 for
+a small top-1 gain. The best transform is whole-run whitening of the CONTINUOUS PCs, +0.014 top-10 (se 0.005) over
+per-run whitening of epoch features (+0.040 over global). OPEN: whether this ordering holds in the CNN (needs a GPU slot).
+Summary: docs/writeups/analyses/loc_whiten_summary.json; raw: noise_eq_pilot_loc{10,30,100000}_seed{0..3}.json.
