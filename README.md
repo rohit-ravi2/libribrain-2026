@@ -4,7 +4,8 @@ This repository holds the code, the experiment log and the development history o
 competition on Kaggle. The task is to identify which of 50 words a listener heard, given 306 channels of
 magnetoencephalography recorded while they listened. Scoring is top-10 balanced accuracy, for which chance is 0.20.
 
-The entry finished 8th, with public-leaderboard scores of 0.722 on the Broad track and 0.729 on the Deep track. It uses no
+On the final private leaderboard the entry placed 17th of 53 on the Broad track (0.678) and 26th of 91 on the Deep track
+(0.697); on the public leaderboard it scored 0.722 on Broad, eighth at the close, and 0.729 on Deep. It uses no
 cross-subject or cross-track information about the holdout, a point discussed under [Rules and compliance](#rules-and-compliance)
 because several higher entries were flagged by the organisers for exactly that.
 
@@ -14,7 +15,7 @@ because several higher entries were flagged by the organisers for exactly that.
 |---|---|---|
 | Published reference | 0.430, MEG-XL (pretrained on ~300 h from 800 subjects) | 0.732, d'Ascoli et al. (supervised on all subject-0 data) |
 | This entry, public leaderboard | 0.722 | 0.729 |
-| This entry, private leaderboard | pending | pending |
+| This entry, private leaderboard | 0.678 (17th of 53) | 0.697 (26th of 91) |
 
 All training ran on a single RTX 4060 Ti with 8 GB of memory, over 26 days.
 
