@@ -352,3 +352,10 @@ For Rohit (Nov 13):
 - Paste docs/writeups/kaggle/{broad,deep}_solution_writeup.md into Kaggle by hand; the CLI cannot post.
 - Decide on the 118 AI-trailer commits on origin/master (needs a history rewrite and force push).
 - Organiser outreach.
+
+## 2026-11-13 — local-whitening decoder test started
+Rohit asked to test local whitening in a decoder (the one open lever from the noise-equation line: +11% reliable word
+signal at +-30 s). noise_eq_pilot.py gains `--loc LW`: features from continuous PCs (unit training variance) whitened by
+the local +-LW s covariance, then epoched; same linear decoder, split, seeds. Queue scripts/queue_loc_whiten.sh: LW 30,
+10, whole run (100000) x seeds 0-3, full data, CPU 2 threads, 4 GiB scope. Baselines: existing seed{0..3}_day{0,1}
+(global and per-run whitening of epoch features). Smoke (10% data) ran clean in 90 s.

@@ -22,6 +22,8 @@ ap = argparse.ArgumentParser(); ap.add_argument("--row_frac", type=float, defaul
 ap.add_argument("--seed", type=int, default=0); ap.add_argument("--P", type=int, default=64); ap.add_argument("--tag", default="full")
 ap.add_argument("--day", type=int, default=0, help="1 = per-run (day) whitening of every run, test included")
 ap.add_argument("--arms", default="uniform,whiten,state,state_perm")
+ap.add_argument("--loc", type=int, default=0, help="(2026-11-13) >0: features from the CONTINUOUS PCs (unit training variance) whitened by\n"
+                "the local +-LOC s covariance before epoching (label-free, causal-free, per run, test included); 100000 = whole run")
 ap.add_argument("--feat_dir", default="/mnt/ssd4tb/data/libribrain_cache/noise_eq"); a = ap.parse_args()
 torch.set_num_threads(2); torch.manual_seed(a.seed); g = np.random.default_rng(a.seed)
 D = "/mnt/ssd4tb/data/libribrain_cache/cont"; FS = 50; NB, BW = 10, 5; PRE = 25
@@ -47,7 +49,22 @@ if not os.path.exists(cp):
 pc = np.load(cp); V, EV = pc["V"].astype(np.float32), pc["ev"].astype(np.float32); log("pca ready, top-P variance share", round(float(EV.sum() / 306), 3))
 
 
+def local_whiten(Z, LW):
+    """Whiten (T, P) by the covariance of the +-LW s around each 1 s block (shrunk 0.9/0.1 toward the run covariance)."""
+    nb = len(Z) // FS; Zb = Z[:nb * FS].astype(np.float64).reshape(nb, FS, a.P); cs = np.concatenate([np.zeros((1, a.P, a.P)), np.cumsum(np.einsum("bti,btj->bij", Zb, Zb), 0)])
+    out = np.zeros_like(Z, dtype=np.float32); gl = cs[-1] / (nb * FS)
+    for k in range(nb):
+        lo, hi = max(0, k - LW), min(nb, k + LW + 1); C = 0.9 * (cs[hi] - cs[lo]) / ((hi - lo) * FS) + 0.1 * gl
+        e, U = np.linalg.eigh(C); out[k * FS:(k + 1) * FS] = Zb[k] @ ((U * np.maximum(e, 1e-6 * e.max()) ** -0.5) @ U.T).T
+    return out
+
+
 def feats(b):
+    if a.loc: return feats_loc(b)
+    return feats_plain(b)
+
+
+def feats_plain(b):
     f = f"{a.feat_dir}/{b}_P{a.P}.npz"
     if os.path.exists(f): d = np.load(f); return d["X"], d["S"], d["y"]
     Y, on, lab = load(b); T = Y.shape[1]; keep = (lab >= 0) & (on - PRE >= 0) & (on + NB * BW <= T); on, lab = on[keep], lab[keep]
@@ -58,6 +75,15 @@ def feats(b):
     m = Y.mean(0); cm = np.concatenate([[0], np.cumsum(m)]); dr = np.abs((cm[on] - cm[on - PRE]) / PRE)
     S = np.stack([lp, np.log(pk + 1e-6), np.log(dr + 1e-6), on / T], 1)
     X, S = X.astype(np.float16), S.astype(np.float32); np.savez(f, X=X, S=S, y=lab); return X, S, lab
+
+
+def feats_loc(b):
+    f = f"{a.feat_dir}/{b}_P{a.P}_loc{a.loc}.npz"
+    if os.path.exists(f): d = np.load(f); return d["X"], d["S"], d["y"]
+    X0, S, y0 = feats_plain(b); Y, on, lab = load(b); T = Y.shape[1]; keep = (lab >= 0) & (on - PRE >= 0) & (on + NB * BW <= T); on = on[keep]
+    Z = local_whiten((V.T @ Y).T / np.sqrt(EV), a.loc)                              # (T, P)
+    idx = on[:, None] + np.arange(NB * BW)[None, :]; X = Z[idx].reshape(len(on), NB, BW, a.P).mean(2).transpose(0, 2, 1).reshape(len(on), -1)
+    X = X.astype(np.float16); np.savez(f, X=X, S=S, y=y0); return X, S, y0
 
 
 def day_whiten(X):
@@ -77,6 +103,7 @@ def stack(bs, frac=1.0):
 
 
 scale = np.repeat(1 / np.sqrt(EV), NB).astype(np.float32)                       # Sigma^-1/2 in PCA coordinates
+if a.loc: scale = np.ones_like(scale)                                             # loc features are already whitened
 
 
 def train(X, y, w, wd, whiten, epochs=8):
