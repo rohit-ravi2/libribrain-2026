@@ -1,0 +1,76 @@
+{
+ "runs": [
+  "sub-0_ses-1_task-Sherlock2_run-1",
+  "sub-0_ses-2_task-Sherlock2_run-1",
+  "sub-0_ses-7_task-Sherlock2_run-1",
+  "sub-0_ses-10_task-Sherlock5_run-1",
+  "sub-0_ses-9_task-Sherlock1_run-1",
+  "sub-0_ses-2_task-Sherlock8_run-1",
+  "sub-0_ses-12_task-Sherlock1_run-2",
+  "sub-0_ses-5_task-TheMoth_run-1",
+  "sub-0_ses-8_task-Sherlock9_run-1",
+  "sub-0_ses-14_task-TIMIT_run-1"
+ ],
+ "h1": {
+  "own_R2": 0.6074,
+  "other_run_R2": 0.5955,
+  "pooled_R2": 0.6361,
+  "per_run_own": [
+   0.484,
+   0.662,
+   0.611,
+   0.625,
+   0.808,
+   0.776,
+   0.665,
+   0.417,
+   0.546,
+   0.48
+  ],
+  "per_run_other": [
+   0.511,
+   0.691,
+   0.603,
+   0.682,
+   0.767,
+   0.73,
+   0.645,
+   0.382,
+   0.501,
+   0.442
+  ],
+  "innovQ_dist_within_run": 1.695,
+  "innovQ_dist_between_runs": 2.685
+ },
+ "h5": {
+  "own_R2": 0.4488,
+  "other_run_R2": 0.4269,
+  "pooled_R2": 0.4874,
+  "per_run_own": [
+   0.275,
+   0.461,
+   0.481,
+   0.535,
+   0.727,
+   0.649,
+   0.553,
+   0.246,
+   0.284,
+   0.279
+  ],
+  "per_run_other": [
+   0.318,
+   0.532,
+   0.454,
+   0.548,
+   0.625,
+   0.592,
+   0.504,
+   0.201,
+   0.267,
+   0.228
+  ],
+  "innovQ_dist_within_run": 1.954,
+  "innovQ_dist_between_runs": 2.803
+ }
+}

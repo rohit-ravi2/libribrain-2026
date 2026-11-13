@@ -298,3 +298,11 @@ under-determined (K=40 < 61 parameters) and is not informative. Reading: no nonl
 linear model, so the noise ODE is a linear SDE; nonlinear discovery (SINDy, KANDy, HAVOK, reservoirs) has nothing to find.
 The linear model removes about half the background variance one step ahead: temporal whitening (VAR innovations) is the
 untested lever. Next: decoder arms with VAR-innovation inputs and local (+-30 s) spatial whitening.
+
+## 2026-11-12 — background dynamics are a constant; only the drive drifts (bg_constancy.json)
+Same 10 runs/embedding. Forecast R2 at 20 / 100 ms on each run's last 30%: own-run A 0.607 / 0.449; A from another run
+(other days) 0.596 / 0.427; one pooled A for all runs 0.636 / 0.487 (beats own: more data, same law).
+Innovation (drive) covariance, trace-normalised log-Euclidean distance: within-run halves 1.70 / 1.95, between runs
+2.69 / 2.80. Reading: the noise equation is x(t+1) = A x(t) + B(t) w(t) with A a single constant shared across days,
+and the drive covariance B B^T drifting within runs and differing more between days. One fitted A whitens every run in
+time; the state-dependent part of the noise equation lives only in the drive covariance.
