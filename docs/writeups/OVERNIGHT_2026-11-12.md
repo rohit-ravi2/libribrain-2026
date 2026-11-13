@@ -12,7 +12,7 @@ the website repo is shared with another session: add and commit only LibriBrain 
 - [ ] Toolkit `toolkit/` (pip-installable `libribrain-floor`): timing floor, timing twin, onset TRF deconvolution,
       balanced top-k, Sinkhorn balancing; tests; README
 - [ ] Kaggle notebook (public, internet on, CPU): timing floor from event files only + Sinkhorn demo; run on Kaggle
-- [ ] Kaggle solution writeups (Broad, Deep): docs/writeups/kaggle/
+- [x] Kaggle solution writeups drafted (CLI cannot post; Rohit pastes them on Kaggle): docs/writeups/kaggle/
 - [ ] Posts: timing twin; leaderboard shake-up; noise as an equation; philosophy note
 - [ ] Website: posts in src/content/posts/{libribrain,philosophy}/, project page section and links, build passes
 - [ ] Adversarial review pass 1 (facts vs sources, voice, claims), fixes
